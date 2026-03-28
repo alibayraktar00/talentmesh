@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/theme/app_colors.dart';
+import 'profile_screen.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
@@ -95,40 +96,50 @@ class _FeedScreenState extends State<FeedScreen> {
       child: Row(
         children: [
           // Avatar with online indicator
-          Stack(
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: AppColors.primaryAccent.withValues(alpha: 0.3),
-                    width: 2,
-                  ),
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ProfileScreen(),
                 ),
-                child: const CircleAvatar(
-                  radius: 20,
-                  backgroundColor: AppColors.chipBg,
-                  child: Icon(
-                    Icons.person,
-                    color: AppColors.primaryAccent,
-                    size: 22,
-                  ),
-                ),
-              ),
-              Positioned(
-                right: 0,
-                bottom: 1,
-                child: Container(
-                  width: 12,
-                  height: 12,
+              );
+            },
+            child: Stack(
+              children: [
+                Container(
                   decoration: BoxDecoration(
-                    color: AppColors.onlineGreen,
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.white, width: 2),
+                    border: Border.all(
+                      color: AppColors.primaryAccent.withValues(alpha: 0.3),
+                      width: 2,
+                    ),
+                  ),
+                  child: const CircleAvatar(
+                    radius: 20,
+                    backgroundColor: AppColors.chipBg,
+                    child: Icon(
+                      Icons.person,
+                      color: AppColors.primaryAccent,
+                      size: 22,
+                    ),
                   ),
                 ),
-              ),
-            ],
+                Positioned(
+                  right: 0,
+                  bottom: 1,
+                  child: Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: AppColors.onlineGreen,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.white, width: 2),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
           const Spacer(),
           // Search icon – simple, no container background
