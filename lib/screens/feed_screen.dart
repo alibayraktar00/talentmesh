@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/theme/app_colors.dart';
+import '../core/services/project_service.dart';
+import '../core/services/auth_service.dart';
 import 'profile_screen.dart';
 
 class FeedScreen extends StatefulWidget {
@@ -12,42 +14,26 @@ class FeedScreen extends StatefulWidget {
 
 class _FeedScreenState extends State<FeedScreen> {
   int _selectedNavIndex = 0;
+  final _projectService = ProjectService();
+  final _authService = AuthService();
+  late Future<List<Map<String, dynamic>>> _projectsFuture;
 
-  // ── Sample Data ──
-  final List<Map<String, dynamic>> _projects = [
-    {
-      'title': 'Mobile Game Development Team',
-      'roles': 'Unity Developer • 3D Artist • UI/UX Designer',
-      'lead': 'Amn Rash',
-      'description':
-          'Project description: Teamness a mobile game in building namedenvinas for creatives and reasperprise promotion...',
-      'tags': ['Python', 'Unity', 'Design'],
-    },
-    {
-      'title': 'Mobile Game Development',
-      'roles': 'Unity Developer • 3D Artist • UI/UX Designer',
-      'lead': 'Amn Rash',
-      'description':
-          'Project description: In complicing game crevors and developments. In titling, neunation and nove problemis...',
-      'tags': ['Python', 'Unity', 'Design'],
-    },
-    {
-      'title': 'Mobile Game Development',
-      'roles': 'Unity Developer • 3D Artist • UI/UX Designer',
-      'lead': 'Amn Rash',
-      'description':
-          'Project description: Innovation game smeeting and developments. In titling, neunation and nove problemis...',
-      'tags': ['Python', 'Unity', 'Design'],
-    },
-    {
-      'title': 'Project DeveloiTeam',
-      'roles': 'Unity Developer • 3D Artist • UI/UX Designer',
-      'lead': 'Amn Resh',
-      'description':
-          'Project description: In project and tndfrm development and enoundage; common gvaturuals for your promotor...',
-      'tags': ['Python', 'Unity', 'Design'],
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _projectsFuture = _projectService.fetchProjects();
+  }
+
+  void _refresh() {
+    setState(() {
+      _projectsFuture = _projectService.fetchProjects();
+    });
+  }
+
+  Future<void> _signOut() async {
+    await _authService.signOut();
+    // AuthGate otomatik LoginScreen'e döner
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,28 +43,85 @@ class _FeedScreenState extends State<FeedScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Top Bar ──
             _buildTopBar(),
-            // ── Page Title ──
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
-              child: Text(
-                'İlanlar',
-                style: GoogleFonts.inter(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.headingText,
-                ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'İlanlar',
+                    style: GoogleFonts.inter(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.headingText,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: _refresh,
+                    icon: const Icon(Icons.refresh, color: AppColors.primaryAccent),
+                    tooltip: 'Yenile',
+                  ),
+                ],
               ),
             ),
-            // ── Project Cards ──
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.only(bottom: 100),
-                physics: const BouncingScrollPhysics(),
-                itemCount: _projects.length,
-                itemBuilder: (context, index) {
-                  return _buildProjectCard(_projects[index], index);
+              child: FutureBuilder<List<Map<String, dynamic>>>(
+                future: _projectsFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.error_outline,
+                              color: Colors.redAccent, size: 48),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Veri yüklenemedi.',
+                            style: GoogleFonts.inter(color: AppColors.mutedText),
+                          ),
+                          const SizedBox(height: 8),
+                          TextButton(
+                            onPressed: _refresh,
+                            child: const Text('Tekrar dene'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  final projects = snapshot.data ?? [];
+                  if (projects.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.work_outline,
+                              size: 56,
+                              color: AppColors.mutedText.withValues(alpha: 0.5)),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Henüz ilan yok.',
+                            style: GoogleFonts.inter(
+                              fontSize: 15,
+                              color: AppColors.mutedText,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  return ListView.builder(
+                    padding: const EdgeInsets.only(bottom: 100),
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: projects.length,
+                    itemBuilder: (context, index) {
+                      return _buildProjectCard(projects[index], index);
+                    },
+                  );
                 },
               ),
             ),
@@ -95,7 +138,6 @@ class _FeedScreenState extends State<FeedScreen> {
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
       child: Row(
         children: [
-          // Avatar with online indicator
           GestureDetector(
             onTap: () {
               Navigator.push(
@@ -142,7 +184,6 @@ class _FeedScreenState extends State<FeedScreen> {
             ),
           ),
           const Spacer(),
-          // Search icon – simple, no container background
           IconButton(
             onPressed: () {},
             icon: Icon(
@@ -151,6 +192,16 @@ class _FeedScreenState extends State<FeedScreen> {
               size: 26,
             ),
           ),
+          // Çıkış butonu
+          IconButton(
+            onPressed: _signOut,
+            icon: Icon(
+              Icons.logout,
+              color: AppColors.headingText.withValues(alpha: 0.5),
+              size: 22,
+            ),
+            tooltip: 'Çıkış Yap',
+          ),
         ],
       ),
     );
@@ -158,6 +209,10 @@ class _FeedScreenState extends State<FeedScreen> {
 
   // ──────────────────── PROJECT CARD ────────────────────────
   Widget _buildProjectCard(Map<String, dynamic> project, int index) {
+    final tags = (project['tags'] as List<dynamic>? ?? [])
+        .map((e) => e.toString())
+        .toList();
+
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
       duration: Duration(milliseconds: 400 + (index * 100)),
@@ -189,7 +244,6 @@ class _FeedScreenState extends State<FeedScreen> {
           child: IntrinsicHeight(
             child: Row(
               children: [
-                // ── Left accent border ──
                 Container(
                   width: 5,
                   decoration: const BoxDecoration(
@@ -200,16 +254,14 @@ class _FeedScreenState extends State<FeedScreen> {
                     ),
                   ),
                 ),
-                // ── Card content ──
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Title
                         Text(
-                          project['title'],
+                          project['title'] ?? '',
                           style: GoogleFonts.inter(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
@@ -217,10 +269,8 @@ class _FeedScreenState extends State<FeedScreen> {
                           ),
                         ),
                         const SizedBox(height: 4),
-
-                        // Roles
                         Text(
-                          project['roles'],
+                          project['roles'] ?? '',
                           style: GoogleFonts.inter(
                             fontSize: 12,
                             fontWeight: FontWeight.w400,
@@ -228,14 +278,12 @@ class _FeedScreenState extends State<FeedScreen> {
                           ),
                         ),
                         const SizedBox(height: 10),
-
-                        // Project lead row
                         Row(
                           children: [
-                            CircleAvatar(
+                            const CircleAvatar(
                               radius: 10,
                               backgroundColor: AppColors.chipBg,
-                              child: const Icon(
+                              child: Icon(
                                 Icons.person_outline,
                                 size: 12,
                                 color: AppColors.primaryAccent,
@@ -243,14 +291,14 @@ class _FeedScreenState extends State<FeedScreen> {
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              'Projet lead: ',
+                              'Project lead: ',
                               style: GoogleFonts.inter(
                                 fontSize: 11,
                                 color: AppColors.mutedText,
                               ),
                             ),
                             Text(
-                              project['lead'],
+                              project['lead_name'] ?? '',
                               style: GoogleFonts.inter(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
@@ -260,10 +308,8 @@ class _FeedScreenState extends State<FeedScreen> {
                           ],
                         ),
                         const SizedBox(height: 8),
-
-                        // Description
                         Text(
-                          project['description'],
+                          project['description'] ?? '',
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.inter(
@@ -273,13 +319,10 @@ class _FeedScreenState extends State<FeedScreen> {
                           ),
                         ),
                         const SizedBox(height: 10),
-
-                        // Tags
                         Wrap(
                           spacing: 6,
                           runSpacing: 6,
-                          children:
-                              (project['tags'] as List<String>).map((tag) {
+                          children: tags.map((tag) {
                             return Container(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 10, vertical: 5),
@@ -329,7 +372,6 @@ class _FeedScreenState extends State<FeedScreen> {
           height: 80,
           child: Row(
             children: [
-              // ── Left: Kişiler ──
               Expanded(
                 child: _buildNavItem(
                   icon: Icons.people_outline,
@@ -338,8 +380,6 @@ class _FeedScreenState extends State<FeedScreen> {
                   index: 0,
                 ),
               ),
-
-              // ── Center: Takım Oluştur ──
               Expanded(
                 child: GestureDetector(
                   onTap: () {},
@@ -354,8 +394,7 @@ class _FeedScreenState extends State<FeedScreen> {
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.primaryAccent
-                                  .withValues(alpha: 0.4),
+                              color: AppColors.primaryAccent.withValues(alpha: 0.4),
                               blurRadius: 14,
                               offset: const Offset(0, 4),
                             ),
@@ -402,8 +441,6 @@ class _FeedScreenState extends State<FeedScreen> {
                   ),
                 ),
               ),
-
-              // ── Right: Gruplar ──
               Expanded(
                 child: _buildNavItem(
                   icon: Icons.groups_outlined,

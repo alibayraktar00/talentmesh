@@ -3,23 +3,23 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/theme/app_colors.dart';
 import '../core/services/auth_service.dart';
-import 'signup_screen.dart';
-import 'forgot_password_screen.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class SignUpScreen extends StatefulWidget {
+  const SignUpScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<SignUpScreen> createState() => _SignUpScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen>
+class _SignUpScreenState extends State<SignUpScreen>
     with SingleTickerProviderStateMixin {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   final _authService = AuthService();
 
   bool _obscurePassword = true;
+  bool _obscureConfirm = true;
   bool _isLoading = false;
 
   late AnimationController _fadeController;
@@ -52,6 +52,7 @@ class _LoginScreenState extends State<LoginScreen>
     _fadeController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -67,24 +68,62 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
+  void _showSuccess(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppColors.primaryAccent,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
 
-  Future<void> _signIn() async {
+  Future<void> _signUp() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
+    final confirm = _confirmPasswordController.text;
 
-    if (email.isEmpty || password.isEmpty) {
-      _showError('Email ve şifre boş bırakılamaz.');
+    if (email.isEmpty || password.isEmpty || confirm.isEmpty) {
+      _showError('Tüm alanları doldurun.');
+      return;
+    }
+    if (!email.contains('@')) {
+      _showError('Geçerli bir email adresi girin.');
+      return;
+    }
+    if (password.length < 6) {
+      _showError('Şifre en az 6 karakter olmalı.');
+      return;
+    }
+    if (password != confirm) {
+      _showError('Şifreler eşleşmiyor.');
       return;
     }
 
     setState(() => _isLoading = true);
     try {
-      await _authService.signIn(email: email, password: password);
-      // AuthGate otomatik olarak FeedScreen'e yönlendirir
+      final res = await _authService.signUp(email: email, password: password);
+      if (res.user != null) {
+        if (res.session != null) {
+          // Supabase otomatik oturum açar (email doğrulaması kapalıysa).
+          // Kullanıcının özellikle 'Login' ekranından tekrar girmesi istendiği için çıkış yapıyoruz.
+          await _authService.signOut();
+          _showSuccess('Kayıt başarılı! Lütfen giriş yapın.');
+          await Future.delayed(const Duration(milliseconds: 1500));
+          if (mounted) Navigator.of(context).pop();
+        } else {
+          // Email doğrulama açıkken olan senaryo
+          _showSuccess('Kayıt başarılı! Email kutunuzu kontrol edin.');
+          await Future.delayed(const Duration(milliseconds: 1500));
+          if (mounted) Navigator.of(context).pop();
+        }
+      }
     } on AuthException catch (e) {
       _showError(e.message);
     } catch (_) {
-      _showError('Giriş yapılamadı. Tekrar deneyin.');
+      _showError('Kayıt olunamadı. Tekrar deneyin.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -94,6 +133,15 @@ class _LoginScreenState extends State<LoginScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new,
+              color: AppColors.headingText, size: 20),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -104,71 +152,54 @@ class _LoginScreenState extends State<LoginScreen>
                 position: _slideAnimation,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 40),
-
-                    // ── Logo ──
-                    _buildLogo(),
-                    const SizedBox(height: 12),
-
                     Text(
-                      'TALENT MESH',
+                      'Hesap Oluştur',
                       style: GoogleFonts.inter(
-                        fontSize: 26,
+                        fontSize: 28,
                         fontWeight: FontWeight.w800,
                         color: AppColors.primaryDark,
-                        letterSpacing: 3,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     Text(
-                      'Build your dream team',
+                      'Talent Mesh\'e katıl ve ekibini bul.',
                       style: GoogleFonts.inter(
                         fontSize: 14,
-                        fontWeight: FontWeight.w400,
                         color: AppColors.mutedText,
                       ),
                     ),
+                    const SizedBox(height: 40),
 
-                    const SizedBox(height: 48),
-
-                    // ── Email Field ──
+                    // ── Email ──
                     TextField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       enabled: !_isLoading,
                       decoration: const InputDecoration(
-                        hintText: 'Email Address',
-                        prefixIcon: Icon(
-                          Icons.email_outlined,
-                          color: AppColors.mutedText,
-                          size: 20,
-                        ),
+                        hintText: 'Email Adresi',
+                        prefixIcon: Icon(Icons.email_outlined,
+                            color: AppColors.mutedText, size: 20),
                         prefixIconConstraints: BoxConstraints(minWidth: 52),
                       ),
                     ),
                     const SizedBox(height: 16),
 
-                    // ── Password Field ──
+                    // ── Şifre ──
                     TextField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
                       enabled: !_isLoading,
                       decoration: InputDecoration(
-                        hintText: 'Password',
-                        prefixIcon: const Icon(
-                          Icons.lock_outline,
-                          color: AppColors.mutedText,
-                          size: 20,
-                        ),
+                        hintText: 'Şifre (en az 6 karakter)',
+                        prefixIcon: const Icon(Icons.lock_outline,
+                            color: AppColors.mutedText, size: 20),
                         prefixIconConstraints:
                             const BoxConstraints(minWidth: 52),
                         suffixIcon: GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _obscurePassword = !_obscurePassword;
-                            });
-                          },
+                          onTap: () => setState(
+                              () => _obscurePassword = !_obscurePassword),
                           child: Icon(
                             _obscurePassword
                                 ? Icons.visibility_off_outlined
@@ -179,9 +210,35 @@ class _LoginScreenState extends State<LoginScreen>
                         ),
                       ),
                     ),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 16),
 
-                    // ── Sign In Button ──
+                    // ── Şifre Tekrar ──
+                    TextField(
+                      controller: _confirmPasswordController,
+                      obscureText: _obscureConfirm,
+                      enabled: !_isLoading,
+                      decoration: InputDecoration(
+                        hintText: 'Şifre Tekrar',
+                        prefixIcon: const Icon(Icons.lock_outline,
+                            color: AppColors.mutedText, size: 20),
+                        prefixIconConstraints:
+                            const BoxConstraints(minWidth: 52),
+                        suffixIcon: GestureDetector(
+                          onTap: () => setState(
+                              () => _obscureConfirm = !_obscureConfirm),
+                          child: Icon(
+                            _obscureConfirm
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                            color: AppColors.mutedText,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+
+                    // ── Kayıt Ol Butonu ──
                     Container(
                       width: double.infinity,
                       height: 54,
@@ -193,14 +250,15 @@ class _LoginScreenState extends State<LoginScreen>
                         borderRadius: BorderRadius.circular(14),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.primaryAccent.withValues(alpha: 0.35),
+                            color:
+                                AppColors.primaryAccent.withValues(alpha: 0.35),
                             blurRadius: 16,
                             offset: const Offset(0, 6),
                           ),
                         ],
                       ),
                       child: ElevatedButton(
-                        onPressed: _isLoading ? null : _signIn,
+                        onPressed: _isLoading ? null : _signUp,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.transparent,
                           shadowColor: Colors.transparent,
@@ -218,7 +276,7 @@ class _LoginScreenState extends State<LoginScreen>
                                 ),
                               )
                             : Text(
-                                'Sign In',
+                                'Kayıt Ol',
                                 style: GoogleFonts.inter(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
@@ -227,54 +285,23 @@ class _LoginScreenState extends State<LoginScreen>
                               ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
 
-                    // ── Forgot Password ──
-                    TextButton(
-                      onPressed: _isLoading
-                          ? null
-                          : () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const ForgotPasswordScreen(),
-                                ),
-                              );
-                            },
-                      child: Text(
-                        'Forgot Password?',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.mutedText,
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 48),
-
-                    // ── Sign Up Link ──
+                    // ── Zaten hesabın var mı? ──
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          "Don't have an account? ",
+                          'Zaten hesabın var mı? ',
                           style: GoogleFonts.inter(
                             fontSize: 14,
                             color: AppColors.bodyText,
                           ),
                         ),
                         GestureDetector(
-                          onTap: _isLoading
-                              ? null
-                              : () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => const SignUpScreen(),
-                                    ),
-                                  );
-                                },
+                          onTap: () => Navigator.of(context).pop(),
                           child: Text(
-                            'Sign Up',
+                            'Giriş Yap',
                             style: GoogleFonts.inter(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
@@ -294,73 +321,4 @@ class _LoginScreenState extends State<LoginScreen>
       ),
     );
   }
-
-  Widget _buildLogo() {
-    return SizedBox(
-      width: 100,
-      height: 100,
-      child: CustomPaint(
-        painter: _CollaborationLogoPainter(),
-      ),
-    );
-  }
-}
-
-class _CollaborationLogoPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final double cx = size.width / 2;
-    final double cy = size.height / 2;
-
-    final Paint accentPaint = Paint()
-      ..color = AppColors.primaryAccent
-      ..style = PaintingStyle.fill;
-
-    final Paint darkPaint = Paint()
-      ..color = AppColors.primaryDark
-      ..style = PaintingStyle.fill;
-
-    final Paint arcPaint = Paint()
-      ..color = AppColors.primaryAccent
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawCircle(Offset(cx - 22, cy - 18), 10, accentPaint);
-    final leftBody = RRect.fromRectAndRadius(
-      Rect.fromCenter(center: Offset(cx - 22, cy + 8), width: 16, height: 28),
-      const Radius.circular(8),
-    );
-    canvas.drawRRect(leftBody, accentPaint);
-
-    canvas.drawCircle(Offset(cx + 22, cy - 18), 10, darkPaint);
-    final rightBody = RRect.fromRectAndRadius(
-      Rect.fromCenter(center: Offset(cx + 22, cy + 8), width: 16, height: 28),
-      const Radius.circular(8),
-    );
-    canvas.drawRRect(rightBody, darkPaint);
-
-    final arcPath = Path()
-      ..moveTo(cx - 12, cy)
-      ..quadraticBezierTo(cx, cy - 14, cx + 12, cy);
-    canvas.drawPath(arcPath, arcPaint);
-
-    final dotPaint = Paint()
-      ..color = AppColors.primaryAccent.withValues(alpha: 0.4)
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(cx, cy - 6), 2.5, dotPaint);
-    canvas.drawCircle(Offset(cx - 6, cy + 4), 2, dotPaint);
-    canvas.drawCircle(Offset(cx + 6, cy + 4), 2, dotPaint);
-
-    final meshPaint = Paint()
-      ..color = AppColors.primaryAccent.withValues(alpha: 0.25)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-    canvas.drawLine(Offset(cx, cy - 6), Offset(cx - 6, cy + 4), meshPaint);
-    canvas.drawLine(Offset(cx, cy - 6), Offset(cx + 6, cy + 4), meshPaint);
-    canvas.drawLine(Offset(cx - 6, cy + 4), Offset(cx + 6, cy + 4), meshPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
