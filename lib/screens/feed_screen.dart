@@ -4,6 +4,9 @@ import '../core/theme/app_colors.dart';
 import '../core/services/project_service.dart';
 import '../core/services/auth_service.dart';
 import 'profile_screen.dart';
+import '../providers/team_provider.dart';
+import 'my_teams_screen.dart';
+import 'create_team_screen.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
@@ -17,6 +20,7 @@ class _FeedScreenState extends State<FeedScreen> {
   final _projectService = ProjectService();
   final _authService = AuthService();
   late Future<List<Map<String, dynamic>>> _projectsFuture;
+  final TeamProvider _teamProvider = TeamProvider();
 
   @override
   void initState() {
@@ -35,6 +39,32 @@ class _FeedScreenState extends State<FeedScreen> {
     // AuthGate otomatik LoginScreen'e döner
   }
 
+  String _getPageTitle() {
+    switch (_selectedNavIndex) {
+      case 0: return 'İlanlar';
+      case 2: return 'Gruplar';
+      default: return 'İlanlar';
+    }
+  }
+
+  Widget _buildPageContent() {
+    switch (_selectedNavIndex) {
+      case 0: return _buildFeedList();
+      case 2: return MyTeamsScreen(teamProvider: _teamProvider);
+      default: return _buildFeedList();
+    }
+  }
+
+  void _openCreateTeamSheet() {
+    showCreateTeamSheet(
+      context,
+      teamProvider: _teamProvider,
+      onTeamCreated: () {
+        setState(() => _selectedNavIndex = 2);
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -50,85 +80,88 @@ class _FeedScreenState extends State<FeedScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'İlanlar',
+                    _getPageTitle(),
                     style: GoogleFonts.inter(
                       fontSize: 26,
                       fontWeight: FontWeight.w800,
                       color: AppColors.headingText,
                     ),
                   ),
-                  IconButton(
-                    onPressed: _refresh,
-                    icon: const Icon(Icons.refresh, color: AppColors.primaryAccent),
-                    tooltip: 'Yenile',
-                  ),
+                  if (_selectedNavIndex == 0)
+                    IconButton(
+                      onPressed: _refresh,
+                      icon: const Icon(Icons.refresh, color: AppColors.primaryAccent),
+                      tooltip: 'Yenile',
+                    ),
                 ],
               ),
             ),
-            Expanded(
-              child: FutureBuilder<List<Map<String, dynamic>>>(
-                future: _projectsFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.error_outline,
-                              color: Colors.redAccent, size: 48),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Veri yüklenemedi.',
-                            style: GoogleFonts.inter(color: AppColors.mutedText),
-                          ),
-                          const SizedBox(height: 8),
-                          TextButton(
-                            onPressed: _refresh,
-                            child: const Text('Tekrar dene'),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-                  final projects = snapshot.data ?? [];
-                  if (projects.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.work_outline,
-                              size: 56,
-                              color: AppColors.mutedText.withValues(alpha: 0.5)),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Henüz ilan yok.',
-                            style: GoogleFonts.inter(
-                              fontSize: 15,
-                              color: AppColors.mutedText,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-                  return ListView.builder(
-                    padding: const EdgeInsets.only(bottom: 100),
-                    physics: const BouncingScrollPhysics(),
-                    itemCount: projects.length,
-                    itemBuilder: (context, index) {
-                      return _buildProjectCard(projects[index], index);
-                    },
-                  );
-                },
-              ),
-            ),
+            Expanded(child: _buildPageContent()),
           ],
         ),
       ),
       bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+
+  Widget _buildFeedList() {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _projectsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline,
+                    color: Colors.redAccent, size: 48),
+                const SizedBox(height: 12),
+                Text(
+                  'Veri yüklenemedi.',
+                  style: GoogleFonts.inter(color: AppColors.mutedText),
+                ),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: _refresh,
+                  child: const Text('Tekrar dene'),
+                ),
+              ],
+            ),
+          );
+        }
+        final projects = snapshot.data ?? [];
+        if (projects.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.work_outline,
+                    size: 56,
+                    color: AppColors.mutedText.withValues(alpha: 0.5)),
+                const SizedBox(height: 16),
+                Text(
+                  'Henüz ilan yok.',
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    color: AppColors.mutedText,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.only(bottom: 100),
+          physics: const BouncingScrollPhysics(),
+          itemCount: projects.length,
+          itemBuilder: (context, index) {
+            return _buildProjectCard(projects[index], index);
+          },
+        );
+      },
     );
   }
 
@@ -382,7 +415,8 @@ class _FeedScreenState extends State<FeedScreen> {
               ),
               Expanded(
                 child: GestureDetector(
-                  onTap: () {},
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _openCreateTeamSheet,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
