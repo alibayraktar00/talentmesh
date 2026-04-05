@@ -7,6 +7,7 @@ import 'profile_screen.dart';
 import '../providers/team_provider.dart';
 import 'my_teams_screen.dart';
 import 'create_team_screen.dart';
+import 'teammates_screen.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
@@ -41,17 +42,15 @@ class _FeedScreenState extends State<FeedScreen> {
 
   String _getPageTitle() {
     switch (_selectedNavIndex) {
-      case 0: return 'İlanlar';
-      case 2: return 'Gruplar';
-      default: return 'İlanlar';
+      case 0: return 'Takım Arkadaşlarım';
+      default: return 'Takım Arkadaşlarım';
     }
   }
 
   Widget _buildPageContent() {
     switch (_selectedNavIndex) {
-      case 0: return _buildFeedList();
-      case 2: return MyTeamsScreen(teamProvider: _teamProvider);
-      default: return _buildFeedList();
+      case 0: return const TeammatesScreen();
+      default: return const TeammatesScreen();
     }
   }
 
@@ -60,7 +59,7 @@ class _FeedScreenState extends State<FeedScreen> {
       context,
       teamProvider: _teamProvider,
       onTeamCreated: () {
-        setState(() => _selectedNavIndex = 2);
+        setState(() => _selectedNavIndex = 0);
       },
     );
   }
@@ -407,9 +406,9 @@ class _FeedScreenState extends State<FeedScreen> {
             children: [
               Expanded(
                 child: _buildNavItem(
-                  icon: Icons.people_outline,
-                  activeIcon: Icons.people,
-                  label: 'Kişiler',
+                  icon: Icons.groups_3_outlined,
+                  activeIcon: Icons.groups_3,
+                  label: 'Takım \nArkadaşlarım',
                   index: 0,
                 ),
               ),
@@ -475,14 +474,7 @@ class _FeedScreenState extends State<FeedScreen> {
                   ),
                 ),
               ),
-              Expanded(
-                child: _buildNavItem(
-                  icon: Icons.groups_outlined,
-                  activeIcon: Icons.groups,
-                  label: 'Gruplar',
-                  index: 2,
-                ),
-              ),
+
             ],
           ),
         ),
@@ -513,8 +505,10 @@ class _FeedScreenState extends State<FeedScreen> {
           const SizedBox(height: 4),
           Text(
             label,
+            textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               fontSize: 11,
+              height: 1.1,
               fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
               color: isActive ? AppColors.primaryAccent : AppColors.mutedText,
             ),
