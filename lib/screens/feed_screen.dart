@@ -8,6 +8,7 @@ import '../providers/team_provider.dart';
 import 'my_teams_screen.dart';
 import 'create_team_screen.dart';
 import 'teammates_screen.dart';
+import 'search_screen.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
@@ -43,6 +44,7 @@ class _FeedScreenState extends State<FeedScreen> {
   String _getPageTitle() {
     switch (_selectedNavIndex) {
       case 0: return 'Takım Arkadaşlarım';
+      case 1: return 'Arama';
       default: return 'Takım Arkadaşlarım';
     }
   }
@@ -50,6 +52,7 @@ class _FeedScreenState extends State<FeedScreen> {
   Widget _buildPageContent() {
     switch (_selectedNavIndex) {
       case 0: return const TeammatesScreen();
+      case 1: return const SearchScreen();
       default: return const TeammatesScreen();
     }
   }
@@ -217,7 +220,9 @@ class _FeedScreenState extends State<FeedScreen> {
           ),
           const Spacer(),
           IconButton(
-            onPressed: () {},
+            onPressed: () {
+              setState(() => _selectedNavIndex = 1);
+            },
             icon: Icon(
               Icons.search,
               color: AppColors.headingText.withValues(alpha: 0.7),
@@ -472,6 +477,14 @@ class _FeedScreenState extends State<FeedScreen> {
                       ),
                     ],
                   ),
+                ),
+              ),
+              Expanded(
+                child: _buildNavItem(
+                  icon: Icons.search_outlined,
+                  activeIcon: Icons.search,
+                  label: 'Arama\n', // Hizalamayı korumak için
+                  index: 1,
                 ),
               ),
 
