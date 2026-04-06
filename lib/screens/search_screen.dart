@@ -1,6 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/theme/app_colors.dart';
+
+enum _RelationType { none, accepted, pendingOutgoing, pendingIncoming }
+
+class _RelationState {
+  final _RelationType type;
+  final String? requestId;
+
+  const _RelationState(this.type, {this.requestId});
+}
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -10,39 +22,17 @@ class SearchScreen extends StatefulWidget {
 }
 
 class _SearchScreenState extends State<SearchScreen> {
+  final _client = Supabase.instance.client;
   final TextEditingController _searchController = TextEditingController();
-  
-  // Sahte veri (Mock Data) listesi
-  final List<Map<String, dynamic>> _mockData = [
-    {
-      'name': 'Ali Yılmaz',
-      'role': 'Yazılım Geliştirici',
-      'skills': ['Flutter', 'Dart', 'Firebase'],
-    },
-    {
-      'name': 'Ayşe Demir',
-      'role': 'UI/UX Tasarımcı',
-      'skills': ['Figma', 'Adobe XD', 'Prototyping'],
-    },
-    {
-      'name': 'Mehmet Kaya',
-      'role': 'Backend Geliştirici',
-      'skills': ['Node.js', 'PostgreSQL', 'Docker'],
-    },
-    {
-      'name': 'Zeynep Çelik',
-      'role': 'Proje Yöneticisi',
-      'skills': ['Agile', 'Scrum', 'Jira'],
-    },
-    {
-      'name': 'Can Gür',
-      'role': 'Mobil Geliştirici',
-      'skills': ['Swift', 'Kotlin', 'Flutter', 'UI'],
-    },
-  ];
+  Timer? _debounce;
+  bool _isLoading = false;
+  bool _hasSearched = false;
+  List<Map<String, dynamic>> _results = [];
+  final Set<String> _sendingRequestIds = {};
+  final Map<String, _RelationState> _relationsByUserId = {};
+  String? _activeUserId;
 
-  List<Map<String, dynamic>> _filteredData = [];
-  bool _isSearching = false;
+  String? get _myUserId => _client.auth.currentUser?.id;
 
   @override
   void initState() {
@@ -52,40 +42,273 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
   void _onSearchChanged() {
-    final query = _searchController.text.toLowerCase().trim();
-    if (query.isEmpty) {
-      if (_isSearching) {
-        setState(() {
-          _isSearching = false;
-          _filteredData = [];
-        });
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 350), () {
+      _searchUsers(_searchController.text);
+    });
+  }
+
+  void _resetStateForUserChange() {
+    _results = [];
+    _relationsByUserId.clear();
+    _sendingRequestIds.clear();
+    _hasSearched = false;
+    _isLoading = false;
+    _searchController.clear();
+  }
+
+  int _relationPriority(_RelationType type) {
+    switch (type) {
+      case _RelationType.accepted:
+        return 3;
+      case _RelationType.pendingIncoming:
+        return 2;
+      case _RelationType.pendingOutgoing:
+        return 1;
+      case _RelationType.none:
+        return 0;
+    }
+  }
+
+  Future<Map<String, _RelationState>> _loadRelationsForListedUsers({
+    required String myId,
+    required List<String> listedUserIds,
+  }) async {
+    if (listedUserIds.isEmpty) return {};
+
+    // Türkçe yorum: Çift yönlü kontrol için hem giden hem gelen request kayıtlarını çekiyoruz.
+    final outgoingRows = await _client
+        .from('friend_requests')
+        .select('id, requester_id, addressee_id, status')
+        .eq('requester_id', myId)
+        .eq('request_type', 'friend')
+        .inFilter('addressee_id', listedUserIds)
+        .inFilter('status', ['pending', 'accepted']);
+
+    final incomingRows = await _client
+        .from('friend_requests')
+        .select('id, requester_id, addressee_id, status')
+        .eq('addressee_id', myId)
+        .eq('request_type', 'friend')
+        .inFilter('requester_id', listedUserIds)
+        .inFilter('status', ['pending', 'accepted']);
+
+    final allRows = [
+      ...List<Map<String, dynamic>>.from(outgoingRows),
+      ...List<Map<String, dynamic>>.from(incomingRows),
+    ];
+
+    final Map<String, _RelationState> map = {};
+    for (final row in allRows) {
+      final requesterId = (row['requester_id'] ?? '').toString();
+      final addresseeId = (row['addressee_id'] ?? '').toString();
+      final status = (row['status'] ?? '').toString();
+      final requestId = (row['id'] ?? '').toString();
+      final otherId = requesterId == myId ? addresseeId : requesterId;
+      if (otherId.isEmpty) continue;
+
+      _RelationState next;
+      if (status == 'accepted') {
+        next = const _RelationState(_RelationType.accepted);
+      } else if (status == 'pending' && requesterId == myId) {
+        next = _RelationState(_RelationType.pendingOutgoing, requestId: requestId);
+      } else if (status == 'pending' && addresseeId == myId) {
+        next = _RelationState(_RelationType.pendingIncoming, requestId: requestId);
+      } else {
+        next = const _RelationState(_RelationType.none);
       }
+
+      final current = map[otherId];
+      if (current == null ||
+          _relationPriority(next.type) > _relationPriority(current.type)) {
+        map[otherId] = next;
+      }
+    }
+    return map;
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.redAccent,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _searchUsers(String rawQuery) async {
+    final query = rawQuery.trim().toLowerCase();
+
+    if (query.isEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _hasSearched = false;
+        _isLoading = false;
+        _results = [];
+        _relationsByUserId.clear();
+      });
       return;
     }
 
+    final myId = _myUserId;
+    if (myId == null) {
+      _showError('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      return;
+    }
+
+    if (!mounted) return;
     setState(() {
-      _isSearching = true;
-      _filteredData = _mockData.where((item) {
-        final name = (item['name'] as String).toLowerCase();
-        final skills = (item['skills'] as List<String>)
-            .map((s) => s.toLowerCase())
-            .toList();
-            
-        final matchesName = name.contains(query);
-        final matchesSkill = skills.any((skill) => skill.contains(query));
-        
-        return matchesName || matchesSkill;
-      }).toList();
+      _isLoading = true;
+      _hasSearched = true;
     });
+
+    try {
+      // Türkçe yorum: username alanında ilike ile arama yapıyoruz.
+      final response = await _client
+          .from('profiles')
+          .select('id, username, full_name')
+          .ilike('username', '%$query%')
+          .order('username', ascending: true)
+          .limit(30);
+
+      final data = List<Map<String, dynamic>>.from(response);
+      final filtered = data.where((item) => item['id'] != myId).toList();
+
+      final listedUserIds =
+          filtered.map((item) => item['id'].toString()).toList();
+      final relations = await _loadRelationsForListedUsers(
+        myId: myId,
+        listedUserIds: listedUserIds,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        // Türkçe yorum: mevcut kullanıcıyı listede göstermiyoruz.
+        _results = filtered;
+        _relationsByUserId
+          ..clear()
+          ..addAll(relations);
+      });
+    } on PostgrestException catch (e) {
+      _showError('Arama sırasında hata oluştu: ${e.message}');
+    } catch (_) {
+      _showError('Arama yapılamadı. İnternet bağlantınızı kontrol edin.');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _sendFriendRequest(Map<String, dynamic> profile) async {
+    final myId = _myUserId;
+    final addresseeId = profile['id']?.toString();
+
+    if (myId == null || addresseeId == null || addresseeId.isEmpty) {
+      _showError('İstek gönderilemedi.');
+      return;
+    }
+
+    if (_sendingRequestIds.contains(addresseeId)) {
+      return;
+    }
+
+    final relation = _relationsByUserId[addresseeId] ??
+        const _RelationState(_RelationType.none);
+    if (relation.type == _RelationType.accepted ||
+        relation.type == _RelationType.pendingOutgoing) {
+      return;
+    }
+
+    setState(() => _sendingRequestIds.add(addresseeId));
+
+    try {
+      await _client.from('friend_requests').insert({
+        'requester_id': myId,
+        'addressee_id': addresseeId,
+        'status': 'pending',
+        // Türkçe yorum: Arkadaşlık akışı için tipi ve okunma durumunu açık yazıyoruz.
+        'request_type': 'friend',
+        'is_read': false,
+      });
+
+      if (!mounted) return;
+      setState(() {
+        _relationsByUserId[addresseeId] =
+            const _RelationState(_RelationType.pendingOutgoing);
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Arkadaşlık isteği gönderildi.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } on PostgrestException catch (e) {
+      _showError('İstek gönderilemedi: ${e.message}');
+    } catch (_) {
+      _showError('İstek gönderilemedi. Lütfen tekrar deneyin.');
+    } finally {
+      if (mounted) {
+        setState(() => _sendingRequestIds.remove(addresseeId));
+      }
+    }
+  }
+
+  Future<void> _acceptIncomingRequest({
+    required String otherUserId,
+    required String requestId,
+  }) async {
+    if (_sendingRequestIds.contains(otherUserId)) return;
+    setState(() => _sendingRequestIds.add(otherUserId));
+
+    try {
+      await _client
+          .from('friend_requests')
+          .update({'status': 'accepted'}).eq('id', requestId);
+
+      if (!mounted) return;
+      setState(() {
+        _relationsByUserId[otherUserId] =
+            const _RelationState(_RelationType.accepted);
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Arkadaşlık isteği kabul edildi.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } on PostgrestException catch (e) {
+      _showError('İstek kabul edilemedi: ${e.message}');
+    } catch (_) {
+      _showError('İstek kabul edilemedi. Lütfen tekrar deneyin.');
+    } finally {
+      if (mounted) {
+        setState(() => _sendingRequestIds.remove(otherUserId));
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final currentUserId = _myUserId;
+    if (currentUserId != _activeUserId) {
+      _activeUserId = currentUserId;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(_resetStateForUserChange);
+      });
+    }
+
     return Column(
       children: [
         // Arama Çubuğu (TextField)
@@ -137,14 +360,22 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
         ),
         
-        // İçerik: Boş Durum veya Arama Sonuçları
+        // İçerik: İlk durum / Yükleniyor / Sonuçlar
         Expanded(
-          child: (!_isSearching)
-              ? _buildEmptyState()
-              : _buildSearchResults(),
+          child: _buildBody(),
         ),
       ],
     );
+  }
+
+  Widget _buildBody() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (!_hasSearched) {
+      return _buildEmptyState();
+    }
+    return _buildSearchResults();
   }
 
   Widget _buildEmptyState() {
@@ -159,7 +390,7 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Arama içeriği buraya gelecek',
+            'Kullanıcı adı ile arama yap',
             style: GoogleFonts.inter(
               fontSize: 16,
               color: AppColors.mutedText,
@@ -171,7 +402,7 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildSearchResults() {
-    if (_filteredData.isEmpty) {
+    if (_results.isEmpty) {
       return Center(
         child: Text(
           'Sonuç bulunamadı.',
@@ -184,13 +415,44 @@ class _SearchScreenState extends State<SearchScreen> {
     }
 
     return ListView.builder(
-      // Alt kısımda Navigation Bar'ın üstüne binmemesi için padding payı eklendi
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10).copyWith(bottom: 100),
       physics: const BouncingScrollPhysics(),
-      itemCount: _filteredData.length,
+      itemCount: _results.length,
       itemBuilder: (context, index) {
-        final item = _filteredData[index];
-        final skills = item['skills'] as List<String>;
+        final item = _results[index];
+        final userId = item['id']?.toString() ?? '';
+        final username = (item['username'] ?? '').toString();
+        final fullName = (item['full_name'] ?? '').toString();
+        final isSending = _sendingRequestIds.contains(userId);
+        final relation = _relationsByUserId[userId] ??
+            const _RelationState(_RelationType.none);
+
+        String buttonText;
+        bool buttonEnabled;
+        Color buttonColor;
+
+        switch (relation.type) {
+          case _RelationType.accepted:
+            buttonText = 'Takımda/Arkadaş';
+            buttonEnabled = false;
+            buttonColor = Colors.green;
+            break;
+          case _RelationType.pendingOutgoing:
+            buttonText = 'İstek Gönderildi';
+            buttonEnabled = false;
+            buttonColor = Colors.orange;
+            break;
+          case _RelationType.pendingIncoming:
+            buttonText = 'Kabul Et';
+            buttonEnabled = true;
+            buttonColor = AppColors.primaryAccent;
+            break;
+          case _RelationType.none:
+            buttonText = 'İstek At';
+            buttonEnabled = true;
+            buttonColor = AppColors.primaryAccent;
+            break;
+        }
 
         return Container(
           margin: const EdgeInsets.only(bottom: 14),
@@ -209,12 +471,14 @@ class _SearchScreenState extends State<SearchScreen> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                // Sol Avatar (İsmin ilk harfi ile)
+                // Sol Avatar (username ilk harfi)
                 CircleAvatar(
                   radius: 24,
                   backgroundColor: AppColors.chipBg,
                   child: Text(
-                    item['name'].toString().substring(0, 1),
+                    username.isNotEmpty
+                        ? username.substring(0, 1).toUpperCase()
+                        : '?',
                     style: GoogleFonts.inter(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -223,14 +487,14 @@ class _SearchScreenState extends State<SearchScreen> {
                   ),
                 ),
                 const SizedBox(width: 14),
-                
-                // Orta Kısım (Bilgiler ve Yetenek Çiplerini İçerir)
+
+                // Orta kısım (username + full_name)
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        item['name'],
+                        '@$username',
                         style: GoogleFonts.inter(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
@@ -239,48 +503,37 @@ class _SearchScreenState extends State<SearchScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        item['role'],
+                        fullName.isEmpty ? 'İsim bilgisi yok' : fullName,
                         style: GoogleFonts.inter(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                           color: AppColors.mutedText,
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: skills.map((skill) {
-                          return Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppColors.chipBg,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              skill,
-                              style: GoogleFonts.inter(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.primaryDark,
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
                     ],
                   ),
                 ),
-                
+
                 const SizedBox(width: 10),
-                
-                // Sağ Kısım ("İncele" Butonu)
+
+                // Sağ kısım (istek butonu / gönderildi durumu)
                 ElevatedButton(
-                  onPressed: () {
-                    // Şimdilik boş; tıklayınca çalışacak işlem daha sonra eklenebilir.
-                  },
+                  onPressed: (!buttonEnabled || isSending)
+                      ? null
+                      : () {
+                          if (relation.type == _RelationType.pendingIncoming &&
+                              relation.requestId != null &&
+                              relation.requestId!.isNotEmpty) {
+                            _acceptIncomingRequest(
+                              otherUserId: userId,
+                              requestId: relation.requestId!,
+                            );
+                          } else {
+                            _sendFriendRequest(item);
+                          }
+                        },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryAccent,
+                    backgroundColor: buttonColor,
                     foregroundColor: AppColors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
@@ -290,13 +543,22 @@ class _SearchScreenState extends State<SearchScreen> {
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  child: Text(
-                    'İncele',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  child: isSending
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          buttonText,
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                 ),
               ],
             ),

@@ -15,9 +15,10 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
-  final _emailController = TextEditingController();
+  final _identifierController = TextEditingController();
   final _passwordController = TextEditingController();
   final _authService = AuthService();
+  final _client = Supabase.instance.client;
 
   bool _obscurePassword = true;
   bool _isLoading = false;
@@ -50,7 +51,7 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   void dispose() {
     _fadeController.dispose();
-    _emailController.dispose();
+    _identifierController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -67,22 +68,83 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
+  // Türkçe yorum: Girilen değer e-posta mı kontrol eder.
+  bool _isEmail(String input) => input.contains('@');
+
+  // Türkçe yorum: Sadece rakam ya da + ile başlayıp rakamlarla devam eden telefon kontrolü.
+  bool _isPhone(String input) => RegExp(r'^\+?\d+$').hasMatch(input);
+
+  // Türkçe yorum: Supabase'den gelen yaygın İngilizce hataları Türkçeleştiriyoruz.
+  String _translateAuthError(String message) {
+    final lower = message.toLowerCase();
+
+    if (lower.contains('invalid login credentials') ||
+        lower.contains('invalid credentials')) {
+      return 'Kullanıcı bilgileri hatalı. Lütfen tekrar deneyin.';
+    }
+    if (lower.contains('email not confirmed')) {
+      return 'E-posta doğrulaması yapılmamış. Lütfen e-posta kutunuzu kontrol edin.';
+    }
+    if (lower.contains('too many requests')) {
+      return 'Çok fazla deneme yapıldı. Lütfen biraz sonra tekrar deneyin.';
+    }
+    if (lower.contains('network') || lower.contains('connection')) {
+      return 'İnternet bağlantısı sorunu. Lütfen bağlantınızı kontrol edin.';
+    }
+    if (lower.contains('user not found')) {
+      return 'Böyle bir kullanıcı bulunamadı.';
+    }
+    if (lower.contains('database error')) {
+      return 'Sunucu tarafında bir veritabanı hatası oluştu.';
+    }
+
+    return 'Giriş yapılamadı. Lütfen bilgilerinizi kontrol edip tekrar deneyin.';
+  }
+
 
   Future<void> _signIn() async {
-    final email = _emailController.text.trim();
+    final identifier = _identifierController.text.trim();
     final password = _passwordController.text;
 
-    if (email.isEmpty || password.isEmpty) {
-      _showError('Email ve şifre boş bırakılamaz.');
+    if (identifier.isEmpty || password.isEmpty) {
+      _showError('Lütfen tüm alanları doldurun.');
       return;
     }
 
     setState(() => _isLoading = true);
     try {
-      await _authService.signIn(email: email, password: password);
+      if (_isEmail(identifier)) {
+        // Türkçe yorum: '@' içeriyorsa e-posta ile giriş.
+        await _authService.signIn(email: identifier, password: password);
+      } else if (_isPhone(identifier)) {
+        // Türkçe yorum: Telefon formatına uyuyorsa phone ile giriş.
+        await _client.auth.signInWithPassword(
+          phone: identifier,
+          password: password,
+        );
+      } else {
+        // Türkçe yorum: Username ise önce RPC ile e-postaya çeviriyoruz.
+        final response = await _client.rpc(
+          'get_email_by_username',
+          params: {'p_username': identifier.toLowerCase()},
+        );
+
+        final emailFromUsername = (response ?? '').toString().trim();
+        if (emailFromUsername.isEmpty) {
+          _showError('Böyle bir kullanıcı bulunamadı.');
+          return;
+        }
+
+        await _client.auth.signInWithPassword(
+          email: emailFromUsername,
+          password: password,
+        );
+      }
       // AuthGate otomatik olarak FeedScreen'e yönlendirir
     } on AuthException catch (e) {
-      _showError(e.message);
+      _showError(_translateAuthError(e.message));
+    } on PostgrestException catch (e) {
+      _showError(_translateAuthError(e.message));
     } catch (_) {
       _showError('Giriş yapılamadı. Tekrar deneyin.');
     } finally {
@@ -132,15 +194,15 @@ class _LoginScreenState extends State<LoginScreen>
 
                     const SizedBox(height: 48),
 
-                    // ── Email Field ──
+                    // ── Identifier Field (Email/Phone/Username) ──
                     TextField(
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
+                      controller: _identifierController,
+                      keyboardType: TextInputType.text,
                       enabled: !_isLoading,
                       decoration: const InputDecoration(
-                        hintText: 'Email Address',
+                        hintText: 'E-posta, Telefon veya Kullanıcı Adı',
                         prefixIcon: Icon(
-                          Icons.email_outlined,
+                          Icons.person_outline,
                           color: AppColors.mutedText,
                           size: 20,
                         ),
@@ -218,7 +280,7 @@ class _LoginScreenState extends State<LoginScreen>
                                 ),
                               )
                             : Text(
-                                'Sign In',
+                                'Giriş Yap',
                                 style: GoogleFonts.inter(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
