@@ -87,4 +87,128 @@ class ProfileService {
       'comment': comment,
     });
   }
+
+  /// 1. Bölüm Güncelleme (Update Department)
+  Future<void> updateDepartment(String department) async {
+    try {
+      if (_userId == null) throw Exception('Oturum açmış bir kullanıcı bulunamadı.');
+
+      await _client
+          .from('profiles')
+          .update({'department': department})
+          .eq('id', _userId!);
+          
+      print('Bölüm başarıyla güncellendi: $department');
+    } catch (e) {
+      print('Bölüm güncellenirken bir hata oluştu: $e');
+      rethrow;
+    }
+  }
+
+  /// 2. Yeni Yetenek Ekleme (Add Skill)
+  Future<void> addSkill(String newSkill) async {
+    try {
+      if (_userId == null) throw Exception('Oturum açmış bir kullanıcı bulunamadı.');
+
+      final data = await _client
+          .from('profiles')
+          .select('skills')
+          .eq('id', _userId!)
+          .maybeSingle();
+
+      List<String> currentSkills = [];
+      if (data != null && data['skills'] != null) {
+        currentSkills = List<String>.from(data['skills']);
+      }
+
+      if (!currentSkills.contains(newSkill.trim())) {
+        currentSkills.add(newSkill.trim());
+
+        await _client
+            .from('profiles')
+            .update({'skills': currentSkills})
+            .eq('id', _userId!);
+            
+        print('Yetenek başarıyla eklendi: $newSkill');
+      } else {
+        print('Bu yetenek zaten profilde mevcut.');
+      }
+    } catch (e) {
+      print('Yetenek eklenirken bir hata oluştu: $e');
+      rethrow;
+    }
+  }
+
+  /// 3. Aranan Proje Türlerini Güncelleme (Update Looking For)
+  Future<void> updateLookingFor(List<String> lookingForList) async {
+    try {
+      if (_userId == null) throw Exception('Oturum açmış bir kullanıcı bulunamadı.');
+
+      await _client
+          .from('profiles')
+          .update({'looking_for': lookingForList})
+          .eq('id', _userId!);
+          
+      print('Aranan kriterler başarıyla güncellendi.');
+    } catch (e) {
+      print('Aranan kriterler güncellenirken bir hata oluştu: $e');
+      rethrow;
+    }
+  }
+
+  /// 4. Eğitim Bilgilerini Güncelleme (Update Education)
+  Future<void> updateEducation(String school, String department, String educationYear, String degree) async {
+    try {
+      if (_userId == null) throw Exception('Oturum açmış bir kullanıcı bulunamadı.');
+
+      await _client
+          .from('profiles')
+          .update({
+            'school': school,
+            'department': department,
+            'education_year': educationYear,
+            'degree': degree,
+          })
+          .eq('id', _userId!);
+          
+      print('Eğitim bilgileri başarıyla güncellendi.');
+    } catch (e) {
+      print('Eğitim güncellenirken bir hata oluştu: $e');
+      rethrow;
+    }
+  }
+
+  /// 5. Yeni Rol Ekleme (addLookingForRole)
+  Future<void> addLookingForRole(String role) async {
+    try {
+      if (_userId == null) throw Exception('Oturum açmış bir kullanıcı bulunamadı.');
+
+      final data = await _client
+          .from('profiles')
+          .select('looking_for')
+          .eq('id', _userId!)
+          .maybeSingle();
+
+      List<String> currentRoles = [];
+      if (data != null && data['looking_for'] != null) {
+        currentRoles = List<String>.from(data['looking_for']);
+      }
+
+      if (!currentRoles.contains(role.trim())) {
+        currentRoles.add(role.trim());
+
+        await _client
+            .from('profiles')
+            .update({'looking_for': currentRoles})
+            .eq('id', _userId!);
+            
+        print('Rol tercihi başarıyla eklendi: $role');
+      } else {
+        print('Bu rol tercihi zaten profilde mevcut.');
+      }
+    } catch (e) {
+      print('Rol tercihi eklenirken bir hata oluştu: $e');
+      rethrow;
+    }
+  }
 }

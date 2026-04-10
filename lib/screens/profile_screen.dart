@@ -20,6 +20,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ── Mevcut veriler ──
   String _fullName = '';
   String _title = '';
+  String _department = '';
   String _email = '';
   String _phone = '';
   String _location = '';
@@ -54,6 +55,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         _fullName = data['full_name'] ?? '';
         _title = data['title'] ?? '';
+        _department = data['department'] ?? '';
         _email = data['email'] ?? '';
         _phone = data['phone'] ?? '';
         _location = data['location'] ?? '';
@@ -109,6 +111,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await _profileService.upsertProfile({
         'full_name': _fullName,
         'title': _title,
+        'department': _department,
         'email': _email,
         'phone': _phone,
         'location': _location,
@@ -995,11 +998,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _showEditNameDialog() {
     final nameC = TextEditingController(text: _fullName);
     final titleC = TextEditingController(text: _title);
-    _showSheet('İsim & Ünvan', [
+    final deptC = TextEditingController(text: _department);
+    _showSheet('Kişisel Bilgiler', [
       _buildField(nameC, 'Ad Soyad', Icons.person_outline),
       const SizedBox(height: 12),
       _buildField(titleC, 'Ünvan', Icons.badge_outlined),
-    ], () { setState(() { _fullName = nameC.text.trim(); _title = titleC.text.trim(); }); _saveAll(); });
+      const SizedBox(height: 12),
+      _buildField(deptC, 'Bölüm', Icons.school_outlined),
+    ], () async { 
+      setState(() { 
+        _fullName = nameC.text.trim(); 
+        _title = titleC.text.trim(); 
+        _department = deptC.text.trim();
+      }); 
+      try {
+        await _profileService.updateDepartment(_department);
+        await _saveAll();
+      } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      }
+    });
   }
 
   void _showEditContactDialog() {
@@ -1061,10 +1079,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _buildField(yC, 'Yıl (ör: 2020 - 2024)', Icons.date_range),
       const SizedBox(height: 12),
       _buildField(deC, 'Derece (ör: Lisans)', Icons.school),
-    ], () {
-      final m = {'school': sC.text.trim(), 'department': dC.text.trim(), 'year': yC.text.trim(), 'degree': deC.text.trim()};
+    ], () async {
+      final school = sC.text.trim();
+      final department = dC.text.trim();
+      final year = yC.text.trim();
+      final degree = deC.text.trim();
+      
+      final m = {'school': school, 'department': department, 'year': year, 'degree': degree};
       setState(() { if (isNew) { _education.add(m); } else { _education[idx] = m; } });
-      _saveAll();
+      
+      try {
+        await _profileService.updateEducation(school, department, year, degree);
+      } catch (err) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Eğitim kaydedilirken hata oluştu: $err')));
+        }
+      }
     });
   }
 
@@ -1108,9 +1138,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _showAddSkillDialog() {
     final c = TextEditingController();
-    _showSheet('Yetenek Ekle', [_buildField(c, 'Yetenek (ör: Python)', Icons.code)], () {
+    _showSheet('Yetenek Ekle', [_buildField(c, 'Yetenek (ör: Python)', Icons.code)], () async {
       final s = c.text.trim();
-      if (s.isNotEmpty && !_skills.contains(s)) { setState(() => _skills.add(s)); _saveAll(); }
+      if (s.isNotEmpty && !_skills.contains(s)) { 
+        setState(() => _skills.add(s)); 
+        try {
+          await _profileService.addSkill(s);
+        } catch (e) {
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+        }
+      }
     });
   }
 
@@ -1189,9 +1226,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _showAddRoleDialog() {
     final c = TextEditingController();
-    _showSheet('Rol Tercihi Ekle', [_buildField(c, 'Rol (ör: Backend Developer)', Icons.person_search)], () {
+    _showSheet('Rol Tercihi Ekle', [_buildField(c, 'Rol (ör: Backend Developer)', Icons.person_search)], () async {
       final r = c.text.trim();
-      if (r.isNotEmpty && !_rolePreferences.contains(r)) { setState(() => _rolePreferences.add(r)); _saveAll(); }
+      if (r.isNotEmpty && !_rolePreferences.contains(r)) { 
+        setState(() => _rolePreferences.add(r)); 
+        try {
+          await _profileService.addLookingForRole(r);
+        } catch (e) {
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+        }
+      }
     });
   }
 

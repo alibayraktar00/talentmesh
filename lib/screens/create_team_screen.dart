@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../core/theme/app_colors.dart';
 import '../models/team_model.dart';
 import '../providers/team_provider.dart';
+import '../core/services/team_service.dart';
 
 /// Takım oluşturma Bottom Sheet'ini gösterir.
 /// [teamProvider] üzerinden oluşturulan takımı global listeye ekler.
@@ -38,6 +39,7 @@ class _CreateTeamSheet extends StatefulWidget {
 
 class _CreateTeamSheetState extends State<_CreateTeamSheet>
     with SingleTickerProviderStateMixin {
+  final _teamService = TeamService();
   final _formKey = GlobalKey<FormState>();
   final _teamNameController = TextEditingController();
   final _descriptionController = TextEditingController();
@@ -696,7 +698,7 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
   }
 
   // ──────────────────────── FORM SUBMIT ────────────────────────
-  void _submitForm() {
+  Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
 
     // Rol seçimi kontrolü
@@ -718,27 +720,35 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
 
     setState(() => _isSubmitting = true);
 
-    // Rastgele renk seç
-    final colorIndex =
-        DateTime.now().millisecondsSinceEpoch % _teamColors.length;
+    try {
+      // 1. Supabase veritabanına Insert yap (Backend Entegrasyonu)
+      await _teamService.createTeam(
+        name: _teamNameController.text.trim(),
+        description: _descriptionController.text.trim(),
+        maxMembers: _maxMembers,
+        requiredRoles: _selectedRoles.toList(),
+        requiredSkills: _selectedSkills.toList(),
+      );
 
-    // Team objesi oluştur ve provider'a ekle
-    final newTeam = Team(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      name: _teamNameController.text.trim(),
-      description: _descriptionController.text.trim(),
-      roles: _selectedRoles.toList(),
-      skills: _selectedSkills.toList(),
-      maxMembers: _maxMembers,
-      currentMembers: 1,
-      isOwner: true,
-      color: _teamColors[colorIndex],
-    );
+      // Rastgele renk seç (Mevcut local UI modelini de koruyoruz)
+      final colorIndex =
+          DateTime.now().millisecondsSinceEpoch % _teamColors.length;
 
-    widget.teamProvider.addTeam(newTeam);
+      // Team objesi oluştur ve provider'a ekle (Arayüzde anlık göstermek için)
+      final newTeam = Team(
+        id: DateTime.now().millisecondsSinceEpoch.toString(), // İleride Supabase'den insert sonucu dönen ID de kullanılabilir
+        name: _teamNameController.text.trim(),
+        description: _descriptionController.text.trim(),
+        roles: _selectedRoles.toList(),
+        skills: _selectedSkills.toList(),
+        maxMembers: _maxMembers,
+        currentMembers: 1,
+        isOwner: true,
+        color: _teamColors[colorIndex],
+      );
 
-    // Kısa gecikme ile UX iyileştirmesi (loading hissi)
-    Future.delayed(const Duration(milliseconds: 600), () {
+      widget.teamProvider.addTeam(newTeam);
+
       if (!mounted) return;
 
       // Bottom Sheet'i kapat
@@ -773,6 +783,18 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
 
       // "Gruplar" sekmesine yönlendir
       widget.onTeamCreated?.call();
-    });
+
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Takım oluşturulurken hata oluştu: $e'),
+            backgroundColor: const Color(0xFFE53E3E),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 }

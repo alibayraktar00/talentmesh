@@ -32,6 +32,14 @@ class _SearchScreenState extends State<SearchScreen> {
   final Map<String, _RelationState> _relationsByUserId = {};
   String? _activeUserId;
 
+  // ── Modüler Filtre Değişkenleri ──
+  String _filterSchool = '';
+  String _filterDepartment = '';
+  String _filterYear = '';
+  String _filterDegree = '';
+  Set<String> _filterSkills = {};
+  Set<String> _filterRoles = {};
+
   String? get _myUserId => _client.auth.currentUser?.id;
 
   @override
@@ -147,7 +155,14 @@ class _SearchScreenState extends State<SearchScreen> {
   Future<void> _searchUsers(String rawQuery) async {
     final query = rawQuery.trim().toLowerCase();
 
-    if (query.isEmpty) {
+    final hasActiveFilter = _filterSchool.isNotEmpty ||
+        _filterDepartment.isNotEmpty ||
+        _filterYear.isNotEmpty ||
+        _filterDegree.isNotEmpty ||
+        _filterSkills.isNotEmpty ||
+        _filterRoles.isNotEmpty;
+
+    if (query.isEmpty && !hasActiveFilter) {
       if (!mounted) return;
       setState(() {
         _hasSearched = false;
@@ -171,19 +186,46 @@ class _SearchScreenState extends State<SearchScreen> {
     });
 
     try {
-      // Türkçe yorum: username alanında ilike ile arama yapıyoruz.
-      final response = await _client
-          .from('profiles')
-          .select('id, username, full_name')
-          .ilike('username', '%$query%')
-          .order('username', ascending: true)
-          .limit(30);
+      // Dinamik PostgREST Query Builder
+      var queryBuilder = _client.from('profiles').select('id, username, full_name, school, department, education_year, degree, skills, looking_for');
+
+      // İsim Filtresi (full_name üzerinden ilike)
+      if (query.isNotEmpty) {
+        queryBuilder = queryBuilder.ilike('full_name', '%$query%');
+      }
+
+      // Eğitim Filtreleri
+      if (_filterSchool.isNotEmpty) {
+        queryBuilder = queryBuilder.ilike('school', '%$_filterSchool%');
+      }
+      if (_filterDepartment.isNotEmpty) {
+        queryBuilder = queryBuilder.ilike('department', '%$_filterDepartment%');
+      }
+      if (_filterYear.isNotEmpty) {
+        // education_year sütunu text olduğu varsayımıyla eq veya ilike kullanılabilir
+        queryBuilder = queryBuilder.eq('education_year', _filterYear);
+      }
+      if (_filterDegree.isNotEmpty) {
+        queryBuilder = queryBuilder.ilike('degree', '%$_filterDegree%');
+      }
+
+      // Array (Dizi) Filtreleri
+      if (_filterSkills.isNotEmpty) {
+        queryBuilder = queryBuilder.overlaps('skills', _filterSkills.toList());
+      }
+      if (_filterRoles.isNotEmpty) {
+        queryBuilder = queryBuilder.overlaps('looking_for', _filterRoles.toList());
+      }
+
+      // Kendimizi (aktif kullanıcıyı) her zaman dışarıda bırak
+      queryBuilder = queryBuilder.neq('id', myId);
+
+      // Çalıştır ve sınırlandır
+      final response = await queryBuilder.order('username', ascending: true).limit(30);
 
       final data = List<Map<String, dynamic>>.from(response);
-      final filtered = data.where((item) => item['id'] != myId).toList();
 
-      final listedUserIds =
-          filtered.map((item) => item['id'].toString()).toList();
+      final listedUserIds = data.map((item) => item['id'].toString()).toList();
       final relations = await _loadRelationsForListedUsers(
         myId: myId,
         listedUserIds: listedUserIds,
@@ -191,8 +233,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
       if (!mounted) return;
       setState(() {
-        // Türkçe yorum: mevcut kullanıcıyı listede göstermiyoruz.
-        _results = filtered;
+        _results = data;
         _relationsByUserId
           ..clear()
           ..addAll(relations);
@@ -339,16 +380,28 @@ class _SearchScreenState extends State<SearchScreen> {
                   Icons.search,
                   color: AppColors.primaryAccent,
                 ),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_searchController.text.isNotEmpty)
+                      IconButton(
                         icon: const Icon(Icons.clear, color: AppColors.mutedText),
                         onPressed: () {
                           _searchController.clear();
-                          // Çıkış yaparken klavyeyi de kapatalım
                           FocusScope.of(context).unfocus();
                         },
-                      )
-                    : null,
+                      ),
+                    IconButton(
+                      icon: Icon(
+                        Icons.filter_list, 
+                        color: (_filterSchool.isNotEmpty || _filterDepartment.isNotEmpty || _filterYear.isNotEmpty || _filterDegree.isNotEmpty || _filterSkills.isNotEmpty || _filterRoles.isNotEmpty)
+                          ? AppColors.primaryAccent 
+                          : AppColors.mutedText
+                      ),
+                      onPressed: _showFilterSheet,
+                    ),
+                  ],
+                ),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               ),
@@ -565,6 +618,190 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
         );
       },
+    );
+  }
+
+  void _showFilterSheet() {
+    // Geçici state kopyaları
+    String tempSchool = _filterSchool;
+    String tempDepartment = _filterDepartment;
+    String tempYear = _filterYear;
+    String tempDegree = _filterDegree;
+    Set<String> tempSkills = Set.from(_filterSkills);
+    Set<String> tempRoles = Set.from(_filterRoles);
+
+    // Seçilebilir yetenekler (Kendi projendeki sabit listene göre güncelleyebilirsin)
+    final availableSkills = [
+      'Python', 'Dart', 'Flutter', 'JavaScript', 'TypeScript',
+      'React', 'Node.js', 'Figma', 'AWS', 'Docker'
+    ];
+    // Seçilebilir aranan roller
+    final availableRoles = [
+      'Flutter Dev', 'Backend Dev', 'Frontend Dev',
+      'UI/UX Designer', 'Data Scientist', 'DevOps'
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          final sC = TextEditingController(text: tempSchool);
+          final dC = TextEditingController(text: tempDepartment);
+          final yC = TextEditingController(text: tempYear);
+          final deC = TextEditingController(text: tempDegree);
+
+          Widget buildSectionTitle(String title) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+              child: Text(
+                title, 
+                style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.headingText)
+              ),
+            );
+          }
+
+          Widget buildTextField(TextEditingController ctrl, String hint) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: TextField(
+                controller: ctrl,
+                onChanged: (v) {
+                  if (hint == 'Okul') tempSchool = v.trim();
+                  if (hint == 'Bölüm') tempDepartment = v.trim();
+                  if (hint == 'Yıl (Örn: 2024)') tempYear = v.trim();
+                  if (hint == 'Derece (Örn: Lisans)') tempDegree = v.trim();
+                },
+                decoration: InputDecoration(
+                  hintText: hint,
+                  hintStyle: GoogleFonts.inter(fontSize: 13, color: AppColors.mutedText),
+                  filled: true,
+                  fillColor: AppColors.chipBg,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                ),
+              ),
+            );
+          }
+
+          Widget buildChips(List<String> items, Set<String> selected) {
+            return Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: items.map((item) {
+                final isSelected = selected.contains(item);
+                return FilterChip(
+                  label: Text(
+                    item, 
+                    style: GoogleFonts.inter(
+                      fontSize: 12, 
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                      color: isSelected ? AppColors.white : AppColors.bodyText
+                    )
+                  ),
+                  selected: isSelected,
+                  selectedColor: AppColors.primaryAccent,
+                  backgroundColor: AppColors.chipBg,
+                  checkmarkColor: AppColors.white,
+                  showCheckmark: false,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: isSelected ? Colors.transparent : AppColors.inputBorder)),
+                  onSelected: (val) {
+                    setSheetState(() {
+                      if (val) selected.add(item);
+                      else selected.remove(item);
+                    });
+                  },
+                );
+              }).toList(),
+            );
+          }
+
+          return Container(
+            height: MediaQuery.of(ctx).size.height * 0.85,
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            decoration: const BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: AppColors.inputBorder, borderRadius: BorderRadius.circular(2)))),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Gelişmiş Filtreleme', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.headingText)),
+                    TextButton(
+                      onPressed: () {
+                        setSheetState(() {
+                          tempSchool = ''; tempDepartment = ''; tempYear = ''; tempDegree = '';
+                          tempSkills.clear(); tempRoles.clear();
+                          sC.clear(); dC.clear(); yC.clear(); deC.clear();
+                        });
+                      },
+                      child: Text('Temizle', style: GoogleFonts.inter(color: AppColors.primaryAccent, fontWeight: FontWeight.w600)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        buildSectionTitle('Eğitim Bilgisi'),
+                        buildTextField(sC, 'Okul'),
+                        buildTextField(dC, 'Bölüm'),
+                        Row(
+                          children: [
+                            Expanded(child: buildTextField(yC, 'Yıl (Örn: 2024)')),
+                            const SizedBox(width: 12),
+                            Expanded(child: buildTextField(deC, 'Derece (Örn: Lisans)')),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        buildSectionTitle('Yetenekler'),
+                        buildChips(availableSkills, tempSkills),
+                        const SizedBox(height: 16),
+                        buildSectionTitle('Aranan Roller'),
+                        buildChips(availableRoles, tempRoles),
+                        const SizedBox(height: 40),
+                      ],
+                    ),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    // State'i güncelle
+                    setState(() {
+                      _filterSchool = tempSchool;
+                      _filterDepartment = tempDepartment;
+                      _filterYear = tempYear;
+                      _filterDegree = tempDegree;
+                      _filterSkills = Set.from(tempSkills);
+                      _filterRoles = Set.from(tempRoles);
+                    });
+                    Navigator.pop(ctx);
+                    // Yeni sorguyu başlat
+                    _searchUsers(_searchController.text);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryAccent,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    elevation: 0,
+                  ),
+                  child: Text('Filtreleri Uygula', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.white)),
+                ),
+                SizedBox(height: MediaQuery.of(ctx).viewInsets.bottom),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }
