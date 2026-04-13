@@ -44,19 +44,19 @@ class _FeedScreenState extends State<FeedScreen> {
 
   String _getPageTitle() {
     switch (_selectedNavIndex) {
-      case 0: return 'Takım Arkadaşlarım';
+      case 0: return 'Takımlarım';
       case 1: return 'Arama';
       case 2: return 'Arkadaşlar';
-      default: return 'Takım Arkadaşlarım';
+      default: return 'Takımlarım';
     }
   }
 
   Widget _buildPageContent() {
     switch (_selectedNavIndex) {
-      case 0: return const TeammatesScreen();
+      case 0: return MyTeamsScreen(teamProvider: _teamProvider);
       case 1: return const SearchScreen();
       case 2: return const FriendsScreen();
-      default: return const TeammatesScreen();
+      default: return MyTeamsScreen(teamProvider: _teamProvider);
     }
   }
 
@@ -416,7 +416,7 @@ class _FeedScreenState extends State<FeedScreen> {
                 child: _buildNavItem(
                   icon: Icons.groups_3_outlined,
                   activeIcon: Icons.groups_3,
-                  label: 'Takım \nArkadaşlarım',
+                  label: 'Takımlarım',
                   index: 0,
                 ),
               ),
