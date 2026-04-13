@@ -59,18 +59,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _email = data['email'] ?? '';
         _phone = data['phone'] ?? '';
         _location = data['location'] ?? '';
-        _about = data['about'] ?? '';
+        _about = data['bio'] ?? '';
         _openToWork = data['open_to_work'] ?? true;
-        _experiences = _parseJsonList(data['experiences']);
+        _experiences = _parseJsonList(data['experience']);
         _languages = _parseJsonList(data['languages']);
         _skills = List<String>.from(data['skills'] ?? []);
         _avatarUrl = data['avatar_url'] ?? '';
-        _education = _parseJsonList(data['education']);
+        
+        if (data['school'] != null && data['school'].toString().isNotEmpty) {
+          _education = [{
+            'school': data['school']?.toString() ?? '',
+            'department': data['department']?.toString() ?? '',
+            'year': data['education_year']?.toString() ?? '',
+            'degree': data['degree']?.toString() ?? '',
+          }];
+        } else {
+          _education = [];
+        }
+
         _certificates = _parseJsonList(data['certificates']);
         _projects = _parseJsonList(data['projects']);
-        _socialLinks = _parseStringMap(data['social_links']);
+        _socialLinks = _parseStringMap(data['social_media']);
         _availability = _parseStringMap(data['availability']);
-        _rolePreferences = List<String>.from(data['role_preferences'] ?? []);
+        _rolePreferences = List<String>.from(data['looking_for'] ?? []);
         final stats = data['stats'] as Map<String, dynamic>? ?? {};
         _completedProjects = stats['completed_projects'] ?? 0;
         _teamsJoined = stats['teams_joined'] ?? 0;
@@ -372,9 +383,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ──────────────────────── OPEN TO WORK ────────────────────────
   Widget _buildOpenToWorkBanner() {
     return GestureDetector(
-      onTap: () {
-        setState(() => _openToWork = !_openToWork);
-        _saveAll();
+      onTap: () async {
+        final newValue = !_openToWork;
+        setState(() => _openToWork = newValue);
+        try {
+          await _profileService.updateOpenToWork(newValue);
+        } catch (e) {
+          setState(() => _openToWork = !newValue);
+        }
       },
       child: Container(
         margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
@@ -413,7 +429,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             Switch(
               value: _openToWork,
-              onChanged: (v) { setState(() => _openToWork = v); _saveAll(); },
+              onChanged: (v) async { 
+                setState(() => _openToWork = v);
+                try {
+                  await _profileService.updateOpenToWork(v);
+                } catch (e) {
+                  setState(() => _openToWork = !v);
+                }
+              },
               activeTrackColor: AppColors.onlineGreen,
             ),
           ],
@@ -566,9 +589,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ? Text('Rol tercihi ekleyin...', style: GoogleFonts.inter(fontSize: 13.5, color: AppColors.mutedText))
           : Wrap(
               spacing: 8, runSpacing: 8,
-              children: _rolePreferences.map((role) => _buildDeletableChip(role, () {
+              children: _rolePreferences.map((role) => _buildDeletableChip(role, () async {
                 setState(() => _rolePreferences.remove(role));
-                _saveAll();
+                try { await _profileService.updateDynamicProfileField('looking_for', _rolePreferences); } catch(e){}
               }, AppColors.primaryAccent)).toList(),
             ),
     );
@@ -594,7 +617,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       meta: e['period'] ?? '',
                       description: e['description'] ?? '',
                       onTap: () => _showExperienceDialog(i),
-                      onDelete: () { setState(() => _experiences.removeAt(i)); _saveAll(); },
+                      onDelete: () async { setState(() => _experiences.removeAt(i)); try { await _profileService.updateDynamicProfileField('experience', _experiences); } catch(e){} },
                     ),
                   ],
                 );
@@ -623,7 +646,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       meta: e['year'] ?? '',
                       description: e['degree'] ?? '',
                       onTap: () => _showEducationDialog(i),
-                      onDelete: () { setState(() => _education.removeAt(i)); _saveAll(); },
+                      onDelete: () async { setState(() => _education.removeAt(i)); try { await _profileService.updateEducation('', '', '', ''); } catch(e){} },
                     ),
                   ],
                 );
@@ -652,7 +675,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       meta: c['date'] ?? '',
                       description: '',
                       onTap: () => _showCertificateDialog(i),
-                      onDelete: () { setState(() => _certificates.removeAt(i)); _saveAll(); },
+                      onDelete: () async { setState(() => _certificates.removeAt(i)); try { await _profileService.updateDynamicProfileField('certificates', _certificates); } catch(e){} },
                     ),
                   ],
                 );
@@ -681,7 +704,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       meta: '',
                       description: p['description'] ?? '',
                       onTap: () => _showProjectDialog(i),
-                      onDelete: () { setState(() => _projects.removeAt(i)); _saveAll(); },
+                      onDelete: () async { setState(() => _projects.removeAt(i)); try { await _profileService.updateDynamicProfileField('projects', _projects); } catch(e){} },
                     ),
                   ],
                 );
@@ -699,9 +722,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ? Text('Yetenek ekleyin...', style: GoogleFonts.inter(fontSize: 13.5, color: AppColors.mutedText))
           : Wrap(
               spacing: 8, runSpacing: 8,
-              children: _skills.map((s) => _buildDeletableChip(s, () {
+              children: _skills.map((s) => _buildDeletableChip(s, () async {
                 setState(() => _skills.remove(s));
-                _saveAll();
+                try { await _profileService.updateDynamicProfileField('skills', _skills); } catch(e){}
               }, AppColors.primaryDark)).toList(),
             ),
     );
@@ -724,7 +747,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Container(width: 6, height: 6, decoration: const BoxDecoration(color: AppColors.primaryAccent, shape: BoxShape.circle)),
                       const SizedBox(width: 10),
                       Expanded(child: Text('${l['language']} · ${l['level']}', style: GoogleFonts.inter(fontSize: 13.5, color: AppColors.bodyText))),
-                      GestureDetector(onTap: () { setState(() => _languages.removeAt(i)); _saveAll(); },
+                      GestureDetector(onTap: () async { setState(() => _languages.removeAt(i)); try { await _profileService.updateDynamicProfileField('languages', _languages); } catch(e){} },
                           child: Icon(Icons.close, size: 16, color: AppColors.mutedText.withValues(alpha: 0.5))),
                     ],
                   ),
@@ -1012,8 +1035,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _department = deptC.text.trim();
       }); 
       try {
-        await _profileService.updateDepartment(_department);
-        await _saveAll();
+        await _profileService.updateProfileField({
+          'full_name': _fullName,
+          'title': _title,
+          'department': _department
+        });
       } catch (e) {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
       }
@@ -1030,7 +1056,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _buildField(pC, 'Telefon', Icons.phone_outlined),
       const SizedBox(height: 12),
       _buildField(lC, 'Konum', Icons.location_on_outlined),
-    ], () { setState(() { _email = eC.text.trim(); _phone = pC.text.trim(); _location = lC.text.trim(); }); _saveAll(); });
+    ], () async { 
+      setState(() { _email = eC.text.trim(); _phone = pC.text.trim(); _location = lC.text.trim(); }); 
+      try { await _profileService.updateProfileField({'email': _email, 'phone': _phone, 'location': _location}); } catch (e) {} 
+    });
   }
 
   void _showEditAboutDialog() {
@@ -1039,7 +1068,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       TextField(controller: c, maxLines: 5, style: GoogleFonts.inter(fontSize: 14, color: AppColors.bodyText),
         decoration: InputDecoration(hintText: 'Kendinizi tanıtın...', hintStyle: GoogleFonts.inter(fontSize: 14, color: AppColors.mutedText),
           filled: true, fillColor: AppColors.chipBg, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none))),
-    ], () { setState(() => _about = c.text.trim()); _saveAll(); });
+    ], () async { setState(() => _about = c.text.trim()); try { await _profileService.updateProfileField({'bio': _about}); } catch(e) {} });
   }
 
   void _showExperienceDialog(int idx) {
@@ -1057,10 +1086,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _buildField(pC, 'Dönem', Icons.date_range),
       const SizedBox(height: 12),
       _buildField(dC, 'Açıklama', Icons.description_outlined),
-    ], () {
+    ], () async {
       final m = {'title': tC.text.trim(), 'company': cC.text.trim(), 'period': pC.text.trim(), 'description': dC.text.trim()};
       setState(() { if (isNew) { _experiences.add(m); } else { _experiences[idx] = m; } });
-      _saveAll();
+      try {
+        await _profileService.updateDynamicProfileField('experience', _experiences);
+      } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      }
     });
   }
 
@@ -1110,10 +1143,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _buildField(iC, 'Veren Kurum', Icons.business),
       const SizedBox(height: 12),
       _buildField(dC, 'Tarih', Icons.date_range),
-    ], () {
+    ], () async {
       final m = {'name': nC.text.trim(), 'issuer': iC.text.trim(), 'date': dC.text.trim()};
       setState(() { if (isNew) { _certificates.add(m); } else { _certificates[idx] = m; } });
-      _saveAll();
+      try { await _profileService.updateDynamicProfileField('certificates', _certificates); } catch(e) {}
     });
   }
 
@@ -1129,10 +1162,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _buildField(dC, 'Açıklama', Icons.description_outlined),
       const SizedBox(height: 12),
       _buildField(lC, 'Link (GitHub, vs.)', Icons.link),
-    ], () {
+    ], () async {
       final m = {'name': nC.text.trim(), 'description': dC.text.trim(), 'link': lC.text.trim()};
       setState(() { if (isNew) { _projects.add(m); } else { _projects[idx] = m; } });
-      _saveAll();
+      try { await _profileService.updateDynamicProfileField('projects', _projects); } catch(e) {}
     });
   }
 
@@ -1173,12 +1206,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ),
-        ], () {
+        ], () async {
           if (c.text.trim().isNotEmpty) {
             setState(() => _languages.add({'language': c.text.trim(), 'level': level}));
-            _saveAll();
+            try { await _profileService.updateDynamicProfileField('languages', _languages); } catch(e) {}
           }
-          Navigator.pop(ctx);
+          if (ctx.mounted) Navigator.pop(ctx);
         }),
       ),
     );
@@ -1197,12 +1230,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _buildField(twC, 'Twitter URL', Icons.alternate_email),
       const SizedBox(height: 12),
       _buildField(weC, 'Website URL', Icons.language),
-    ], () {
+    ], () async {
       setState(() => _socialLinks = {
         'linkedin': liC.text.trim(), 'github': ghC.text.trim(),
         'twitter': twC.text.trim(), 'website': weC.text.trim(),
       });
-      _saveAll();
+      try { await _profileService.updateDynamicProfileField('social_media', _socialLinks); } catch(e) {}
     });
   }
 
@@ -1216,11 +1249,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _buildField(tC, 'Zaman Dilimi (ör: UTC+3)', Icons.public),
       const SizedBox(height: 12),
       _buildField(nC, 'Not (ör: Akşamları müsait)', Icons.info_outline),
-    ], () {
+    ], () async {
       setState(() => _availability = {
         'hours_per_week': hC.text.trim(), 'timezone': tC.text.trim(), 'note': nC.text.trim(),
       });
-      _saveAll();
+      try { await _profileService.updateDynamicProfileField('availability', _availability); } catch(e) {}
     });
   }
 

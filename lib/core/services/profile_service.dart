@@ -211,4 +211,44 @@ class ProfileService {
       rethrow;
     }
   }
+
+  /// 'open_to_work' drumunu güncelleyen özel metot
+  Future<void> updateOpenToWork(bool value) async {
+    try {
+      if (_userId == null) throw Exception('Oturum açmış bir kullanıcı bulunamadı.');
+
+      await _client
+          .from('profiles')
+          .update({
+            'open_to_work': value,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', _userId!);
+          
+      print('İşe açık durumu başarıyla güncellendi: $value');
+    } catch (e) {
+      print('İşe açık durumu güncellenirken bir hata oluştu: $e');
+      rethrow;
+    }
+  }
+
+  /// jsonb ve diğer alanlar için Jenerik Güncelleme Metodu
+  Future<void> updateDynamicProfileField(String fieldName, dynamic data) async {
+    try {
+      if (_userId == null) throw Exception('Oturum açmış bir kullanıcı bulunamadı.');
+
+      await _client
+          .from('profiles')
+          .update({
+            fieldName: data,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', _userId!);
+          
+      print('$fieldName alanı başarıyla güncellendi.');
+    } catch (e) {
+      print('$fieldName güncellenirken bir hata oluştu: $e');
+      rethrow;
+    }
+  }
 }
