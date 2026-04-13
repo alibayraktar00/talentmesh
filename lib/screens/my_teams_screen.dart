@@ -3,21 +3,47 @@ import 'package:google_fonts/google_fonts.dart';
 import '../core/theme/app_colors.dart';
 import '../models/team_model.dart';
 import '../providers/team_provider.dart';
+import '../core/services/team_service.dart';
 import 'create_team_screen.dart';
 
 /// "Gruplar" sekmesinde kullanılan takım listeleme ekranı.
-/// [TeamProvider]'dan dinleme yaparak oluşturulan takımları gerçek zamanlı gösterir.
-class MyTeamsScreen extends StatelessWidget {
+/// Supabase'den gerçek zamanlı takım listesini çeker.
+class MyTeamsScreen extends StatefulWidget {
   final TeamProvider teamProvider;
 
   const MyTeamsScreen({super.key, required this.teamProvider});
 
   @override
+  State<MyTeamsScreen> createState() => _MyTeamsScreenState();
+}
+
+class _MyTeamsScreenState extends State<MyTeamsScreen> {
+  final _teamService = TeamService();
+
+  @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: teamProvider,
-      builder: (context, _) {
-        final teams = teamProvider.teams;
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _teamService.getUserTeamsStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(color: AppColors.primaryAccent),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              'Bir hata oluştu: ${snapshot.error}',
+              style: GoogleFonts.inter(color: Colors.red),
+            ),
+          );
+        }
+
+        final data = snapshot.data ?? [];
+        final currentUserId = _teamService.currentUserId ?? '';
+        final teams = data.map((map) => Team.fromMap(map, currentUserId)).toList();
+
         return teams.isEmpty ? _buildEmptyState(context) : _buildTeamsList(context, teams);
       },
     );
@@ -226,7 +252,7 @@ class MyTeamsScreen extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            if (team.isOwner)
+                            if (team.isOwner) ...[
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 8, vertical: 3),
@@ -251,6 +277,23 @@ class MyTeamsScreen extends StatelessWidget {
                                   ],
                                 ),
                               ),
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: () => _confirmDeleteTeam(context, team),
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFE53E3E).withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.delete_outline,
+                                    size: 16,
+                                    color: Color(0xFFE53E3E),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                         const SizedBox(height: 6),
@@ -411,7 +454,68 @@ class MyTeamsScreen extends StatelessWidget {
   void _openCreateSheet(BuildContext context) {
     showCreateTeamSheet(
       context,
-      teamProvider: teamProvider,
+      teamProvider: widget.teamProvider,
+    );
+  }
+
+  void _confirmDeleteTeam(BuildContext context, Team team) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Takımı Sil',
+          style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          '"${team.name}" takımını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.',
+          style: GoogleFonts.inter(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(
+              'İptal',
+              style: GoogleFonts.inter(color: AppColors.mutedText),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              try {
+                await _teamService.deleteTeam(team.id);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Takım başarıyla silindi.'),
+                      backgroundColor: AppColors.onlineGreen,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Hata oluştu: $e'),
+                      backgroundColor: const Color(0xFFE53E3E),
+                    ),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE53E3E),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: Text(
+              'Sil',
+              style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
