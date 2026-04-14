@@ -46,6 +46,26 @@ class TeamService {
     }
   }
 
+  /// Takım açıklamasını günceller
+  Future<void> updateTeamDescription(String teamId, String newDescription) async {
+    try {
+      await _client.from('teams').update({'description': newDescription}).eq('id', teamId);
+    } catch (e) {
+      print('Takım açıklaması güncellenirken hata: $e');
+      rethrow;
+    }
+  }
+
+  /// Takımdan üye çıkarır
+  Future<void> removeTeamMember(String membershipId) async {
+    try {
+      await _client.from('team_members').delete().eq('id', membershipId);
+    } catch (e) {
+      print('Takımdan üye çıkarılırken hata: $e');
+      rethrow;
+    }
+  }
+
   /// Oturum açmış kullanıcının kurucusu olduğu takımları getirir (Real-time).
   Stream<List<Map<String, dynamic>>> getUserTeamsStream() {
     final user = _client.auth.currentUser;
