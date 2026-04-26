@@ -31,14 +31,31 @@ class _SearchScreenState extends State<SearchScreen> {
   final Set<String> _sendingRequestIds = {};
   final Map<String, _RelationState> _relationsByUserId = {};
   String? _activeUserId;
+  int _searchMode = 0; // 0: Kişiler, 1: Takımlar
 
-  // ── Modüler Filtre Değişkenleri ──
+  // ── Kişi Filtreleri ──
   String _filterSchool = '';
   String _filterDepartment = '';
   String _filterYear = '';
   String _filterDegree = '';
   Set<String> _filterSkills = {};
   Set<String> _filterRoles = {};
+
+  // ── Takım Filtreleri ──
+  Set<String> _filterTeamRoles = {};
+  Set<String> _filterTeamSkills = {};
+
+  static const _availableRoles = [
+    'Flutter Dev', 'Backend Dev', 'Frontend Dev', 'ML Engineer',
+    'Data Scientist', 'UI/UX Designer', 'DevOps', 'QA Tester',
+    'Product Manager', 'Game Dev', '3D Artist', 'Mobile Dev',
+  ];
+
+  static const _availableSkills = [
+    'Python', 'Dart', 'Flutter', 'JavaScript', 'TypeScript', 'React',
+    'Node.js', 'TensorFlow', 'PyTorch', 'Firebase', 'Docker', 'AWS',
+    'Figma', 'Unity', 'C#', 'Java', 'SQL', 'MongoDB', 'Go', 'Rust',
+  ];
 
   String? get _myUserId => _client.auth.currentUser?.id;
 
@@ -58,8 +75,105 @@ class _SearchScreenState extends State<SearchScreen> {
   void _onSearchChanged() {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 350), () {
-      _searchUsers(_searchController.text);
+      if (_searchMode == 0) {
+        _searchUsers(_searchController.text);
+      } else {
+        _searchTeams(_searchController.text);
+      }
     });
+  }
+
+  Future<void> _searchTeams(String rawQuery) async {
+    final query = rawQuery.trim().toLowerCase();
+
+    final myId = _myUserId;
+    if (myId == null) {
+      _showError('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      return;
+    }
+
+    final hasActiveFilter = _filterTeamRoles.isNotEmpty || _filterTeamSkills.isNotEmpty;
+
+    if (query.isEmpty && !hasActiveFilter) {
+      if (!mounted) return;
+      setState(() {
+        _hasSearched = false;
+        _isLoading = false;
+        _results = [];
+        _relationsByUserId.clear();
+      });
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+      _hasSearched = true;
+    });
+
+    try {
+      // 1. Get user's current teams
+      final memberRows = await _client
+          .from('team_members')
+          .select('team_id')
+          .eq('user_id', myId);
+      final myTeamIds = (memberRows as List).map((row) => row['team_id'].toString()).toList();
+
+      // 2. Search teams with optional role/skill filters
+      var queryBuilder = _client.from('teams').select('*');
+
+      // İsim filtresi sadece query doluysa uygula
+      if (query.isNotEmpty) {
+        queryBuilder = queryBuilder.ilike('name', '%$query%');
+      }
+
+      if (_filterTeamRoles.isNotEmpty) {
+        queryBuilder = queryBuilder.overlaps('required_roles', _filterTeamRoles.toList());
+      }
+      if (_filterTeamSkills.isNotEmpty) {
+        queryBuilder = queryBuilder.overlaps('required_skills', _filterTeamSkills.toList());
+      }
+
+      final response = await queryBuilder.limit(30);
+      final allTeams = List<Map<String, dynamic>>.from(response);
+
+      // Filter out teams the user is already in
+      final filteredTeams = allTeams.where((t) => !myTeamIds.contains(t['id'].toString())).toList();
+
+      // 3. Get pending requests
+      final listedTeamIds = filteredTeams.map((t) => t['id'].toString()).toList();
+      final Map<String, _RelationState> relations = {};
+
+      if (listedTeamIds.isNotEmpty) {
+        final requestRows = await _client
+            .from('team_requests')
+            .select('id, team_id, status')
+            .eq('user_id', myId)
+            .inFilter('team_id', listedTeamIds)
+            .eq('status', 'pending');
+
+        for (final row in requestRows) {
+          final teamId = row['team_id'].toString();
+          relations[teamId] = const _RelationState(_RelationType.pendingOutgoing);
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _results = filteredTeams;
+        _relationsByUserId
+          ..clear()
+          ..addAll(relations);
+      });
+    } on PostgrestException catch (e) {
+      _showError('Takım araması sırasında hata oluştu: ${e.message}');
+    } catch (_) {
+      _showError('Takım araması yapılamadı. İnternet bağlantınızı kontrol edin.');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   void _resetStateForUserChange() {
@@ -69,6 +183,7 @@ class _SearchScreenState extends State<SearchScreen> {
     _hasSearched = false;
     _isLoading = false;
     _searchController.clear();
+    _searchMode = 0;
   }
 
   int _relationPriority(_RelationType type) {
@@ -322,6 +437,42 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
+  Future<void> _sendTeamJoinRequest(Map<String, dynamic> team) async {
+    final myId = _myUserId;
+    final teamId = team['id']?.toString();
+
+    if (myId == null || teamId == null || teamId.isEmpty) return;
+    if (_sendingRequestIds.contains(teamId)) return;
+
+    setState(() => _sendingRequestIds.add(teamId));
+
+    try {
+      await _client.from('team_requests').insert({
+        'team_id': teamId,
+        'user_id': myId,
+        'status': 'pending',
+      });
+
+      if (!mounted) return;
+      setState(() {
+        _relationsByUserId[teamId] = const _RelationState(_RelationType.pendingOutgoing);
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Katılma isteği gönderildi.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      _showError('İstek gönderilemedi.');
+    } finally {
+      if (mounted) {
+        setState(() => _sendingRequestIds.remove(teamId));
+      }
+    }
+  }
+
   Future<void> _acceptIncomingRequest({
     required String otherUserId,
     required String requestId,
@@ -359,6 +510,217 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
+  void _showFilterSheet() {
+    if (_searchMode == 1) {
+      _showTeamFilterSheet();
+    } else {
+      _showPersonFilterSheet();
+    }
+  }
+
+  void _showTeamFilterSheet() {
+    // Geçici kopya — iptal edilirse ana state bozulmasın
+    Set<String> tempRoles = Set.from(_filterTeamRoles);
+    Set<String> tempSkills = Set.from(_filterTeamSkills);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setSheet) {
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.80,
+              decoration: const BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  // Handle
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 40, height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.mutedText.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        Text('Takım Filtreleri',
+                          style: GoogleFonts.inter(
+                            fontSize: 18, fontWeight: FontWeight.w700,
+                            color: AppColors.headingText,
+                          ),
+                        ),
+                        const Spacer(),
+                        TextButton(
+                          onPressed: () {
+                            setSheet(() {
+                              tempRoles.clear();
+                              tempSkills.clear();
+                            });
+                          },
+                          child: Text('Temizle',
+                            style: GoogleFonts.inter(
+                              color: Colors.redAccent,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // ── Aranan Roller ──
+                          Row(
+                            children: [
+                              const Icon(Icons.work_outline, size: 18, color: AppColors.primaryAccent),
+                              const SizedBox(width: 8),
+                              Text('Aranan Roller',
+                                style: GoogleFonts.inter(
+                                  fontSize: 15, fontWeight: FontWeight.w700,
+                                  color: AppColors.headingText,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text('Takımın aradığı pozisyonları seçin',
+                            style: GoogleFonts.inter(fontSize: 12, color: AppColors.mutedText),
+                          ),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 8, runSpacing: 8,
+                            children: _availableRoles.map((role) {
+                              final selected = tempRoles.contains(role);
+                              return FilterChip(
+                                label: Text(role),
+                                selected: selected,
+                                onSelected: (v) => setSheet(() {
+                                  if (v) tempRoles.add(role); else tempRoles.remove(role);
+                                }),
+                                selectedColor: AppColors.primaryAccent.withValues(alpha: 0.15),
+                                checkmarkColor: AppColors.primaryAccent,
+                                labelStyle: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: selected ? AppColors.primaryAccent : AppColors.bodyText,
+                                ),
+                                backgroundColor: AppColors.chipBg,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                  side: BorderSide(
+                                    color: selected ? AppColors.primaryAccent : Colors.transparent,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 24),
+                          // ── Gerekli Yetenekler ──
+                          Row(
+                            children: [
+                              const Icon(Icons.code, size: 18, color: AppColors.primaryAccent),
+                              const SizedBox(width: 8),
+                              Text('Gerekli Yetenekler',
+                                style: GoogleFonts.inter(
+                                  fontSize: 15, fontWeight: FontWeight.w700,
+                                  color: AppColors.headingText,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text('Projeye uygun teknolojileri seçin',
+                            style: GoogleFonts.inter(fontSize: 12, color: AppColors.mutedText),
+                          ),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 8, runSpacing: 8,
+                            children: _availableSkills.map((skill) {
+                              final selected = tempSkills.contains(skill);
+                              return FilterChip(
+                                label: Text(skill),
+                                selected: selected,
+                                onSelected: (v) => setSheet(() {
+                                  if (v) tempSkills.add(skill); else tempSkills.remove(skill);
+                                }),
+                                selectedColor: AppColors.primaryAccent.withValues(alpha: 0.15),
+                                checkmarkColor: AppColors.primaryAccent,
+                                labelStyle: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: selected ? AppColors.primaryAccent : AppColors.bodyText,
+                                ),
+                                backgroundColor: AppColors.chipBg,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                  side: BorderSide(
+                                    color: selected ? AppColors.primaryAccent : Colors.transparent,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Uygula Butonu
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(20, 8, 20, MediaQuery.of(context).viewInsets.bottom + 20),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(ctx).pop();
+                          setState(() {
+                            _filterTeamRoles = Set.from(tempRoles);
+                            _filterTeamSkills = Set.from(tempSkills);
+                            _hasSearched = _searchController.text.isNotEmpty ||
+                                _filterTeamRoles.isNotEmpty ||
+                                _filterTeamSkills.isNotEmpty;
+                          });
+                          _searchTeams(_searchController.text);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryAccent,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: Text('Filtrele',
+                          style: GoogleFonts.inter(
+                            fontSize: 16, fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
     final currentUserId = _myUserId;
@@ -370,11 +732,101 @@ class _SearchScreenState extends State<SearchScreen> {
       });
     }
 
-    return Column(
-      children: [
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: AppColors.headingText),
+        title: Text(
+          'Arama',
+          style: GoogleFonts.inter(
+            color: AppColors.headingText,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+        // Kişiler / Takımlar Toggle
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.chipBg,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      if (_searchMode != 0) {
+                        setState(() {
+                          _searchMode = 0;
+                          _hasSearched = false;
+                          _results = [];
+                          _relationsByUserId.clear();
+                          _onSearchChanged();
+                        });
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: _searchMode == 0 ? AppColors.primaryAccent : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'Kişiler',
+                        style: GoogleFonts.inter(
+                          color: _searchMode == 0 ? Colors.white : AppColors.mutedText,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      if (_searchMode != 1) {
+                        setState(() {
+                          _searchMode = 1;
+                          _hasSearched = false;
+                          _results = [];
+                          _relationsByUserId.clear();
+                          _onSearchChanged();
+                        });
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: _searchMode == 1 ? AppColors.primaryAccent : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'Takımlar',
+                        style: GoogleFonts.inter(
+                          color: _searchMode == 1 ? Colors.white : AppColors.mutedText,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
         // Arama Çubuğu (TextField)
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
           child: Container(
             decoration: BoxDecoration(
               color: AppColors.white,
@@ -423,7 +875,9 @@ class _SearchScreenState extends State<SearchScreen> {
                                 _filterYear.isNotEmpty ||
                                 _filterDegree.isNotEmpty ||
                                 _filterSkills.isNotEmpty ||
-                                _filterRoles.isNotEmpty)
+                                _filterRoles.isNotEmpty ||
+                                _filterTeamRoles.isNotEmpty ||
+                                _filterTeamSkills.isNotEmpty)
                             ? AppColors.primaryAccent
                             : AppColors.mutedText,
                       ),
@@ -448,6 +902,8 @@ class _SearchScreenState extends State<SearchScreen> {
         // İçerik: İlk durum / Yükleniyor / Sonuçlar
         Expanded(child: _buildBody()),
       ],
+        ),
+      ),
     );
   }
 
@@ -473,7 +929,7 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Kullanıcı adı ile arama yap',
+            _searchMode == 0 ? 'Kullanıcı adı ile arama yap' : 'Takım adı ile arama yap',
             style: GoogleFonts.inter(fontSize: 16, color: AppColors.mutedText),
           ),
         ],
@@ -500,6 +956,140 @@ class _SearchScreenState extends State<SearchScreen> {
       itemCount: _results.length,
       itemBuilder: (context, index) {
         final item = _results[index];
+        if (_searchMode == 0) {
+          return _buildUserCard(item);
+        } else {
+          return _buildTeamCard(item);
+        }
+      },
+    );
+  }
+
+  Widget _buildTeamCard(Map<String, dynamic> item) {
+    final teamId = item['id']?.toString() ?? '';
+    final teamName = (item['name'] ?? '').toString();
+    final description = (item['description'] ?? '').toString();
+    final isSending = _sendingRequestIds.contains(teamId);
+    final relation =
+        _relationsByUserId[teamId] ?? const _RelationState(_RelationType.none);
+
+    String buttonText;
+    bool buttonEnabled;
+    Color buttonColor;
+
+    if (relation.type == _RelationType.pendingOutgoing) {
+      buttonText = 'İstek Gönderildi';
+      buttonEnabled = false;
+      buttonColor = Colors.orange;
+    } else {
+      buttonText = 'Katıl İsteği Gönder';
+      buttonEnabled = true;
+      buttonColor = AppColors.primaryAccent;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: AppColors.chipBg,
+              child: Text(
+                teamName.isNotEmpty ? teamName.substring(0, 1).toUpperCase() : '?',
+                style: GoogleFonts.inter(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primaryAccent,
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    teamName,
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.headingText,
+                    ),
+                  ),
+                  if (description.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      description,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
+                        color: AppColors.mutedText,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            ElevatedButton(
+              onPressed: (!buttonEnabled || isSending)
+                  ? null
+                  : () {
+                      _sendTeamJoinRequest(item);
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: buttonColor,
+                foregroundColor: AppColors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: isSending
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(
+                      buttonText,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUserCard(Map<String, dynamic> item) {
         final userId = item['id']?.toString() ?? '';
         final username = (item['username'] ?? '').toString();
         final fullName = (item['full_name'] ?? '').toString();
@@ -648,11 +1238,9 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
           ),
         );
-      },
-    );
   }
 
-  void _showFilterSheet() {
+  void _showPersonFilterSheet() {
     // Geçici state kopyaları
     String tempSchool = _filterSchool;
     String tempDepartment = _filterDepartment;
@@ -892,7 +1480,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     });
                     Navigator.pop(ctx);
                     // Yeni sorguyu başlat
-                    _searchUsers(_searchController.text);
+                    _onSearchChanged();
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryAccent,

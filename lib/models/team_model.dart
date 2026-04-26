@@ -8,7 +8,7 @@ class Team {
   final List<String> roles;
   final List<String> skills;
   final int maxMembers;
-  final int currentMembers;
+  int currentMembers;
   final bool isOwner;
   final Color color;
   final DateTime createdAt;

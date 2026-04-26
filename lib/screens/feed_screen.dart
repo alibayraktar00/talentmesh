@@ -47,8 +47,6 @@ class _FeedScreenState extends State<FeedScreen> {
       case 0:
         return 'Takımlarım';
       case 1:
-        return 'Arama';
-      case 2:
         return 'Arkadaşlar';
       default:
         return 'Takımlarım';
@@ -60,8 +58,6 @@ class _FeedScreenState extends State<FeedScreen> {
       case 0:
         return MyTeamsScreen(teamProvider: _teamProvider);
       case 1:
-        return const SearchScreen();
-      case 2:
         return const FriendsScreen();
       default:
         return MyTeamsScreen(teamProvider: _teamProvider);
@@ -238,7 +234,10 @@ class _FeedScreenState extends State<FeedScreen> {
           const Spacer(),
           IconButton(
             onPressed: () {
-              setState(() => _selectedNavIndex = 1);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SearchScreen()),
+              );
             },
             icon: Icon(
               Icons.search,
@@ -502,18 +501,10 @@ class _FeedScreenState extends State<FeedScreen> {
               ),
               Expanded(
                 child: _buildNavItem(
-                  icon: Icons.search_outlined,
-                  activeIcon: Icons.search,
-                  label: 'Arama\n', // Hizalamayı korumak için
-                  index: 1,
-                ),
-              ),
-              Expanded(
-                child: _buildNavItem(
                   icon: Icons.people_outline,
                   activeIcon: Icons.people,
-                  label: 'Arkadaşlar\n',
-                  index: 2,
+                  label: 'Arkadaşlar\n', // Hizalamayı korumak için gerekirse \n kalabilir
+                  index: 1,
                 ),
               ),
             ],

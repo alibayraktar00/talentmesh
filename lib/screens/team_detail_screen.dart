@@ -28,16 +28,37 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   final MeetingProvider _meetingProvider = MeetingProvider();
+  final TeamService _teamService = TeamService();
+  
+  List<Map<String, dynamic>> _incomingRequests = [];
+  bool _isLoadingRequests = false;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: widget.team.isOwner ? 3 : 2, vsync: this);
 
     // Toplantıları çek
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _meetingProvider.fetchMeetings(widget.team.id);
+      if (widget.team.isOwner) {
+        _fetchIncomingRequests();
+      }
     });
+  }
+
+  Future<void> _fetchIncomingRequests() async {
+    setState(() => _isLoadingRequests = true);
+    try {
+      final reqs = await _teamService.getIncomingRequests(widget.team.id);
+      setState(() => _incomingRequests = reqs);
+    } catch (e) {
+      print('İstekleri çekerken hata: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingRequests = false);
+      }
+    }
   }
 
   @override
@@ -129,9 +150,10 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                 fontWeight: FontWeight.w600,
                 fontSize: 14,
               ),
-              tabs: const [
-                Tab(text: 'Yaklaşan Toplantılar'),
-                Tab(text: 'Geçmiş'),
+              tabs: [
+                const Tab(text: 'Yaklaşan Toplantılar'),
+                const Tab(text: 'Geçmiş'),
+                if (_isAdmin) const Tab(text: 'Gelen İstekler'),
               ],
             ),
           ),
@@ -153,6 +175,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                   meetings: _meetingProvider.pastMeetings,
                   isUpcoming: false,
                 ),
+
+                // ─── Gelen İstekler ────────────────────────
+                if (_isAdmin) _buildRequestsTab(),
               ],
             );
           },
@@ -172,6 +197,154 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           'Toplantı Planla',
           style: GoogleFonts.inter(fontWeight: FontWeight.w600),
         ),
+      ),
+    );
+  }
+
+  // ─── Gelen İstekler Sekmesi ──────────────────────────────────
+  Widget _buildRequestsTab() {
+    if (_isLoadingRequests) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_incomingRequests.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.inbox_rounded,
+                size: 56,
+                color: AppColors.mutedText.withValues(alpha: 0.5),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Bekleyen istek yok',
+                style: GoogleFonts.inter(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.mutedText,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _fetchIncomingRequests,
+      color: AppColors.primaryAccent,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+        itemCount: _incomingRequests.length,
+        itemBuilder: (context, index) {
+          final request = _incomingRequests[index];
+          final profile = request['profiles'] as Map<String, dynamic>? ?? {};
+          final username = profile['username']?.toString() ?? 'Bilinmeyen';
+          final fullName = profile['full_name']?.toString() ?? '';
+          final requestId = request['id'].toString();
+          final userId = request['user_id'].toString();
+
+          return Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: AppColors.chipBg,
+                    child: Text(
+                      username.isNotEmpty ? username.substring(0, 1).toUpperCase() : '?',
+                      style: const TextStyle(color: AppColors.primaryAccent, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('@$username', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                        if (fullName.isNotEmpty)
+                          Text(fullName, style: GoogleFonts.inter(fontSize: 12, color: AppColors.mutedText)),
+                      ],
+                    ),
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.check_circle, color: Colors.green),
+                        onPressed: () async {
+                          try {
+                            // 1. İşlemi bitmesini bekle
+                            await _teamService.acceptJoinRequest(
+                              requestId,
+                              widget.team.id,
+                              userId,
+                              widget.team.maxMembers,
+                            );
+                            
+                            if (!mounted) return;
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('İstek onaylandı ve kullanıcı takıma eklendi.')),
+                            );
+
+                            // 2. Bekleme durumuna geçir
+                            setState(() {
+                              widget.team.currentMembers++;
+                              _isLoadingRequests = true;
+                            });
+
+                            // 3. Verileri tazele
+                            await _fetchIncomingRequests();
+                            
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+                              );
+                            }
+                          }
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.cancel, color: Colors.red),
+                        onPressed: () async {
+                          try {
+                            await _teamService.rejectJoinRequest(requestId);
+                            if (!mounted) return;
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('İstek reddedildi.')),
+                            );
+
+                            setState(() {
+                              _isLoadingRequests = true;
+                            });
+
+                            await _fetchIncomingRequests();
+
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Reddedilirken hata oluştu.')),
+                              );
+                            }
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

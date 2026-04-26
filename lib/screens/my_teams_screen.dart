@@ -22,38 +22,60 @@ class MyTeamsScreen extends StatefulWidget {
 
 class _MyTeamsScreenState extends State<MyTeamsScreen> {
   final _teamService = TeamService();
+  List<Team> _teams = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTeams();
+  }
+
+  Future<void> _loadTeams() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final data = await _teamService.fetchTeamsWithMemberCount();
+      final currentUserId = _teamService.currentUserId ?? '';
+      if (mounted) {
+        setState(() {
+          _teams = data.map((map) => Team.fromMap(map, currentUserId)).toList();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: _teamService.getUserTeamsStream(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(color: AppColors.primaryAccent),
-          );
-        }
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.primaryAccent),
+      );
+    }
 
-        if (snapshot.hasError) {
-          return Center(
-            child: Text(
-              'Bir hata oluştu: ${snapshot.error}',
-              style: GoogleFonts.inter(color: Colors.red),
-            ),
-          );
-        }
+    if (_error != null) {
+      return Center(
+        child: Text(
+          'Bir hata oluştu: $_error',
+          style: GoogleFonts.inter(color: Colors.red),
+        ),
+      );
+    }
 
-        final data = snapshot.data ?? [];
-        final currentUserId = _teamService.currentUserId ?? '';
-        final teams = data
-            .map((map) => Team.fromMap(map, currentUserId))
-            .toList();
-
-        return teams.isEmpty
-            ? _buildEmptyState(context)
-            : _buildTeamsList(context, teams);
-      },
-    );
+    return _teams.isEmpty
+        ? _buildEmptyState(context)
+        : _buildTeamsList(context, _teams);
   }
 
   // ──────────────────────── EMPTY STATE ────────────────────────
@@ -596,7 +618,10 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _TeamDetailsSheet(team: team),
-    );
+    ).then((_) {
+      // BottomSheet kapandığında üye sayılarını güncelle
+      _loadTeams();
+    });
   }
 }
 
@@ -614,6 +639,9 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
   List<Map<String, dynamic>> _members = [];
   bool _hasError = false;
 
+  bool _isLoadingRequests = true;
+  List<Map<String, dynamic>> _incomingRequests = [];
+
   bool _isEditingDescription = false;
   bool _isUpdatingDescription = false;
   late TextEditingController _descController;
@@ -625,6 +653,11 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
     _currentDescription = widget.team.description;
     _descController = TextEditingController(text: _currentDescription);
     _fetchMembers();
+    if (widget.team.isOwner) {
+      _fetchIncomingRequests();
+    } else {
+      _isLoadingRequests = false;
+    }
   }
 
   @override
@@ -635,27 +668,85 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
 
   Future<void> _fetchMembers() async {
     try {
-      // Varsayılan takım üyeleri tablosu "team_members", ilgili profil bilgilerini de çeker
-      final response = await _client
+      // 1. team_members tablosundan üye kayıtlarını çek
+      final membersResponse = await _client
           .from('team_members')
-          .select(
-            'id, user_id, joined_at, profiles(username, full_name, avatar_url, department)',
-          )
+          .select('id, user_id, role, created_at')
           .eq('team_id', widget.team.id);
+
+      final membersList = List<Map<String, dynamic>>.from(membersResponse);
+
+      // 2. user_id listesini çıkar
+      final userIds = membersList.map((m) => m['user_id'].toString()).toList();
+
+      List<Map<String, dynamic>> enrichedMembers = [];
+
+      if (userIds.isNotEmpty) {
+        // 3. profiles tablosundan o user_id'lerin profillerini çek
+        final profilesResponse = await _client
+            .from('profiles')
+            .select('id, username, full_name, avatar_url, department')
+            .inFilter('id', userIds);
+
+        final profilesMap = <String, Map<String, dynamic>>{};
+        for (final p in List<Map<String, dynamic>>.from(profilesResponse)) {
+          profilesMap[p['id'].toString()] = p;
+        }
+
+        // 4. İkisini birleştir
+        for (final member in membersList) {
+          enrichedMembers.add({
+            ...member,
+            'profiles': profilesMap[member['user_id'].toString()] ?? {},
+          });
+        }
+      }
 
       if (mounted) {
         setState(() {
-          _members = List<Map<String, dynamic>>.from(response);
+          _members = enrichedMembers;
           _isLoadingMembers = false;
         });
       }
     } catch (e) {
-      // Tablo yoksa veya hata oluşursa hata durumuna geçir
+      print('Üyeler çekilirken hata: $e');
       if (mounted) {
         setState(() {
           _hasError = true;
           _isLoadingMembers = false;
         });
+      }
+    }
+  }
+
+  Future<void> _fetchIncomingRequests() async {
+    try {
+      // team_requests + profiles join (team_service ile aynı sorgu)
+      final response = await _client
+          .from('team_requests')
+          .select('''
+            *,
+            profiles:user_id (
+              id,
+              username,
+              full_name,
+              avatar_url,
+              department
+            )
+          ''')
+          .eq('team_id', widget.team.id)
+          .eq('status', 'pending');
+
+      if (mounted) {
+        setState(() {
+          _incomingRequests = List<Map<String, dynamic>>.from(response);
+          _isLoadingRequests = false;
+        });
+      }
+    } catch (e) {
+      print('Gelen istekler çekilirken hata: $e');
+      if (mounted) {
+        setState(() => _isLoadingRequests = false);
       }
     }
   }
@@ -776,78 +867,78 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
       ),
       child: Column(
         children: [
-          // Drag handle
-          const SizedBox(height: 12),
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: AppColors.mutedText.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
+              // Drag handle
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.mutedText.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
 
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Team Header
-                  Row(
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: team.color.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Icon(
-                          Icons.group_rounded,
-                          color: team.color,
-                          size: 28,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              team.name,
-                              style: GoogleFonts.inter(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.headingText,
-                              ),
+                      // Team Header
+                      Row(
+                        children: [
+                          Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: team.color.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(14),
                             ),
-                            const SizedBox(height: 4),
-                            Row(
+                            child: Icon(
+                              Icons.group_rounded,
+                              color: team.color,
+                              size: 28,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Icon(
-                                  Icons.people_alt_outlined,
-                                  size: 14,
-                                  color: AppColors.mutedText,
-                                ),
-                                const SizedBox(width: 4),
                                 Text(
-                                  '${team.currentMembers} / ${team.maxMembers} Üye',
+                                  team.name,
                                   style: GoogleFonts.inter(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: AppColors.mutedText,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.headingText,
                                   ),
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.people_alt_outlined,
+                                      size: 14,
+                                      color: AppColors.mutedText,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${_members.length + 1} / ${team.maxMembers} Üye',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                        color: AppColors.mutedText,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
                   const SizedBox(height: 24),
 
                   // Description
@@ -1004,6 +1095,20 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
                   const SizedBox(height: 12),
 
                   _buildMembersList(),
+
+                  if (widget.team.isOwner) ...[
+                    const SizedBox(height: 24),
+                    Text(
+                      'Bekleyen Katılma İstekleri',
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.headingText,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildIncomingRequestsList(),
+                  ],
                 ],
               ),
             ),
@@ -1023,55 +1128,65 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
       );
     }
 
-    // Eğer tablo yoksa veya hata aldıysak, kurucuyu (kendimizi) geçici olarak gösterelim.
-    if (_hasError || _members.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Row(
-          children: [
-            CircleAvatar(
-              backgroundColor: AppColors.primaryAccent.withValues(alpha: 0.2),
-              child: const Icon(Icons.person, color: AppColors.primaryAccent),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Kurucu (Sen)',
-                    style: GoogleFonts.inter(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
-                    ),
-                  ),
-                  Text(
-                    'Henüz başka üye katılmamış gibi görünüyor.',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: AppColors.mutedText,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Gerçek üyeler listeleniyor
+    // Gerçek üyeler listeleniyor (Kurucu en üstte manuel eklendi)
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: _members.length,
+      itemCount: _members.length + 1, // +1 Kurucu için
       itemBuilder: (context, index) {
-        final memberRow = _members[index];
+        if (index == 0) {
+          // Kurucu satırı
+          return Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: AppColors.primaryAccent.withValues(alpha: 0.2),
+                  child: const Icon(Icons.person, color: AppColors.primaryAccent),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Kurucu (Sen)',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.headingText,
+                        ),
+                      ),
+                      Text(
+                        'Takım Yöneticisi',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: AppColors.mutedText,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        // Normal üyeler (index - 1 kullanıyoruz çünkü ilk satır Kurucu)
+        final memberRow = _members[index - 1];
         final profile = memberRow['profiles'] ?? {};
         final fullName = profile['full_name'] ?? 'İsimsiz Üye';
         final department = profile['department'] ?? '';
@@ -1101,7 +1216,7 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
                     : null,
                 child: avatarUrl == null
                     ? Text(
-                        fullName[0].toUpperCase(),
+                        fullName.isNotEmpty ? fullName[0].toUpperCase() : '?',
                         style: const TextStyle(color: AppColors.primaryAccent),
                       )
                     : null,
@@ -1140,6 +1255,175 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
                 tooltip: 'Üyeyi Çıkar',
                 onPressed: () =>
                     _removeMember(memberRow['id'].toString(), fullName),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildIncomingRequestsList() {
+    if (_isLoadingRequests) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: CircularProgressIndicator(color: AppColors.primaryAccent),
+        ),
+      );
+    }
+
+    if (_incomingRequests.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: AppColors.inputBorder.withValues(alpha: 0.5),
+          ),
+        ),
+        child: Text(
+          'Bekleyen istek yok.',
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+            color: AppColors.bodyText,
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _incomingRequests.length,
+      itemBuilder: (context, index) {
+        final request = _incomingRequests[index];
+        final profile = request['profiles'] as Map<String, dynamic>? ?? {};
+        final username = profile['username']?.toString() ?? 'Bilinmeyen';
+        final fullName = profile['full_name']?.toString() ?? '';
+        final requestId = request['id'].toString();
+        final userId = request['user_id'].toString();
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: AppColors.chipBg,
+                child: Text(
+                  username.isNotEmpty ? username.substring(0, 1).toUpperCase() : '?',
+                  style: const TextStyle(color: AppColors.primaryAccent, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('@$username', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                    if (fullName.isNotEmpty)
+                      Text(fullName, style: GoogleFonts.inter(fontSize: 12, color: AppColors.mutedText)),
+                  ],
+                ),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.check_circle, color: Colors.green),
+                    onPressed: () async {
+                      try {
+                        final teamService = TeamService();
+                        
+                        // 1. İşlemin bitmesini bekle
+                        await teamService.acceptJoinRequest(
+                          requestId,
+                          widget.team.id,
+                          userId,
+                          widget.team.maxMembers,
+                        );
+                        
+                        if (!mounted) return;
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('İstek onaylandı ve kullanıcı takıma eklendi.'),
+                            backgroundColor: AppColors.onlineGreen,
+                          ),
+                        );
+
+                        // 2. Yükleniyor durumuna geçir (setState direkt çalışır)
+                        setState(() {
+                          _isLoadingRequests = true;
+                          _isLoadingMembers = true;
+                        });
+                        
+                        // 3. Supabase'den verileri tekrar çek
+                        await _fetchIncomingRequests();
+                        await _fetchMembers();
+
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(e.toString().replaceAll('Exception: ', '')),
+                              backgroundColor: const Color(0xFFE53E3E),
+                            ),
+                          );
+                        }
+                      }
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.cancel, color: Colors.red),
+                    onPressed: () async {
+                      try {
+                        final teamService = TeamService();
+                        await teamService.rejectJoinRequest(requestId);
+                        
+                        if (!mounted) return;
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('İstek reddedildi.'),
+                            backgroundColor: AppColors.onlineGreen,
+                          ),
+                        );
+                        
+                        setState(() {
+                          _isLoadingRequests = true;
+                        });
+
+                        await _fetchIncomingRequests();
+
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Reddedilirken hata oluştu.'),
+                              backgroundColor: Color(0xFFE53E3E),
+                            ),
+                          );
+                        }
+                      }
+                    },
+                  ),
+                ],
               ),
             ],
           ),
