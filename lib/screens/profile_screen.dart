@@ -7,7 +7,8 @@ import '../core/theme/app_colors.dart';
 import '../core/services/profile_service.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final String? userId;
+  const ProfileScreen({super.key, this.userId});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -42,6 +43,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   int _teamsJoined = 0;
   List<Map<String, dynamic>> _reviews = [];
 
+  bool get _isMyProfile {
+    final currentUserId = _profileService.userId;
+    if (widget.userId == null) return true;
+    return widget.userId == currentUserId;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -49,8 +56,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadProfile() async {
-    final data = await _profileService.fetchProfile();
-    final reviews = await _profileService.fetchReviews();
+    final data = await _profileService.fetchProfile(widget.userId);
+    final reviews = await _profileService.fetchReviews(widget.userId);
     if (data != null) {
       setState(() {
         _fullName = data['full_name'] ?? '';
@@ -237,15 +244,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
         // Edit button
-        Positioned(
-          top: MediaQuery.of(context).padding.top + 8,
-          right: 12,
-          child: _buildCircleButton(
-            icon: Icons.edit_outlined,
-            color: AppColors.primaryAccent,
-            onTap: _showEditNameDialog,
+        if (_isMyProfile)
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            right: 12,
+            child: _buildCircleButton(
+              icon: Icons.edit_outlined,
+              color: AppColors.primaryAccent,
+              onTap: _showEditNameDialog,
+            ),
           ),
-        ),
         // Profile photo + name
         Positioned(
           top: 105,
@@ -255,7 +263,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               GestureDetector(
-                onTap: _pickAvatar,
+                onTap: _isMyProfile ? _pickAvatar : null,
                 child: Stack(
                   children: [
                     Container(
@@ -287,20 +295,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             : null,
                       ),
                     ),
-                    Positioned(
-                      right: 0,
-                      bottom: 0,
-                      child: Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryAccent,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: AppColors.white, width: 2),
+                    if (_isMyProfile)
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryAccent,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppColors.white, width: 2),
+                          ),
+                          child: const Icon(Icons.camera_alt, color: AppColors.white, size: 14),
                         ),
-                        child: const Icon(Icons.camera_alt, color: AppColors.white, size: 14),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -361,7 +370,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
-          _buildEditIcon(_showEditContactDialog),
+          if (_isMyProfile) _buildEditIcon(_showEditContactDialog),
         ],
       ),
     );
@@ -382,8 +391,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ──────────────────────── OPEN TO WORK ────────────────────────
   Widget _buildOpenToWorkBanner() {
+    if (!_isMyProfile && !_openToWork) return const SizedBox.shrink();
+
     return GestureDetector(
-      onTap: () async {
+      onTap: _isMyProfile ? () async {
         final newValue = !_openToWork;
         setState(() => _openToWork = newValue);
         try {
@@ -391,7 +402,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         } catch (e) {
           setState(() => _openToWork = !newValue);
         }
-      },
+      } : null,
       child: Container(
         margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -422,13 +433,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Text(_openToWork ? 'OPEN TO WORK' : 'NOT LOOKING',
                       style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.headingText, letterSpacing: 0.5)),
                   const SizedBox(height: 2),
-                  Text(_openToWork ? 'Looking for opportunities' : 'Tap to change',
-                      style: GoogleFonts.inter(fontSize: 12, color: AppColors.mutedText)),
+                  if (_isMyProfile)
+                    Text(_openToWork ? 'Looking for opportunities' : 'Tap to change',
+                        style: GoogleFonts.inter(fontSize: 12, color: AppColors.mutedText)),
                 ],
               ),
             ),
-            Switch(
-              value: _openToWork,
+            if (_isMyProfile)
+              Switch(
+                value: _openToWork,
               onChanged: (v) async { 
                 setState(() => _openToWork = v);
                 try {
@@ -561,7 +574,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       title: 'Müsaitlik Durumu',
       onEdit: _showEditAvailabilityDialog,
       child: _availability.isEmpty
-          ? Text('Müsaitlik bilgisi ekleyin...', style: GoogleFonts.inter(fontSize: 13.5, color: AppColors.mutedText))
+          ? Text(_isMyProfile ? 'Müsaitlik bilgisi ekleyin...' : 'Müsaitlik bilgisi eklenmemiş.', style: GoogleFonts.inter(fontSize: 13.5, color: AppColors.mutedText))
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -586,7 +599,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       title: 'Aranan Roller',
       onEdit: _showAddRoleDialog,
       child: _rolePreferences.isEmpty
-          ? Text('Rol tercihi ekleyin...', style: GoogleFonts.inter(fontSize: 13.5, color: AppColors.mutedText))
+          ? Text(_isMyProfile ? 'Rol tercihi ekleyin...' : 'Rol tercihi eklenmemiş.', style: GoogleFonts.inter(fontSize: 13.5, color: AppColors.mutedText))
           : Wrap(
               spacing: 8, runSpacing: 8,
               children: _rolePreferences.map((role) => _buildDeletableChip(role, () async {
@@ -603,7 +616,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       title: 'Deneyimler',
       onEdit: () => _showExperienceDialog(-1),
       child: _experiences.isEmpty
-          ? Text('Deneyim ekleyin...', style: GoogleFonts.inter(fontSize: 13.5, color: AppColors.mutedText))
+          ? Text(_isMyProfile ? 'Deneyim ekleyin...' : 'Deneyim eklenmemiş.', style: GoogleFonts.inter(fontSize: 13.5, color: AppColors.mutedText))
           : Column(
               children: List.generate(_experiences.length, (i) {
                 final e = _experiences[i];
@@ -632,7 +645,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       title: 'Eğitim',
       onEdit: () => _showEducationDialog(-1),
       child: _education.isEmpty
-          ? Text('Eğitim bilgisi ekleyin...', style: GoogleFonts.inter(fontSize: 13.5, color: AppColors.mutedText))
+          ? Text(_isMyProfile ? 'Eğitim bilgisi ekleyin...' : 'Eğitim bilgisi eklenmemiş.', style: GoogleFonts.inter(fontSize: 13.5, color: AppColors.mutedText))
           : Column(
               children: List.generate(_education.length, (i) {
                 final e = _education[i];
@@ -661,7 +674,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       title: 'Sertifikalar',
       onEdit: () => _showCertificateDialog(-1),
       child: _certificates.isEmpty
-          ? Text('Sertifika ekleyin...', style: GoogleFonts.inter(fontSize: 13.5, color: AppColors.mutedText))
+          ? Text(_isMyProfile ? 'Sertifika ekleyin...' : 'Sertifika eklenmemiş.', style: GoogleFonts.inter(fontSize: 13.5, color: AppColors.mutedText))
           : Column(
               children: List.generate(_certificates.length, (i) {
                 final c = _certificates[i];
@@ -690,7 +703,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       title: 'Projeler / Portfolyo',
       onEdit: () => _showProjectDialog(-1),
       child: _projects.isEmpty
-          ? Text('Proje ekleyin...', style: GoogleFonts.inter(fontSize: 13.5, color: AppColors.mutedText))
+          ? Text(_isMyProfile ? 'Proje ekleyin...' : 'Proje eklenmemiş.', style: GoogleFonts.inter(fontSize: 13.5, color: AppColors.mutedText))
           : Column(
               children: List.generate(_projects.length, (i) {
                 final p = _projects[i];
@@ -719,7 +732,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       title: 'Yetenekler',
       onEdit: _showAddSkillDialog,
       child: _skills.isEmpty
-          ? Text('Yetenek ekleyin...', style: GoogleFonts.inter(fontSize: 13.5, color: AppColors.mutedText))
+          ? Text(_isMyProfile ? 'Yetenek ekleyin...' : 'Yetenek eklenmemiş.', style: GoogleFonts.inter(fontSize: 13.5, color: AppColors.mutedText))
           : Wrap(
               spacing: 8, runSpacing: 8,
               children: _skills.map((s) => _buildDeletableChip(s, () async {
@@ -736,7 +749,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       title: 'Diller',
       onEdit: _showAddLanguageDialog,
       child: _languages.isEmpty
-          ? Text('Dil ekleyin...', style: GoogleFonts.inter(fontSize: 13.5, color: AppColors.mutedText))
+          ? Text(_isMyProfile ? 'Dil ekleyin...' : 'Dil eklenmemiş.', style: GoogleFonts.inter(fontSize: 13.5, color: AppColors.mutedText))
           : Column(
               children: List.generate(_languages.length, (i) {
                 final l = _languages[i];
@@ -747,8 +760,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Container(width: 6, height: 6, decoration: const BoxDecoration(color: AppColors.primaryAccent, shape: BoxShape.circle)),
                       const SizedBox(width: 10),
                       Expanded(child: Text('${l['language']} · ${l['level']}', style: GoogleFonts.inter(fontSize: 13.5, color: AppColors.bodyText))),
-                      GestureDetector(onTap: () async { setState(() => _languages.removeAt(i)); try { await _profileService.updateDynamicProfileField('languages', _languages); } catch(e){} },
-                          child: Icon(Icons.close, size: 16, color: AppColors.mutedText.withValues(alpha: 0.5))),
+                      if (_isMyProfile)
+                        GestureDetector(onTap: () async { setState(() => _languages.removeAt(i)); try { await _profileService.updateDynamicProfileField('languages', _languages); } catch(e){} },
+                            child: Icon(Icons.close, size: 16, color: AppColors.mutedText.withValues(alpha: 0.5))),
                     ],
                   ),
                 );
@@ -763,7 +777,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       title: 'Sosyal Medya',
       onEdit: _showEditSocialLinksDialog,
       child: _socialLinks.isEmpty || _socialLinks.values.every((v) => v.isEmpty)
-          ? Text('Sosyal medya linkleri ekleyin...', style: GoogleFonts.inter(fontSize: 13.5, color: AppColors.mutedText))
+          ? Text(_isMyProfile ? 'Sosyal medya linkleri ekleyin...' : 'Sosyal medya hesabı eklenmemiş.', style: GoogleFonts.inter(fontSize: 13.5, color: AppColors.mutedText))
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -850,7 +864,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ──────────────────────── 12. QR CODE ────────────────────────
   Widget _buildQRSection() {
-    final userId = _profileService.userId;
+    final userId = widget.userId ?? _profileService.userId;
     if (userId == null) return const SizedBox.shrink();
 
     return Container(
@@ -901,7 +915,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(title, style: _sectionTitleStyle()),
-              _buildEditIcon(onEdit),
+              if (_isMyProfile) _buildEditIcon(onEdit),
             ],
           ),
           const SizedBox(height: 14),
@@ -932,7 +946,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required VoidCallback onDelete,
   }) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: _isMyProfile ? onTap : null,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -964,7 +978,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
-          GestureDetector(onTap: onDelete, child: Icon(Icons.close, size: 16, color: AppColors.mutedText.withValues(alpha: 0.5))),
+          if (_isMyProfile)
+            GestureDetector(onTap: onDelete, child: Icon(Icons.close, size: 16, color: AppColors.mutedText.withValues(alpha: 0.5))),
         ],
       ),
     );
@@ -982,8 +997,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(label, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500, color: textColor)),
-          const SizedBox(width: 6),
-          GestureDetector(onTap: onDelete, child: Icon(Icons.close, size: 14, color: AppColors.mutedText.withValues(alpha: 0.6))),
+          if (_isMyProfile) ...[
+            const SizedBox(width: 6),
+            GestureDetector(onTap: onDelete, child: Icon(Icons.close, size: 14, color: AppColors.mutedText.withValues(alpha: 0.6))),
+          ]
         ],
       ),
     );

@@ -8,13 +8,14 @@ class ProfileService {
   String? get userId => _userId;
 
   /// Giriş yapan kullanıcının profilini çek
-  Future<Map<String, dynamic>?> fetchProfile() async {
-    if (_userId == null) return null;
+  Future<Map<String, dynamic>?> fetchProfile([String? targetUserId]) async {
+    final idToUse = targetUserId ?? _userId;
+    if (idToUse == null) return null;
     try {
       final data = await _client
           .from('profiles')
           .select()
-          .eq('id', _userId!)
+          .eq('id', idToUse)
           .maybeSingle();
       return data;
     } catch (e) {
@@ -59,13 +60,14 @@ class ProfileService {
   }
 
   /// Kullanıcının aldığı değerlendirmeleri çek
-  Future<List<Map<String, dynamic>>> fetchReviews() async {
-    if (_userId == null) return [];
+  Future<List<Map<String, dynamic>>> fetchReviews([String? targetUserId]) async {
+    final idToUse = targetUserId ?? _userId;
+    if (idToUse == null) return [];
     try {
       final data = await _client
           .from('reviews')
           .select()
-          .eq('reviewed_id', _userId!)
+          .eq('reviewed_id', idToUse)
           .order('created_at', ascending: false);
       return List<Map<String, dynamic>>.from(data);
     } catch (e) {

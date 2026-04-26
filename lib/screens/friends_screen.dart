@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/theme/app_colors.dart';
-
+import 'profile_screen.dart';
 class FriendsScreen extends StatefulWidget {
   const FriendsScreen({super.key});
 
@@ -501,6 +501,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
       children: _friends.map((friend) {
         final username = (friend['username'] ?? '').toString();
         final fullName = (friend['full_name'] ?? '').toString();
+        final id = (friend['id'] ?? '').toString();
 
         return Container(
           margin: const EdgeInsets.only(bottom: 10),
@@ -561,7 +562,16 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 child: const Text('Mesaj Gönder'),
               ),
               OutlinedButton(
-                onPressed: () {},
+                onPressed: () {
+                  if (id.isNotEmpty) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ProfileScreen(userId: id),
+                      ),
+                    );
+                  }
+                },
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(0, 36),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
