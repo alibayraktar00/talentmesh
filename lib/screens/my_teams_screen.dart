@@ -6,6 +6,8 @@ import '../providers/team_provider.dart';
 import '../core/services/team_service.dart';
 import 'create_team_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'team_detail_screen.dart';
+import 'team_detail_screen.dart';
 
 /// "Gruplar" sekmesinde kullanılan takım listeleme ekranı.
 /// Supabase'den gerçek zamanlı takım listesini çeker.
@@ -43,9 +45,13 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
 
         final data = snapshot.data ?? [];
         final currentUserId = _teamService.currentUserId ?? '';
-        final teams = data.map((map) => Team.fromMap(map, currentUserId)).toList();
+        final teams = data
+            .map((map) => Team.fromMap(map, currentUserId))
+            .toList();
 
-        return teams.isEmpty ? _buildEmptyState(context) : _buildTeamsList(context, teams);
+        return teams.isEmpty
+            ? _buildEmptyState(context)
+            : _buildTeamsList(context, teams);
       },
     );
   }
@@ -64,10 +70,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
               duration: const Duration(milliseconds: 600),
               curve: Curves.easeOutBack,
               builder: (context, value, child) {
-                return Transform.scale(
-                  scale: value,
-                  child: child,
-                );
+                return Transform.scale(scale: value, child: child);
               },
               child: Container(
                 width: 100,
@@ -141,8 +144,10 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
               GestureDetector(
                 onTap: () => _openCreateSheet(context),
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.primaryAccent.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
@@ -208,212 +213,277 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
         onTap: () => _showTeamDetailsSheet(context, team),
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: IntrinsicHeight(
-            child: Row(
-              children: [
-                // Sol accent bar
-                Container(
-                  width: 5,
-                  decoration: BoxDecoration(
-                    color: teamColor,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(16),
-                      bottomLeft: Radius.circular(16),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: IntrinsicHeight(
+              child: Row(
+                children: [
+                  // Sol accent bar
+                  Container(
+                    width: 5,
+                    decoration: BoxDecoration(
+                      color: teamColor,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(16),
+                        bottomLeft: Radius.circular(16),
+                      ),
                     ),
                   ),
-                ),
-                // Kart içeriği
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Başlık + Kurucu badge
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                team.name,
-                                style: GoogleFonts.inter(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.headingText,
+                  // Kart içeriği
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Başlık + Kurucu badge
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  team.name,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.headingText,
+                                  ),
                                 ),
                               ),
-                            ),
-                            if (team.isOwner) ...[
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: teamColor.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.star_rounded,
-                                        size: 12, color: teamColor),
-                                    const SizedBox(width: 3),
-                                    Text(
-                                      'Kurucu',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w600,
+                              if (team.isOwner) ...[
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: teamColor.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.star_rounded,
+                                        size: 12,
                                         color: teamColor,
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(width: 3),
+                                      Text(
+                                        'Kurucu',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                          color: teamColor,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              GestureDetector(
-                                onTap: () => _confirmDeleteTeam(context, team),
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
+                                const SizedBox(width: 8),
+                                GestureDetector(
+                                  onTap: () =>
+                                      _confirmDeleteTeam(context, team),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: const Color(
+                                        0xFFE53E3E,
+                                      ).withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.delete_outline,
+                                      size: 16,
+                                      color: Color(0xFFE53E3E),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+
+                          // Açıklama
+                          Text(
+                            team.description,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              fontSize: 12.5,
+                              height: 1.4,
+                              fontWeight: FontWeight.w400,
+                              color: AppColors.bodyText,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Roller
+                          if (team.roles.isNotEmpty) ...[
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: team.roles.map((role) {
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFE53E3E).withValues(alpha: 0.1),
+                                    color: AppColors.chipBg,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  child: const Icon(
-                                    Icons.delete_outline,
-                                    size: 16,
-                                    color: Color(0xFFE53E3E),
+                                  child: Text(
+                                    role,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppColors.primaryDark,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+
+                          // Üye sayısı progress
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.people_outline,
+                                size: 16,
+                                color: AppColors.mutedText,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                '${team.currentMembers} / ${team.maxMembers} Üye',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.mutedText,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: LinearProgressIndicator(
+                                    value: fillRatio,
+                                    minHeight: 5,
+                                    backgroundColor: AppColors.chipBg,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      teamColor,
+                                    ),
                                   ),
                                 ),
                               ),
                             ],
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-
-                        // Açıklama
-                        Text(
-                          team.description,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.inter(
-                            fontSize: 12.5,
-                            height: 1.4,
-                            fontWeight: FontWeight.w400,
-                            color: AppColors.bodyText,
                           ),
-                        ),
-                        const SizedBox(height: 12),
 
-                        // Roller
-                        if (team.roles.isNotEmpty) ...[
-                          Wrap(
-                            spacing: 6,
-                            runSpacing: 6,
-                            children: team.roles.map((role) {
-                              return Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: AppColors.chipBg,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  role,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.w500,
-                                    color: AppColors.primaryDark,
+                          // Skill tag'leri
+                          if (team.skills.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: team.skills.map((tag) {
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 5,
                                   ),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                          const SizedBox(height: 12),
-                        ],
-
-                        // Üye sayısı progress
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.people_outline,
-                              size: 16,
-                              color: AppColors.mutedText,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              '${team.currentMembers} / ${team.maxMembers} Üye',
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.mutedText,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
-                                child: LinearProgressIndicator(
-                                  value: fillRatio,
-                                  minHeight: 5,
-                                  backgroundColor: AppColors.chipBg,
-                                  valueColor:
-                                      AlwaysStoppedAnimation<Color>(teamColor),
-                                ),
-                              ),
+                                  decoration: BoxDecoration(
+                                    color: teamColor.withValues(alpha: 0.08),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: teamColor.withValues(alpha: 0.2),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    tag,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                      color: teamColor,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
                             ),
                           ],
-                        ),
-
-                        // Skill tag'leri
-                        if (team.skills.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          const Divider(height: 1),
                           const SizedBox(height: 12),
-                          Wrap(
-                            spacing: 6,
-                            runSpacing: 6,
-                            children: team.skills.map((tag) {
-                              return Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 5),
-                                decoration: BoxDecoration(
-                                  color: teamColor.withValues(alpha: 0.08),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: teamColor.withValues(alpha: 0.2),
-                                    width: 1,
-                                  ),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.calendar_month_rounded,
+                                size: 16,
+                                color: teamColor,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Toplantılar',
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: teamColor,
                                 ),
-                                child: Text(
-                                  tag,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w500,
-                                    color: teamColor,
-                                  ),
+                              ),
+                              const Spacer(),
+                              ElevatedButton.icon(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => TeamDetailScreen(
+                                        team: team,
+                                        teamProvider: widget.teamProvider,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(
+                                  Icons.arrow_forward_rounded,
+                                  size: 14,
                                 ),
-                              );
-                            }).toList(),
+                                label: const Text('Görüntüle / Planla'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: teamColor.withValues(
+                                    alpha: 0.1,
+                                  ),
+                                  foregroundColor: teamColor,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 0,
+                                  ),
+                                  minimumSize: const Size(0, 32),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
-                      ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -437,10 +507,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
         icon: const Icon(Icons.add_rounded, size: 20),
         label: Text(
           'Takım Oluştur',
-          style: GoogleFonts.inter(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-          ),
+          style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600),
         ),
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
@@ -456,10 +523,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
   }
 
   void _openCreateSheet(BuildContext context) {
-    showCreateTeamSheet(
-      context,
-      teamProvider: widget.teamProvider,
-    );
+    showCreateTeamSheet(context, teamProvider: widget.teamProvider);
   }
 
   void _confirmDeleteTeam(BuildContext context, Team team) {
@@ -515,7 +579,10 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
             ),
             child: Text(
               'Sil',
-              style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600),
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -571,9 +638,11 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
       // Varsayılan takım üyeleri tablosu "team_members", ilgili profil bilgilerini de çeker
       final response = await _client
           .from('team_members')
-          .select('id, user_id, joined_at, profiles(username, full_name, avatar_url, department)')
+          .select(
+            'id, user_id, joined_at, profiles(username, full_name, avatar_url, department)',
+          )
           .eq('team_id', widget.team.id);
-      
+
       if (mounted) {
         setState(() {
           _members = List<Map<String, dynamic>>.from(response);
@@ -595,17 +664,30 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
     setState(() => _isUpdatingDescription = true);
     try {
       final teamService = TeamService();
-      await teamService.updateTeamDescription(widget.team.id, _descController.text.trim());
+      await teamService.updateTeamDescription(
+        widget.team.id,
+        _descController.text.trim(),
+      );
       if (mounted) {
         setState(() {
           _currentDescription = _descController.text.trim();
           _isEditingDescription = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Açıklama güncellendi.'), backgroundColor: AppColors.onlineGreen));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Açıklama güncellendi.'),
+            backgroundColor: AppColors.onlineGreen,
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Güncellenirken hata oluştu: $e'), backgroundColor: const Color(0xFFE53E3E)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Güncellenirken hata oluştu: $e'),
+            backgroundColor: const Color(0xFFE53E3E),
+          ),
+        );
       }
     } finally {
       if (mounted) {
@@ -619,17 +701,33 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Üyeyi Çıkar', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-        content: Text('$memberName isimli üyeyi takımdan çıkarmak istediğinize emin misiniz?'),
+        title: Text(
+          'Üyeyi Çıkar',
+          style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          '$memberName isimli üyeyi takımdan çıkarmak istediğinize emin misiniz?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text('İptal', style: TextStyle(color: AppColors.mutedText))),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('İptal', style: TextStyle(color: AppColors.mutedText)),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFE53E3E),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-            onPressed: () => Navigator.of(ctx).pop(true), 
-            child: const Text('Çıkar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text(
+              'Çıkar',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
@@ -642,13 +740,25 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
       await teamService.removeTeamMember(membershipId);
       if (mounted) {
         setState(() {
-          _members.removeWhere((m) => m['id'].toString() == membershipId.toString());
+          _members.removeWhere(
+            (m) => m['id'].toString() == membershipId.toString(),
+          );
         });
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Üye takımdan çıkarıldı.'), backgroundColor: AppColors.onlineGreen));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Üye takımdan çıkarıldı.'),
+            backgroundColor: AppColors.onlineGreen,
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e'), backgroundColor: const Color(0xFFE53E3E)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Hata: $e'),
+            backgroundColor: const Color(0xFFE53E3E),
+          ),
+        );
       }
     }
   }
@@ -657,7 +767,7 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
   Widget build(BuildContext context) {
     final sheetHeight = MediaQuery.of(context).size.height * 0.85;
     final team = widget.team;
-    
+
     return Container(
       height: sheetHeight,
       decoration: const BoxDecoration(
@@ -676,7 +786,7 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          
+
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
@@ -694,7 +804,11 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
                           color: team.color.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: Icon(Icons.group_rounded, color: team.color, size: 28),
+                        child: Icon(
+                          Icons.group_rounded,
+                          color: team.color,
+                          size: 28,
+                        ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -713,7 +827,11 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
                             const SizedBox(height: 4),
                             Row(
                               children: [
-                                Icon(Icons.people_alt_outlined, size: 14, color: AppColors.mutedText),
+                                Icon(
+                                  Icons.people_alt_outlined,
+                                  size: 14,
+                                  color: AppColors.mutedText,
+                                ),
                                 const SizedBox(width: 4),
                                 Text(
                                   '${team.currentMembers} / ${team.maxMembers} Üye',
@@ -731,7 +849,7 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  
+
                   // Description
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -746,7 +864,11 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
                       ),
                       if (!_isEditingDescription)
                         IconButton(
-                          icon: const Icon(Icons.edit_outlined, size: 20, color: AppColors.primaryAccent),
+                          icon: const Icon(
+                            Icons.edit_outlined,
+                            size: 20,
+                            color: AppColors.primaryAccent,
+                          ),
                           onPressed: () {
                             setState(() {
                               _isEditingDescription = true;
@@ -770,11 +892,17 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
                             fillColor: AppColors.white,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(14),
-                              borderSide: BorderSide(color: AppColors.inputBorder.withValues(alpha: 0.5)),
+                              borderSide: BorderSide(
+                                color: AppColors.inputBorder.withValues(
+                                  alpha: 0.5,
+                                ),
+                              ),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(14),
-                              borderSide: const BorderSide(color: AppColors.primaryAccent),
+                              borderSide: const BorderSide(
+                                color: AppColors.primaryAccent,
+                              ),
                             ),
                           ),
                         ),
@@ -789,24 +917,50 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
                                   _descController.text = _currentDescription;
                                 });
                               },
-                              child: Text('İptal', style: GoogleFonts.inter(color: AppColors.mutedText)),
+                              child: Text(
+                                'İptal',
+                                style: GoogleFonts.inter(
+                                  color: AppColors.mutedText,
+                                ),
+                              ),
                             ),
                             const SizedBox(width: 8),
                             SizedBox(
                               width: 110,
                               height: 44,
                               child: ElevatedButton(
-                                onPressed: _isUpdatingDescription ? null : () {
-                                  _updateDescription();
-                                },
+                                onPressed: _isUpdatingDescription
+                                    ? null
+                                    : () {
+                                        _updateDescription();
+                                      },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.primaryAccent,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
                                   padding: EdgeInsets.zero,
                                 ),
-                                child: _isUpdatingDescription 
-                                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.5, backgroundColor: Colors.white24, valueColor: AlwaysStoppedAnimation<Color>(Colors.white))) 
-                                    : Text('Kaydet', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold)),
+                                child: _isUpdatingDescription
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.5,
+                                          backgroundColor: Colors.white24,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                Colors.white,
+                                              ),
+                                        ),
+                                      )
+                                    : Text(
+                                        'Kaydet',
+                                        style: GoogleFonts.inter(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                               ),
                             ),
                           ],
@@ -820,10 +974,14 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
                       decoration: BoxDecoration(
                         color: AppColors.white,
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: AppColors.inputBorder.withValues(alpha: 0.5)),
+                        border: Border.all(
+                          color: AppColors.inputBorder.withValues(alpha: 0.5),
+                        ),
                       ),
                       child: Text(
-                        _currentDescription.isEmpty ? 'Açıklama bulunmuyor.' : _currentDescription,
+                        _currentDescription.isEmpty
+                            ? 'Açıklama bulunmuyor.'
+                            : _currentDescription,
                         style: GoogleFonts.inter(
                           fontSize: 14,
                           fontWeight: FontWeight.w400,
@@ -844,7 +1002,7 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  
+
                   _buildMembersList(),
                 ],
               ),
@@ -864,7 +1022,7 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
         ),
       );
     }
-    
+
     // Eğer tablo yoksa veya hata aldıysak, kurucuyu (kendimizi) geçici olarak gösterelim.
     if (_hasError || _members.isEmpty) {
       return Container(
@@ -887,11 +1045,17 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
                 children: [
                   Text(
                     'Kurucu (Sen)',
-                    style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 15),
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
                   ),
                   Text(
                     'Henüz başka üye katılmamış gibi görünüyor.',
-                    style: GoogleFonts.inter(fontSize: 12, color: AppColors.mutedText),
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: AppColors.mutedText,
+                    ),
                   ),
                 ],
               ),
@@ -912,7 +1076,7 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
         final fullName = profile['full_name'] ?? 'İsimsiz Üye';
         final department = profile['department'] ?? '';
         final avatarUrl = profile['avatar_url'];
-        
+
         return Container(
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.all(12),
@@ -932,8 +1096,15 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
               CircleAvatar(
                 radius: 20,
                 backgroundColor: AppColors.chipBg,
-                backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
-                child: avatarUrl == null ? Text(fullName[0].toUpperCase(), style: const TextStyle(color: AppColors.primaryAccent)) : null,
+                backgroundImage: avatarUrl != null
+                    ? NetworkImage(avatarUrl)
+                    : null,
+                child: avatarUrl == null
+                    ? Text(
+                        fullName[0].toUpperCase(),
+                        style: const TextStyle(color: AppColors.primaryAccent),
+                      )
+                    : null,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -961,9 +1132,14 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.person_remove_outlined, color: Color(0xFFE53E3E), size: 20),
+                icon: const Icon(
+                  Icons.person_remove_outlined,
+                  color: Color(0xFFE53E3E),
+                  size: 20,
+                ),
                 tooltip: 'Üyeyi Çıkar',
-                onPressed: () => _removeMember(memberRow['id'].toString(), fullName),
+                onPressed: () =>
+                    _removeMember(memberRow['id'].toString(), fullName),
               ),
             ],
           ),
@@ -972,4 +1148,3 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
     );
   }
 }
-

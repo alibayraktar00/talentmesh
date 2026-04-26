@@ -28,10 +28,7 @@ class _CreateTeamSheet extends StatefulWidget {
   final TeamProvider teamProvider;
   final VoidCallback? onTeamCreated;
 
-  const _CreateTeamSheet({
-    required this.teamProvider,
-    this.onTeamCreated,
-  });
+  const _CreateTeamSheet({required this.teamProvider, this.onTeamCreated});
 
   @override
   State<_CreateTeamSheet> createState() => _CreateTeamSheetState();
@@ -177,7 +174,9 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
 
                       // ── Takım Açıklaması ──
                       _buildSectionLabel(
-                          'Takım Açıklaması', Icons.description_outlined),
+                        'Takım Açıklaması',
+                        Icons.description_outlined,
+                      ),
                       const SizedBox(height: 8),
                       _buildTextField(
                         controller: _descriptionController,
@@ -195,7 +194,9 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
 
                       // ── Maksimum Üye Sayısı ──
                       _buildSectionLabel(
-                          'Maksimum Üye Sayısı', Icons.people_outline),
+                        'Maksimum Üye Sayısı',
+                        Icons.people_outline,
+                      ),
                       const SizedBox(height: 12),
                       _buildMemberCounter(),
                       const SizedBox(height: 24),
@@ -221,7 +222,9 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
 
                       // ── Gerekli Yetenekler ──
                       _buildSectionLabel(
-                          'Gerekli Yetenekler', Icons.code_outlined),
+                        'Gerekli Yetenekler',
+                        Icons.code_outlined,
+                      ),
                       const SizedBox(height: 4),
                       Text(
                         'Projede kullanılacak teknolojileri seçin',
@@ -429,18 +432,18 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide:
-                const BorderSide(color: AppColors.primaryAccent, width: 1.5),
+            borderSide: const BorderSide(
+              color: AppColors.primaryAccent,
+              width: 1.5,
+            ),
           ),
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide:
-                const BorderSide(color: Color(0xFFE53E3E), width: 1),
+            borderSide: const BorderSide(color: Color(0xFFE53E3E), width: 1),
           ),
           focusedErrorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide:
-                const BorderSide(color: Color(0xFFE53E3E), width: 1.5),
+            borderSide: const BorderSide(color: Color(0xFFE53E3E), width: 1.5),
           ),
           filled: true,
           fillColor: AppColors.white,
@@ -711,8 +714,9 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
           ),
           backgroundColor: const Color(0xFFE53E3E),
           behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
       return;
@@ -736,7 +740,8 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
 
       // Team objesi oluştur ve provider'a ekle (Arayüzde anlık göstermek için)
       final newTeam = Team(
-        id: DateTime.now().millisecondsSinceEpoch.toString(), // İleride Supabase'den insert sonucu dönen ID de kullanılabilir
+        id: DateTime.now().millisecondsSinceEpoch
+            .toString(), // İleride Supabase'den insert sonucu dönen ID de kullanılabilir
         name: _teamNameController.text.trim(),
         description: _descriptionController.text.trim(),
         roles: _selectedRoles.toList(),
@@ -775,15 +780,15 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
           backgroundColor: AppColors.onlineGreen,
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 3),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         ),
       );
 
       // "Gruplar" sekmesine yönlendir
       widget.onTeamCreated?.call();
-
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

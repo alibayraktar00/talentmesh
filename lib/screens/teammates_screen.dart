@@ -9,7 +9,8 @@ class TeammatesScreen extends StatefulWidget {
   State<TeammatesScreen> createState() => _TeammatesScreenState();
 }
 
-class _TeammatesScreenState extends State<TeammatesScreen> with SingleTickerProviderStateMixin {
+class _TeammatesScreenState extends State<TeammatesScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -50,9 +51,15 @@ class _TeammatesScreenState extends State<TeammatesScreen> with SingleTickerProv
                 gradient: AppColors.primaryGradient,
               ),
               labelColor: AppColors.white,
-              labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
+              labelStyle: GoogleFonts.inter(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
               unselectedLabelColor: AppColors.mutedText,
-              unselectedLabelStyle: GoogleFonts.inter(fontWeight: FontWeight.w500, fontSize: 13),
+              unselectedLabelStyle: GoogleFonts.inter(
+                fontWeight: FontWeight.w500,
+                fontSize: 13,
+              ),
               indicatorSize: TabBarIndicatorSize.tab,
               dividerColor: Colors.transparent,
               tabs: const [
@@ -70,12 +77,14 @@ class _TeammatesScreenState extends State<TeammatesScreen> with SingleTickerProv
               _buildEmptyState(
                 icon: Icons.people_outline,
                 title: "Henüz bir takımınız yok",
-                subtitle: "Bir takıma katıldığınızda, o takımdaki çalışma arkadaşlarınızı burada görebileceksiniz.",
+                subtitle:
+                    "Bir takıma katıldığınızda, o takımdaki çalışma arkadaşlarınızı burada görebileceksiniz.",
               ),
               _buildEmptyState(
                 icon: Icons.history_edu,
                 title: "Geçmiş proje bulunamadı",
-                subtitle: "Eskiden beraber çalıştığınız ve projesini tamamladığınız takım arkadaşlarınız burada listelenir.",
+                subtitle:
+                    "Eskiden beraber çalıştığınız ve projesini tamamladığınız takım arkadaşlarınız burada listelenir.",
               ),
             ],
           ),
@@ -84,7 +93,11 @@ class _TeammatesScreenState extends State<TeammatesScreen> with SingleTickerProv
     );
   }
 
-  Widget _buildEmptyState({required IconData icon, required String title, required String subtitle}) {
+  Widget _buildEmptyState({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -97,11 +110,7 @@ class _TeammatesScreenState extends State<TeammatesScreen> with SingleTickerProv
                 color: AppColors.primaryAccent.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                icon,
-                size: 64,
-                color: AppColors.primaryAccent,
-              ),
+              child: Icon(icon, size: 64, color: AppColors.primaryAccent),
             ),
             const SizedBox(height: 24),
             Text(

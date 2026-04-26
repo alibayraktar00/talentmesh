@@ -41,10 +41,7 @@ class _LoginScreenState extends State<LoginScreen>
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.08),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeOut,
-    ));
+    ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeOut));
     _fadeController.forward();
   }
 
@@ -100,7 +97,6 @@ class _LoginScreenState extends State<LoginScreen>
 
     return 'Giriş yapılamadı. Lütfen bilgilerinizi kontrol edip tekrar deneyin.';
   }
-
 
   Future<void> _signIn() async {
     final identifier = _identifierController.text.trim();
@@ -223,8 +219,9 @@ class _LoginScreenState extends State<LoginScreen>
                           color: AppColors.mutedText,
                           size: 20,
                         ),
-                        prefixIconConstraints:
-                            const BoxConstraints(minWidth: 52),
+                        prefixIconConstraints: const BoxConstraints(
+                          minWidth: 52,
+                        ),
                         suffixIcon: GestureDetector(
                           onTap: () {
                             setState(() {
@@ -250,12 +247,15 @@ class _LoginScreenState extends State<LoginScreen>
                       decoration: BoxDecoration(
                         gradient: _isLoading
                             ? const LinearGradient(
-                                colors: [Colors.grey, Colors.grey])
+                                colors: [Colors.grey, Colors.grey],
+                              )
                             : AppColors.primaryGradient,
                         borderRadius: BorderRadius.circular(14),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.primaryAccent.withValues(alpha: 0.35),
+                            color: AppColors.primaryAccent.withValues(
+                              alpha: 0.35,
+                            ),
                             blurRadius: 16,
                             offset: const Offset(0, 6),
                           ),
@@ -361,9 +361,7 @@ class _LoginScreenState extends State<LoginScreen>
     return SizedBox(
       width: 100,
       height: 100,
-      child: CustomPaint(
-        painter: _CollaborationLogoPainter(),
-      ),
+      child: CustomPaint(painter: _CollaborationLogoPainter()),
     );
   }
 }

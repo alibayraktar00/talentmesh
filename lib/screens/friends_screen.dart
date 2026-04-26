@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/theme/app_colors.dart';
 import 'profile_screen.dart';
+
 class FriendsScreen extends StatefulWidget {
   const FriendsScreen({super.key});
 
@@ -43,10 +44,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
   }
 
   Future<void> _bootstrap() async {
-    await Future.wait([
-      _loadIncomingRequests(),
-      _loadFriends(),
-    ]);
+    await Future.wait([_loadIncomingRequests(), _loadFriends()]);
     _setupRealtime();
   }
 
@@ -128,7 +126,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
           final requesterId = (r['requester_id'] ?? '').toString();
           return {
             ...r,
-            'requester_profile': profilesById[requesterId] ?? <String, dynamic>{},
+            'requester_profile':
+                profilesById[requesterId] ?? <String, dynamic>{},
           };
         }).toList();
         _unreadCount = unread;
@@ -237,7 +236,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
     try {
       await _client
           .from('friend_requests')
-          .update({'status': newStatus, 'is_read': true}).eq('id', requestId);
+          .update({'status': newStatus, 'is_read': true})
+          .eq('id', requestId);
 
       if (!mounted) return;
       setState(() {
@@ -270,8 +270,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
           schema: 'public',
           table: 'friend_requests',
           callback: (payload) async {
-            final row =
-                (payload.newRecord.isNotEmpty ? payload.newRecord : payload.oldRecord);
+            final row = (payload.newRecord.isNotEmpty
+                ? payload.newRecord
+                : payload.oldRecord);
             final addresseeId = (row['addressee_id'] ?? '').toString();
             final requesterId = (row['requester_id'] ?? '').toString();
             final type = (row['request_type'] ?? '').toString();
@@ -327,14 +328,19 @@ class _FriendsScreenState extends State<FriendsScreen> {
         Stack(
           clipBehavior: Clip.none,
           children: [
-            const Icon(Icons.notifications_none, color: AppColors.primaryAccent),
+            const Icon(
+              Icons.notifications_none,
+              color: AppColors.primaryAccent,
+            ),
             if (_unreadCount > 0)
               Positioned(
                 right: -6,
                 top: -4,
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 1.5,
+                  ),
                   decoration: const BoxDecoration(
                     color: Colors.red,
                     borderRadius: BorderRadius.all(Radius.circular(10)),
@@ -374,10 +380,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
           child: Text(
             'Henüz gelen bir istek yok.',
             textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              color: AppColors.mutedText,
-            ),
+            style: GoogleFonts.inter(fontSize: 14, color: AppColors.mutedText),
           ),
         ),
       );
@@ -392,7 +395,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
         final request = _incomingRequests[index];
         final id = request['id'].toString();
         final p =
-            (request['requester_profile'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+            (request['requester_profile'] as Map<String, dynamic>?) ??
+            <String, dynamic>{};
         final username = (p['username'] ?? '').toString();
         final fullName = (p['full_name'] ?? '').toString();
         final isBusy = _actionLoadingIds.contains(id);
@@ -458,8 +462,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   runSpacing: 6,
                   children: [
                     TextButton(
-                      onPressed: () =>
-                          _setRequestStatus(requestId: id, newStatus: 'rejected'),
+                      onPressed: () => _setRequestStatus(
+                        requestId: id,
+                        newStatus: 'rejected',
+                      ),
                       style: TextButton.styleFrom(
                         minimumSize: const Size(0, 36),
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -468,8 +474,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       child: const Text('Reddet'),
                     ),
                     ElevatedButton(
-                      onPressed: () =>
-                          _setRequestStatus(requestId: id, newStatus: 'accepted'),
+                      onPressed: () => _setRequestStatus(
+                        requestId: id,
+                        newStatus: 'accepted',
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryAccent,
                         foregroundColor: AppColors.white,
@@ -596,10 +604,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
       ),
       child: Text(
         text,
-        style: GoogleFonts.inter(
-          fontSize: 14,
-          color: AppColors.mutedText,
-        ),
+        style: GoogleFonts.inter(fontSize: 14, color: AppColors.mutedText),
       ),
     );
   }

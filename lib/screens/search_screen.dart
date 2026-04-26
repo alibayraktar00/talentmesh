@@ -125,9 +125,15 @@ class _SearchScreenState extends State<SearchScreen> {
       if (status == 'accepted') {
         next = const _RelationState(_RelationType.accepted);
       } else if (status == 'pending' && requesterId == myId) {
-        next = _RelationState(_RelationType.pendingOutgoing, requestId: requestId);
+        next = _RelationState(
+          _RelationType.pendingOutgoing,
+          requestId: requestId,
+        );
       } else if (status == 'pending' && addresseeId == myId) {
-        next = _RelationState(_RelationType.pendingIncoming, requestId: requestId);
+        next = _RelationState(
+          _RelationType.pendingIncoming,
+          requestId: requestId,
+        );
       } else {
         next = const _RelationState(_RelationType.none);
       }
@@ -155,7 +161,8 @@ class _SearchScreenState extends State<SearchScreen> {
   Future<void> _searchUsers(String rawQuery) async {
     final query = rawQuery.trim().toLowerCase();
 
-    final hasActiveFilter = _filterSchool.isNotEmpty ||
+    final hasActiveFilter =
+        _filterSchool.isNotEmpty ||
         _filterDepartment.isNotEmpty ||
         _filterYear.isNotEmpty ||
         _filterDegree.isNotEmpty ||
@@ -187,7 +194,11 @@ class _SearchScreenState extends State<SearchScreen> {
 
     try {
       // Dinamik PostgREST Query Builder
-      var queryBuilder = _client.from('profiles').select('id, username, full_name, school, department, education_year, degree, skills, looking_for');
+      var queryBuilder = _client
+          .from('profiles')
+          .select(
+            'id, username, full_name, school, department, education_year, degree, skills, looking_for',
+          );
 
       // İsim Filtresi (full_name üzerinden ilike)
       if (query.isNotEmpty) {
@@ -214,14 +225,19 @@ class _SearchScreenState extends State<SearchScreen> {
         queryBuilder = queryBuilder.overlaps('skills', _filterSkills.toList());
       }
       if (_filterRoles.isNotEmpty) {
-        queryBuilder = queryBuilder.overlaps('looking_for', _filterRoles.toList());
+        queryBuilder = queryBuilder.overlaps(
+          'looking_for',
+          _filterRoles.toList(),
+        );
       }
 
       // Kendimizi (aktif kullanıcıyı) her zaman dışarıda bırak
       queryBuilder = queryBuilder.neq('id', myId);
 
       // Çalıştır ve sınırlandır
-      final response = await queryBuilder.order('username', ascending: true).limit(30);
+      final response = await queryBuilder
+          .order('username', ascending: true)
+          .limit(30);
 
       final data = List<Map<String, dynamic>>.from(response);
 
@@ -262,7 +278,8 @@ class _SearchScreenState extends State<SearchScreen> {
       return;
     }
 
-    final relation = _relationsByUserId[addresseeId] ??
+    final relation =
+        _relationsByUserId[addresseeId] ??
         const _RelationState(_RelationType.none);
     if (relation.type == _RelationType.accepted ||
         relation.type == _RelationType.pendingOutgoing) {
@@ -283,8 +300,9 @@ class _SearchScreenState extends State<SearchScreen> {
 
       if (!mounted) return;
       setState(() {
-        _relationsByUserId[addresseeId] =
-            const _RelationState(_RelationType.pendingOutgoing);
+        _relationsByUserId[addresseeId] = const _RelationState(
+          _RelationType.pendingOutgoing,
+        );
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -314,12 +332,14 @@ class _SearchScreenState extends State<SearchScreen> {
     try {
       await _client
           .from('friend_requests')
-          .update({'status': 'accepted'}).eq('id', requestId);
+          .update({'status': 'accepted'})
+          .eq('id', requestId);
 
       if (!mounted) return;
       setState(() {
-        _relationsByUserId[otherUserId] =
-            const _RelationState(_RelationType.accepted);
+        _relationsByUserId[otherUserId] = const _RelationState(
+          _RelationType.accepted,
+        );
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -385,7 +405,10 @@ class _SearchScreenState extends State<SearchScreen> {
                   children: [
                     if (_searchController.text.isNotEmpty)
                       IconButton(
-                        icon: const Icon(Icons.clear, color: AppColors.mutedText),
+                        icon: const Icon(
+                          Icons.clear,
+                          color: AppColors.mutedText,
+                        ),
                         onPressed: () {
                           _searchController.clear();
                           FocusScope.of(context).unfocus();
@@ -393,17 +416,26 @@ class _SearchScreenState extends State<SearchScreen> {
                       ),
                     IconButton(
                       icon: Icon(
-                        Icons.filter_list, 
-                        color: (_filterSchool.isNotEmpty || _filterDepartment.isNotEmpty || _filterYear.isNotEmpty || _filterDegree.isNotEmpty || _filterSkills.isNotEmpty || _filterRoles.isNotEmpty)
-                          ? AppColors.primaryAccent 
-                          : AppColors.mutedText
+                        Icons.filter_list,
+                        color:
+                            (_filterSchool.isNotEmpty ||
+                                _filterDepartment.isNotEmpty ||
+                                _filterYear.isNotEmpty ||
+                                _filterDegree.isNotEmpty ||
+                                _filterSkills.isNotEmpty ||
+                                _filterRoles.isNotEmpty)
+                            ? AppColors.primaryAccent
+                            : AppColors.mutedText,
                       ),
                       onPressed: _showFilterSheet,
                     ),
                   ],
                 ),
                 border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
               ),
               style: GoogleFonts.inter(
                 color: AppColors.headingText,
@@ -412,11 +444,9 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
           ),
         ),
-        
+
         // İçerik: İlk durum / Yükleniyor / Sonuçlar
-        Expanded(
-          child: _buildBody(),
-        ),
+        Expanded(child: _buildBody()),
       ],
     );
   }
@@ -444,10 +474,7 @@ class _SearchScreenState extends State<SearchScreen> {
           const SizedBox(height: 16),
           Text(
             'Kullanıcı adı ile arama yap',
-            style: GoogleFonts.inter(
-              fontSize: 16,
-              color: AppColors.mutedText,
-            ),
+            style: GoogleFonts.inter(fontSize: 16, color: AppColors.mutedText),
           ),
         ],
       ),
@@ -459,16 +486,16 @@ class _SearchScreenState extends State<SearchScreen> {
       return Center(
         child: Text(
           'Sonuç bulunamadı.',
-          style: GoogleFonts.inter(
-            fontSize: 15,
-            color: AppColors.mutedText,
-          ),
+          style: GoogleFonts.inter(fontSize: 15, color: AppColors.mutedText),
         ),
       );
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10).copyWith(bottom: 100),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 20,
+        vertical: 10,
+      ).copyWith(bottom: 100),
       physics: const BouncingScrollPhysics(),
       itemCount: _results.length,
       itemBuilder: (context, index) {
@@ -477,7 +504,8 @@ class _SearchScreenState extends State<SearchScreen> {
         final username = (item['username'] ?? '').toString();
         final fullName = (item['full_name'] ?? '').toString();
         final isSending = _sendingRequestIds.contains(userId);
-        final relation = _relationsByUserId[userId] ??
+        final relation =
+            _relationsByUserId[userId] ??
             const _RelationState(_RelationType.none);
 
         String buttonText;
@@ -592,7 +620,10 @@ class _SearchScreenState extends State<SearchScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
@@ -632,13 +663,25 @@ class _SearchScreenState extends State<SearchScreen> {
 
     // Seçilebilir yetenekler (Kendi projendeki sabit listene göre güncelleyebilirsin)
     final availableSkills = [
-      'Python', 'Dart', 'Flutter', 'JavaScript', 'TypeScript',
-      'React', 'Node.js', 'Figma', 'AWS', 'Docker'
+      'Python',
+      'Dart',
+      'Flutter',
+      'JavaScript',
+      'TypeScript',
+      'React',
+      'Node.js',
+      'Figma',
+      'AWS',
+      'Docker',
     ];
     // Seçilebilir aranan roller
     final availableRoles = [
-      'Flutter Dev', 'Backend Dev', 'Frontend Dev',
-      'UI/UX Designer', 'Data Scientist', 'DevOps'
+      'Flutter Dev',
+      'Backend Dev',
+      'Frontend Dev',
+      'UI/UX Designer',
+      'Data Scientist',
+      'DevOps',
     ];
 
     showModalBottomSheet(
@@ -654,10 +697,17 @@ class _SearchScreenState extends State<SearchScreen> {
 
           Widget buildSectionTitle(String title) {
             return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
+              padding: const EdgeInsets.symmetric(
+                vertical: 8.0,
+                horizontal: 4.0,
+              ),
               child: Text(
-                title, 
-                style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.headingText)
+                title,
+                style: GoogleFonts.inter(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.headingText,
+                ),
               ),
             );
           }
@@ -675,11 +725,20 @@ class _SearchScreenState extends State<SearchScreen> {
                 },
                 decoration: InputDecoration(
                   hintText: hint,
-                  hintStyle: GoogleFonts.inter(fontSize: 13, color: AppColors.mutedText),
+                  hintStyle: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: AppColors.mutedText,
+                  ),
                   filled: true,
                   fillColor: AppColors.chipBg,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
               ),
             );
@@ -693,23 +752,34 @@ class _SearchScreenState extends State<SearchScreen> {
                 final isSelected = selected.contains(item);
                 return FilterChip(
                   label: Text(
-                    item, 
+                    item,
                     style: GoogleFonts.inter(
-                      fontSize: 12, 
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                      color: isSelected ? AppColors.white : AppColors.bodyText
-                    )
+                      fontSize: 12,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.w400,
+                      color: isSelected ? AppColors.white : AppColors.bodyText,
+                    ),
                   ),
                   selected: isSelected,
                   selectedColor: AppColors.primaryAccent,
                   backgroundColor: AppColors.chipBg,
                   checkmarkColor: AppColors.white,
                   showCheckmark: false,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: isSelected ? Colors.transparent : AppColors.inputBorder)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    side: BorderSide(
+                      color: isSelected
+                          ? Colors.transparent
+                          : AppColors.inputBorder,
+                    ),
+                  ),
                   onSelected: (val) {
                     setSheetState(() {
-                      if (val) selected.add(item);
-                      else selected.remove(item);
+                      if (val)
+                        selected.add(item);
+                      else
+                        selected.remove(item);
                     });
                   },
                 );
@@ -727,21 +797,50 @@ class _SearchScreenState extends State<SearchScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: AppColors.inputBorder, borderRadius: BorderRadius.circular(2)))),
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.inputBorder,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Gelişmiş Filtreleme', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.headingText)),
+                    Text(
+                      'Gelişmiş Filtreleme',
+                      style: GoogleFonts.inter(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.headingText,
+                      ),
+                    ),
                     TextButton(
                       onPressed: () {
                         setSheetState(() {
-                          tempSchool = ''; tempDepartment = ''; tempYear = ''; tempDegree = '';
-                          tempSkills.clear(); tempRoles.clear();
-                          sC.clear(); dC.clear(); yC.clear(); deC.clear();
+                          tempSchool = '';
+                          tempDepartment = '';
+                          tempYear = '';
+                          tempDegree = '';
+                          tempSkills.clear();
+                          tempRoles.clear();
+                          sC.clear();
+                          dC.clear();
+                          yC.clear();
+                          deC.clear();
                         });
                       },
-                      child: Text('Temizle', style: GoogleFonts.inter(color: AppColors.primaryAccent, fontWeight: FontWeight.w600)),
+                      child: Text(
+                        'Temizle',
+                        style: GoogleFonts.inter(
+                          color: AppColors.primaryAccent,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -757,9 +856,16 @@ class _SearchScreenState extends State<SearchScreen> {
                         buildTextField(dC, 'Bölüm'),
                         Row(
                           children: [
-                            Expanded(child: buildTextField(yC, 'Yıl (Örn: 2024)')),
+                            Expanded(
+                              child: buildTextField(yC, 'Yıl (Örn: 2024)'),
+                            ),
                             const SizedBox(width: 12),
-                            Expanded(child: buildTextField(deC, 'Derece (Örn: Lisans)')),
+                            Expanded(
+                              child: buildTextField(
+                                deC,
+                                'Derece (Örn: Lisans)',
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 8),
@@ -791,10 +897,19 @@ class _SearchScreenState extends State<SearchScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryAccent,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                     elevation: 0,
                   ),
-                  child: Text('Filtreleri Uygula', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.white)),
+                  child: Text(
+                    'Filtreleri Uygula',
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.white,
+                    ),
+                  ),
                 ),
                 SizedBox(height: MediaQuery.of(ctx).viewInsets.bottom),
               ],

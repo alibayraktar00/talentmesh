@@ -46,10 +46,7 @@ class _SignUpScreenState extends State<SignUpScreen>
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.08),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeOut,
-    ));
+    ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeOut));
     _fadeController.forward();
   }
 
@@ -106,7 +103,8 @@ class _SignUpScreenState extends State<SignUpScreen>
   Future<void> _pickDateOfBirth() async {
     if (_isLoading) return;
     final now = DateTime.now();
-    final initial = _dateOfBirth ??
+    final initial =
+        _dateOfBirth ??
         DateTime(now.year - 18, now.month, now.day); // varsayılan: 18 yaş
 
     final picked = await showDatePicker(
@@ -208,7 +206,9 @@ class _SignUpScreenState extends State<SignUpScreen>
 
       // Türkçe yorum: Profiles insert işlemini trigger yönettiği için burada manuel insert yapılmıyor.
       if (res.session == null) {
-        _showError('Kayıt tamamlandı ancak oturum açılamadı. Lütfen e-postanızı doğrulayın.');
+        _showError(
+          'Kayıt tamamlandı ancak oturum açılamadı. Lütfen e-postanızı doğrulayın.',
+        );
         return;
       }
 
@@ -237,8 +237,11 @@ class _SignUpScreenState extends State<SignUpScreen>
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new,
-              color: AppColors.headingText, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: AppColors.headingText,
+            size: 20,
+          ),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -281,8 +284,11 @@ class _SignUpScreenState extends State<SignUpScreen>
                         textInputAction: TextInputAction.next,
                         decoration: const InputDecoration(
                           hintText: 'Tam Ad',
-                          prefixIcon: Icon(Icons.person_outline,
-                              color: AppColors.mutedText, size: 20),
+                          prefixIcon: Icon(
+                            Icons.person_outline,
+                            color: AppColors.mutedText,
+                            size: 20,
+                          ),
                           prefixIconConstraints: BoxConstraints(minWidth: 52),
                         ),
                         validator: (v) {
@@ -305,18 +311,24 @@ class _SignUpScreenState extends State<SignUpScreen>
                             RegExp(r'[a-zA-Z0-9_.]|\s'),
                           ),
                           TextInputFormatter.withFunction((oldValue, newValue) {
-                            final normalized = _normalizeUsername(newValue.text);
+                            final normalized = _normalizeUsername(
+                              newValue.text,
+                            );
                             return TextEditingValue(
                               text: normalized,
                               selection: TextSelection.collapsed(
-                                  offset: normalized.length),
+                                offset: normalized.length,
+                              ),
                             );
                           }),
                         ],
                         decoration: const InputDecoration(
                           hintText: 'Kullanıcı Adı (küçük harf, boşluksuz)',
-                          prefixIcon: Icon(Icons.alternate_email,
-                              color: AppColors.mutedText, size: 20),
+                          prefixIcon: Icon(
+                            Icons.alternate_email,
+                            color: AppColors.mutedText,
+                            size: 20,
+                          ),
                           prefixIconConstraints: BoxConstraints(minWidth: 52),
                         ),
                         validator: (v) {
@@ -328,7 +340,8 @@ class _SignUpScreenState extends State<SignUpScreen>
                           if (normalized.length < 3) {
                             return 'Kullanıcı adı en az 3 karakter olmalı.';
                           }
-                          if (normalized != raw.toLowerCase().replaceAll(' ', '')) {
+                          if (normalized !=
+                              raw.toLowerCase().replaceAll(' ', '')) {
                             return 'Kullanıcı adı küçük harf ve boşluksuz olmalı.';
                           }
                           return null;
@@ -344,8 +357,11 @@ class _SignUpScreenState extends State<SignUpScreen>
                         textInputAction: TextInputAction.next,
                         decoration: const InputDecoration(
                           hintText: 'E-posta',
-                          prefixIcon: Icon(Icons.email_outlined,
-                              color: AppColors.mutedText, size: 20),
+                          prefixIcon: Icon(
+                            Icons.email_outlined,
+                            color: AppColors.mutedText,
+                            size: 20,
+                          ),
                           prefixIconConstraints: BoxConstraints(minWidth: 52),
                         ),
                         validator: (v) {
@@ -371,8 +387,11 @@ class _SignUpScreenState extends State<SignUpScreen>
                         ],
                         decoration: const InputDecoration(
                           hintText: 'Cep Telefonu',
-                          prefixIcon: Icon(Icons.phone_outlined,
-                              color: AppColors.mutedText, size: 20),
+                          prefixIcon: Icon(
+                            Icons.phone_outlined,
+                            color: AppColors.mutedText,
+                            size: 20,
+                          ),
                           prefixIconConstraints: BoxConstraints(minWidth: 52),
                         ),
                         validator: (v) {
@@ -398,12 +417,19 @@ class _SignUpScreenState extends State<SignUpScreen>
                               hintText: _dateOfBirth == null
                                   ? 'Doğum Günü'
                                   : _formatDate(_dateOfBirth!),
-                              prefixIcon: const Icon(Icons.cake_outlined,
-                                  color: AppColors.mutedText, size: 20),
-                              prefixIconConstraints:
-                                  const BoxConstraints(minWidth: 52),
-                              suffixIcon: const Icon(Icons.date_range_outlined,
-                                  color: AppColors.mutedText, size: 20),
+                              prefixIcon: const Icon(
+                                Icons.cake_outlined,
+                                color: AppColors.mutedText,
+                                size: 20,
+                              ),
+                              prefixIconConstraints: const BoxConstraints(
+                                minWidth: 52,
+                              ),
+                              suffixIcon: const Icon(
+                                Icons.date_range_outlined,
+                                color: AppColors.mutedText,
+                                size: 20,
+                              ),
                             ),
                             validator: (_) {
                               if (_dateOfBirth == null) {
@@ -428,13 +454,18 @@ class _SignUpScreenState extends State<SignUpScreen>
                         textInputAction: TextInputAction.done,
                         decoration: InputDecoration(
                           hintText: 'Şifre (en az 6 karakter)',
-                          prefixIcon: const Icon(Icons.lock_outline,
-                              color: AppColors.mutedText, size: 20),
-                          prefixIconConstraints:
-                              const BoxConstraints(minWidth: 52),
+                          prefixIcon: const Icon(
+                            Icons.lock_outline,
+                            color: AppColors.mutedText,
+                            size: 20,
+                          ),
+                          prefixIconConstraints: const BoxConstraints(
+                            minWidth: 52,
+                          ),
                           suffixIcon: GestureDetector(
                             onTap: () => setState(
-                                () => _obscurePassword = !_obscurePassword),
+                              () => _obscurePassword = !_obscurePassword,
+                            ),
                             child: Icon(
                               _obscurePassword
                                   ? Icons.visibility_off_outlined
@@ -463,13 +494,15 @@ class _SignUpScreenState extends State<SignUpScreen>
                         decoration: BoxDecoration(
                           gradient: _isLoading
                               ? const LinearGradient(
-                                  colors: [Colors.grey, Colors.grey])
+                                  colors: [Colors.grey, Colors.grey],
+                                )
                               : AppColors.primaryGradient,
                           borderRadius: BorderRadius.circular(14),
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.primaryAccent
-                                  .withValues(alpha: 0.35),
+                              color: AppColors.primaryAccent.withValues(
+                                alpha: 0.35,
+                              ),
                               blurRadius: 16,
                               offset: const Offset(0, 6),
                             ),

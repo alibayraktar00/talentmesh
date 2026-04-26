@@ -45,7 +45,9 @@ class ProfileService {
       final ext = imageFile.path.split('.').last;
       final path = 'avatars/$_userId.$ext';
 
-      await _client.storage.from('avatars').upload(
+      await _client.storage
+          .from('avatars')
+          .upload(
             path,
             imageFile,
             fileOptions: const FileOptions(upsert: true),
@@ -60,7 +62,9 @@ class ProfileService {
   }
 
   /// Kullanıcının aldığı değerlendirmeleri çek
-  Future<List<Map<String, dynamic>>> fetchReviews([String? targetUserId]) async {
+  Future<List<Map<String, dynamic>>> fetchReviews([
+    String? targetUserId,
+  ]) async {
     final idToUse = targetUserId ?? _userId;
     if (idToUse == null) return [];
     try {
@@ -93,13 +97,14 @@ class ProfileService {
   /// 1. Bölüm Güncelleme (Update Department)
   Future<void> updateDepartment(String department) async {
     try {
-      if (_userId == null) throw Exception('Oturum açmış bir kullanıcı bulunamadı.');
+      if (_userId == null)
+        throw Exception('Oturum açmış bir kullanıcı bulunamadı.');
 
       await _client
           .from('profiles')
           .update({'department': department})
           .eq('id', _userId!);
-          
+
       print('Bölüm başarıyla güncellendi: $department');
     } catch (e) {
       print('Bölüm güncellenirken bir hata oluştu: $e');
@@ -110,7 +115,8 @@ class ProfileService {
   /// 2. Yeni Yetenek Ekleme (Add Skill)
   Future<void> addSkill(String newSkill) async {
     try {
-      if (_userId == null) throw Exception('Oturum açmış bir kullanıcı bulunamadı.');
+      if (_userId == null)
+        throw Exception('Oturum açmış bir kullanıcı bulunamadı.');
 
       final data = await _client
           .from('profiles')
@@ -130,7 +136,7 @@ class ProfileService {
             .from('profiles')
             .update({'skills': currentSkills})
             .eq('id', _userId!);
-            
+
         print('Yetenek başarıyla eklendi: $newSkill');
       } else {
         print('Bu yetenek zaten profilde mevcut.');
@@ -144,13 +150,14 @@ class ProfileService {
   /// 3. Aranan Proje Türlerini Güncelleme (Update Looking For)
   Future<void> updateLookingFor(List<String> lookingForList) async {
     try {
-      if (_userId == null) throw Exception('Oturum açmış bir kullanıcı bulunamadı.');
+      if (_userId == null)
+        throw Exception('Oturum açmış bir kullanıcı bulunamadı.');
 
       await _client
           .from('profiles')
           .update({'looking_for': lookingForList})
           .eq('id', _userId!);
-          
+
       print('Aranan kriterler başarıyla güncellendi.');
     } catch (e) {
       print('Aranan kriterler güncellenirken bir hata oluştu: $e');
@@ -159,9 +166,15 @@ class ProfileService {
   }
 
   /// 4. Eğitim Bilgilerini Güncelleme (Update Education)
-  Future<void> updateEducation(String school, String department, String educationYear, String degree) async {
+  Future<void> updateEducation(
+    String school,
+    String department,
+    String educationYear,
+    String degree,
+  ) async {
     try {
-      if (_userId == null) throw Exception('Oturum açmış bir kullanıcı bulunamadı.');
+      if (_userId == null)
+        throw Exception('Oturum açmış bir kullanıcı bulunamadı.');
 
       await _client
           .from('profiles')
@@ -172,7 +185,7 @@ class ProfileService {
             'degree': degree,
           })
           .eq('id', _userId!);
-          
+
       print('Eğitim bilgileri başarıyla güncellendi.');
     } catch (e) {
       print('Eğitim güncellenirken bir hata oluştu: $e');
@@ -183,7 +196,8 @@ class ProfileService {
   /// 5. Yeni Rol Ekleme (addLookingForRole)
   Future<void> addLookingForRole(String role) async {
     try {
-      if (_userId == null) throw Exception('Oturum açmış bir kullanıcı bulunamadı.');
+      if (_userId == null)
+        throw Exception('Oturum açmış bir kullanıcı bulunamadı.');
 
       final data = await _client
           .from('profiles')
@@ -203,7 +217,7 @@ class ProfileService {
             .from('profiles')
             .update({'looking_for': currentRoles})
             .eq('id', _userId!);
-            
+
         print('Rol tercihi başarıyla eklendi: $role');
       } else {
         print('Bu rol tercihi zaten profilde mevcut.');
@@ -217,7 +231,8 @@ class ProfileService {
   /// 'open_to_work' drumunu güncelleyen özel metot
   Future<void> updateOpenToWork(bool value) async {
     try {
-      if (_userId == null) throw Exception('Oturum açmış bir kullanıcı bulunamadı.');
+      if (_userId == null)
+        throw Exception('Oturum açmış bir kullanıcı bulunamadı.');
 
       await _client
           .from('profiles')
@@ -226,7 +241,7 @@ class ProfileService {
             'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', _userId!);
-          
+
       print('İşe açık durumu başarıyla güncellendi: $value');
     } catch (e) {
       print('İşe açık durumu güncellenirken bir hata oluştu: $e');
@@ -237,7 +252,8 @@ class ProfileService {
   /// jsonb ve diğer alanlar için Jenerik Güncelleme Metodu
   Future<void> updateDynamicProfileField(String fieldName, dynamic data) async {
     try {
-      if (_userId == null) throw Exception('Oturum açmış bir kullanıcı bulunamadı.');
+      if (_userId == null)
+        throw Exception('Oturum açmış bir kullanıcı bulunamadı.');
 
       await _client
           .from('profiles')
@@ -246,7 +262,7 @@ class ProfileService {
             'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', _userId!);
-          
+
       print('$fieldName alanı başarıyla güncellendi.');
     } catch (e) {
       print('$fieldName güncellenirken bir hata oluştu: $e');

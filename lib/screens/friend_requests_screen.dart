@@ -110,7 +110,8 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
     try {
       await _client
           .from('friend_requests')
-          .update({'status': newStatus}).eq('id', requestId);
+          .update({'status': newStatus})
+          .eq('id', requestId);
 
       if (!mounted) return;
       setState(() {
@@ -120,9 +121,11 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(newStatus == 'accepted'
-              ? 'Arkadaşlık isteği kabul edildi.'
-              : 'Arkadaşlık isteği reddedildi.'),
+          content: Text(
+            newStatus == 'accepted'
+                ? 'Arkadaşlık isteği kabul edildi.'
+                : 'Arkadaşlık isteği reddedildi.',
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -140,7 +143,9 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
   @override
   Widget build(BuildContext context) {
     final currentUserId = _myUserId;
-    if (currentUserId != null && currentUserId != _lastLoadedUserId && !_isLoading) {
+    if (currentUserId != null &&
+        currentUserId != _lastLoadedUserId &&
+        !_isLoading) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _loadPendingRequests();
       });
@@ -197,8 +202,10 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
               borderRadius: BorderRadius.circular(14),
             ),
             child: ListTile(
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 10,
+              ),
               leading: CircleAvatar(
                 backgroundColor: AppColors.chipBg,
                 child: Text(

@@ -44,19 +44,27 @@ class _FeedScreenState extends State<FeedScreen> {
 
   String _getPageTitle() {
     switch (_selectedNavIndex) {
-      case 0: return 'Takımlarım';
-      case 1: return 'Arama';
-      case 2: return 'Arkadaşlar';
-      default: return 'Takımlarım';
+      case 0:
+        return 'Takımlarım';
+      case 1:
+        return 'Arama';
+      case 2:
+        return 'Arkadaşlar';
+      default:
+        return 'Takımlarım';
     }
   }
 
   Widget _buildPageContent() {
     switch (_selectedNavIndex) {
-      case 0: return MyTeamsScreen(teamProvider: _teamProvider);
-      case 1: return const SearchScreen();
-      case 2: return const FriendsScreen();
-      default: return MyTeamsScreen(teamProvider: _teamProvider);
+      case 0:
+        return MyTeamsScreen(teamProvider: _teamProvider);
+      case 1:
+        return const SearchScreen();
+      case 2:
+        return const FriendsScreen();
+      default:
+        return MyTeamsScreen(teamProvider: _teamProvider);
     }
   }
 
@@ -95,7 +103,10 @@ class _FeedScreenState extends State<FeedScreen> {
                   if (_selectedNavIndex == 0)
                     IconButton(
                       onPressed: _refresh,
-                      icon: const Icon(Icons.refresh, color: AppColors.primaryAccent),
+                      icon: const Icon(
+                        Icons.refresh,
+                        color: AppColors.primaryAccent,
+                      ),
                       tooltip: 'Yenile',
                     ),
                 ],
@@ -121,8 +132,11 @@ class _FeedScreenState extends State<FeedScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.error_outline,
-                    color: Colors.redAccent, size: 48),
+                const Icon(
+                  Icons.error_outline,
+                  color: Colors.redAccent,
+                  size: 48,
+                ),
                 const SizedBox(height: 12),
                 Text(
                   'Veri yüklenemedi.',
@@ -143,9 +157,11 @@ class _FeedScreenState extends State<FeedScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.work_outline,
-                    size: 56,
-                    color: AppColors.mutedText.withValues(alpha: 0.5)),
+                Icon(
+                  Icons.work_outline,
+                  size: 56,
+                  color: AppColors.mutedText.withValues(alpha: 0.5),
+                ),
                 const SizedBox(height: 16),
                 Text(
                   'Henüz ilan yok.',
@@ -180,9 +196,7 @@ class _FeedScreenState extends State<FeedScreen> {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => const ProfileScreen(),
-                ),
+                MaterialPageRoute(builder: (context) => const ProfileScreen()),
               );
             },
             child: Stack(
@@ -365,7 +379,9 @@ class _FeedScreenState extends State<FeedScreen> {
                           children: tags.map((tag) {
                             return Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 5),
+                                horizontal: 10,
+                                vertical: 5,
+                              ),
                               decoration: BoxDecoration(
                                 color: AppColors.chipBg,
                                 borderRadius: BorderRadius.circular(16),
@@ -435,7 +451,9 @@ class _FeedScreenState extends State<FeedScreen> {
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.primaryAccent.withValues(alpha: 0.4),
+                              color: AppColors.primaryAccent.withValues(
+                                alpha: 0.4,
+                              ),
                               blurRadius: 14,
                               offset: const Offset(0, 4),
                             ),
@@ -498,7 +516,6 @@ class _FeedScreenState extends State<FeedScreen> {
                   index: 2,
                 ),
               ),
-
             ],
           ),
         ),

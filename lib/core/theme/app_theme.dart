@@ -61,8 +61,10 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.white,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppColors.inputBorder, width: 1),
@@ -73,13 +75,12 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide:
-              const BorderSide(color: AppColors.primaryAccent, width: 1.5),
+          borderSide: const BorderSide(
+            color: AppColors.primaryAccent,
+            width: 1.5,
+          ),
         ),
-        hintStyle: GoogleFonts.inter(
-          fontSize: 15,
-          color: AppColors.mutedText,
-        ),
+        hintStyle: GoogleFonts.inter(fontSize: 15, color: AppColors.mutedText),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -100,9 +101,7 @@ class AppTheme {
         color: AppColors.white,
         elevation: 0,
         shadowColor: AppColors.cardShadow,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       ),
     );

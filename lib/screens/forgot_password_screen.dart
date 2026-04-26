@@ -36,10 +36,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.08),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeOut,
-    ));
+    ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeOut));
     _fadeController.forward();
   }
 
@@ -109,8 +106,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new,
-              color: AppColors.headingText, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: AppColors.headingText,
+            size: 20,
+          ),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -166,8 +166,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                       enabled: !_isLoading,
                       decoration: const InputDecoration(
                         hintText: 'Email Adresi',
-                        prefixIcon: Icon(Icons.email_outlined,
-                            color: AppColors.mutedText, size: 20),
+                        prefixIcon: Icon(
+                          Icons.email_outlined,
+                          color: AppColors.mutedText,
+                          size: 20,
+                        ),
                         prefixIconConstraints: BoxConstraints(minWidth: 52),
                       ),
                     ),
@@ -180,13 +183,15 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                       decoration: BoxDecoration(
                         gradient: _isLoading
                             ? const LinearGradient(
-                                colors: [Colors.grey, Colors.grey])
+                                colors: [Colors.grey, Colors.grey],
+                              )
                             : AppColors.primaryGradient,
                         borderRadius: BorderRadius.circular(14),
                         boxShadow: [
                           BoxShadow(
-                            color:
-                                AppColors.primaryAccent.withValues(alpha: 0.35),
+                            color: AppColors.primaryAccent.withValues(
+                              alpha: 0.35,
+                            ),
                             blurRadius: 16,
                             offset: const Offset(0, 6),
                           ),
