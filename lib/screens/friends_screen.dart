@@ -5,6 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/theme/app_colors.dart';
 import 'profile_screen.dart';
+import 'chat_screen.dart';
+import 'inbox_screen.dart';
 
 class FriendsScreen extends StatefulWidget {
   const FriendsScreen({super.key});
@@ -26,6 +28,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
   final Set<String> _actionLoadingIds = {};
 
   RealtimeChannel? _realtimeChannel;
+  StreamSubscription<List<Map<String, dynamic>>>? _unreadMessagesSub;
+  Map<String, int> _unreadCountByFriendId = {};
+  Map<String, DateTime> _lastMessageAtByFriendId = {};
+  bool _isUpdatingDelivered = false;
 
   String? get _myUserId => _client.auth.currentUser?.id;
 
@@ -37,6 +43,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
   @override
   void dispose() {
+    _unreadMessagesSub?.cancel();
     if (_realtimeChannel != null) {
       _client.removeChannel(_realtimeChannel!);
     }
@@ -46,6 +53,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
   Future<void> _bootstrap() async {
     await Future.wait([_loadIncomingRequests(), _loadFriends()]);
     _setupRealtime();
+    _setupUnreadMessagesStream();
   }
 
   void _showError(String message) {
@@ -216,7 +224,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
       }
 
       if (!mounted) return;
-      setState(() => _friends = friends);
+      setState(() {
+        _friends = friends;
+        _sortFriendsByPriority();
+      });
     } on PostgrestException catch (e) {
       _showError('Arkadaş listesi alınamadı: ${e.message}');
     } catch (_) {
@@ -285,6 +296,106 @@ class _FriendsScreenState extends State<FriendsScreen> {
           },
         )
         .subscribe();
+  }
+
+  void _setupUnreadMessagesStream() {
+    final myId = _myUserId;
+    if (myId == null) return;
+
+    _unreadMessagesSub?.cancel();
+
+    // Türkçe yorum: Bana gelen ve okunmamış mesajları anlık dinleyip sender_id bazında gruplayarak sayaç üretiyoruz.
+    _unreadMessagesSub = _client
+        .from('messages')
+        .stream(primaryKey: ['id'])
+        .listen((rows) {
+          final toDeliveredIds = <dynamic>[];
+          final grouped = <String, int>{};
+          final lastMessageMap = <String, DateTime>{};
+          for (final row in rows) {
+            final senderId = (row['sender_id'] ?? '').toString();
+            final receiverId = (row['receiver_id'] ?? '').toString();
+            if (senderId.isEmpty || receiverId.isEmpty) continue;
+
+            final otherId = senderId == myId ? receiverId : senderId;
+            final createdAt = DateTime.tryParse((row['created_at'] ?? '').toString());
+            if (createdAt != null) {
+              final existing = lastMessageMap[otherId];
+              if (existing == null || createdAt.isAfter(existing)) {
+                lastMessageMap[otherId] = createdAt;
+              }
+            }
+
+            final status = (row['status'] ?? 'sent').toString();
+            final isUnreadForMe =
+                receiverId == myId && status != 'read';
+            if (isUnreadForMe) {
+              grouped[senderId] = (grouped[senderId] ?? 0) + 1;
+            }
+
+            // Türkçe yorum: Uygulama açıkken bana gelen "sent" mesajları "delivered" yapıyoruz.
+            if (receiverId == myId && status == 'sent') {
+              toDeliveredIds.add(row['id']);
+            }
+          }
+          if (!mounted) return;
+          setState(() {
+            _unreadCountByFriendId = grouped;
+            _lastMessageAtByFriendId = lastMessageMap;
+            _sortFriendsByPriority();
+          });
+
+          if (toDeliveredIds.isNotEmpty && !_isUpdatingDelivered) {
+            _markMessagesDelivered(toDeliveredIds);
+          }
+        });
+  }
+
+  Future<void> _markMessagesDelivered(List<dynamic> messageIds) async {
+    if (_isUpdatingDelivered || messageIds.isEmpty) return;
+    _isUpdatingDelivered = true;
+    try {
+      await _client
+          .from('messages')
+          .update({'status': 'delivered'})
+          .inFilter('id', messageIds)
+          .eq('status', 'sent');
+    } catch (_) {
+      // Sessiz geçiyoruz.
+    } finally {
+      _isUpdatingDelivered = false;
+    }
+  }
+
+  void _sortFriendsByPriority() {
+    _friends.sort((a, b) {
+      final aId = (a['id'] ?? '').toString();
+      final bId = (b['id'] ?? '').toString();
+      final aUnread = _unreadCountByFriendId[aId] ?? 0;
+      final bUnread = _unreadCountByFriendId[bId] ?? 0;
+
+      // Önce okunmamış mesajı olanlar üste.
+      if ((aUnread > 0) != (bUnread > 0)) {
+        return aUnread > 0 ? -1 : 1;
+      }
+
+      // Son mesaj zamanı daha yeni olan üste.
+      final aLast = _lastMessageAtByFriendId[aId];
+      final bLast = _lastMessageAtByFriendId[bId];
+      if (aLast != null && bLast != null) {
+        final cmp = bLast.compareTo(aLast);
+        if (cmp != 0) return cmp;
+      } else if (aLast != null) {
+        return -1;
+      } else if (bLast != null) {
+        return 1;
+      }
+
+      // Son fallback: username alfabetik.
+      final aName = (a['username'] ?? '').toString().toLowerCase();
+      final bName = (b['username'] ?? '').toString().toLowerCase();
+      return aName.compareTo(bName);
+    });
   }
 
   @override
@@ -358,6 +469,17 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 ),
               ),
           ],
+        ),
+        const Spacer(),
+        IconButton(
+          tooltip: 'Mesajlar',
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const InboxScreen()),
+            );
+          },
+          icon: const Icon(Icons.chat_bubble_outline,
+              color: AppColors.primaryAccent),
         ),
       ],
     );
@@ -507,9 +629,12 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
     return Column(
       children: _friends.map((friend) {
+        final friendId = (friend['id'] ?? '').toString();
         final username = (friend['username'] ?? '').toString();
         final fullName = (friend['full_name'] ?? '').toString();
         final id = (friend['id'] ?? '').toString();
+        final displayName = fullName.isNotEmpty ? fullName : '@$username';
+        final unreadCount = _unreadCountByFriendId[friendId] ?? 0;
 
         return Container(
           margin: const EdgeInsets.only(bottom: 10),
@@ -560,8 +685,56 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   ],
                 ),
               ),
+              if (unreadCount > 0)
+                Container(
+                  margin: const EdgeInsets.only(right: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    unreadCount > 99 ? '99+' : '$unreadCount',
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
               TextButton(
-                onPressed: () {},
+                onPressed: friendId.isEmpty
+                    ? null
+                    : () async {
+                        final myId = _myUserId;
+                        // Türkçe yorum: Kullanıcı sohbeti açtığında badge anında kaybolsun (optimistic).
+                        // DB update gecikse bile UX düzgün olur; stream kısa süre içinde doğru state'i getirir.
+                        if (mounted) {
+                          setState(() {
+                            _unreadCountByFriendId.remove(friendId);
+                            _sortFriendsByPriority();
+                          });
+                        }
+                        if (myId != null) {
+                          // Türkçe yorum: Sohbete girerken bu arkadaştan gelen read olmayan mesajları read yap.
+                          await _client
+                              .from('messages')
+                              .update({'status': 'read'})
+                              .eq('sender_id', friendId)
+                              .eq('receiver_id', myId)
+                              .neq('status', 'read');
+                        }
+                        if (!mounted) return;
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => ChatScreen(
+                              receiverId: friendId,
+                              receiverName: displayName,
+                            ),
+                          ),
+                        );
+                      },
                 style: TextButton.styleFrom(
                   minimumSize: const Size(0, 36),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
