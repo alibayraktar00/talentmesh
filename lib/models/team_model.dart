@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 /// Takım verilerini temsil eden model sınıfı
 class Team {
   final String id;
+  final String adminId;
   final String name;
   final String description;
   final List<String> roles;
@@ -15,6 +16,7 @@ class Team {
 
   Team({
     required this.id,
+    required this.adminId,
     required this.name,
     required this.description,
     this.roles = const [],
@@ -40,6 +42,7 @@ class Team {
     ];
     return Team(
       id: map['id'].toString(),
+      adminId: map['admin_id']?.toString() ?? '',
       name: map['name'] ?? 'İsimsiz Takım',
       description: map['description'] ?? '',
       roles: List<String>.from(map['required_roles'] ?? []),

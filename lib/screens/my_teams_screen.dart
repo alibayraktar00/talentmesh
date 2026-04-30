@@ -7,7 +7,7 @@ import '../core/services/team_service.dart';
 import 'create_team_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'team_detail_screen.dart';
-import 'team_detail_screen.dart';
+import 'profile_screen.dart';
 
 /// "Gruplar" sekmesinde kullanılan takım listeleme ekranı.
 /// Supabase'den gerçek zamanlı takım listesini çeker.
@@ -307,7 +307,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
                                           fontSize: 10,
                                           fontWeight: FontWeight.w600,
                                           color: teamColor,
-                                        ),
+                                         ),
                                       ),
                                     ],
                                   ),
@@ -329,6 +329,37 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
                                       size: 16,
                                       color: Color(0xFFE53E3E),
                                     ),
+                                  ),
+                                ),
+                              ] else ...[
+                                // Üye rozeti
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.chipBg,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.person_rounded,
+                                        size: 12,
+                                        color: AppColors.mutedText,
+                                      ),
+                                      const SizedBox(width: 3),
+                                      Text(
+                                        'Üye',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.mutedText,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -638,6 +669,7 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
   bool _isLoadingMembers = true;
   List<Map<String, dynamic>> _members = [];
   bool _hasError = false;
+  Map<String, dynamic>? _adminProfile; // Kurucunun profil verisi
 
   bool _isLoadingRequests = true;
   List<Map<String, dynamic>> _incomingRequests = [];
@@ -647,12 +679,15 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
   late TextEditingController _descController;
   late String _currentDescription;
 
+  String get _currentUserId => _client.auth.currentUser?.id ?? '';
+
   @override
   void initState() {
     super.initState();
     _currentDescription = widget.team.description;
     _descController = TextEditingController(text: _currentDescription);
     _fetchMembers();
+    _fetchAdminProfile();
     if (widget.team.isOwner) {
       _fetchIncomingRequests();
     } else {
@@ -664,6 +699,23 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
   void dispose() {
     _descController.dispose();
     super.dispose();
+  }
+
+  Future<void> _fetchAdminProfile() async {
+    try {
+      final adminId = widget.team.adminId;
+      if (adminId.isEmpty) return;
+      final response = await _client
+          .from('profiles')
+          .select('id, username, full_name, avatar_url, department')
+          .eq('id', adminId)
+          .maybeSingle();
+      if (mounted && response != null) {
+        setState(() {
+          _adminProfile = Map<String, dynamic>.from(response);
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _fetchMembers() async {
@@ -1128,15 +1180,35 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
       );
     }
 
-    // Gerçek üyeler listeleniyor (Kurucu en üstte manuel eklendi)
+    // Gerçek üyeler listeleniyor (Kurucu en üstte, profili Supabase'den çekiliyor)
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: _members.length + 1, // +1 Kurucu için
       itemBuilder: (context, index) {
         if (index == 0) {
-          // Kurucu satırı
-          return Container(
+          // Kurucu satırı — profilden gelen gerçek bilgiler
+          final adminUsername = _adminProfile?['username']?.toString() ?? '';
+          final adminFullName = _adminProfile?['full_name']?.toString() ?? '';
+          final displayName = adminUsername.isNotEmpty ? '@$adminUsername' : 'Kurucu';
+          final subName = adminFullName.isNotEmpty ? adminFullName : 'Takım Yöneticisi';
+          final isAdminMe = widget.team.isOwner; // Ben kurucuyum
+          final initials = adminUsername.isNotEmpty
+              ? adminUsername.substring(0, 1).toUpperCase()
+              : 'K';
+
+          return GestureDetector(
+            onTap: () {
+              final adminId = widget.team.adminId;
+              if (adminId.isNotEmpty) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ProfileScreen(userId: adminId),
+                  ),
+                );
+              }
+            },
+            child: Container(
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -1155,7 +1227,14 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
                 CircleAvatar(
                   radius: 20,
                   backgroundColor: AppColors.primaryAccent.withValues(alpha: 0.2),
-                  child: const Icon(Icons.person, color: AppColors.primaryAccent),
+                  child: Text(
+                    initials,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primaryAccent,
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -1163,7 +1242,7 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Kurucu (Sen)',
+                        isAdminMe ? '$displayName (Sen)' : displayName,
                         style: GoogleFonts.inter(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -1171,7 +1250,7 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
                         ),
                       ),
                       Text(
-                        'Takım Yöneticisi',
+                        subName,
                         style: GoogleFonts.inter(
                           fontSize: 12,
                           color: AppColors.mutedText,
@@ -1180,83 +1259,116 @@ class _TeamDetailsSheetState extends State<_TeamDetailsSheet> {
                     ],
                   ),
                 ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryAccent.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Kurucu',
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primaryAccent,
+                    ),
+                  ),
+                ),
               ],
             ),
-          );
+          ),
+        );
         }
 
         // Normal üyeler (index - 1 kullanıyoruz çünkü ilk satır Kurucu)
         final memberRow = _members[index - 1];
         final profile = memberRow['profiles'] ?? {};
-        final fullName = profile['full_name'] ?? 'İsimsiz Üye';
-        final department = profile['department'] ?? '';
+        final memberId = memberRow['user_id']?.toString() ?? '';
+        final username = profile['username']?.toString() ?? '';
+        final fullName = profile['full_name']?.toString() ?? 'İsimsiz Üye';
+        final department = profile['department']?.toString() ?? '';
         final avatarUrl = profile['avatar_url'];
+        final isMe = memberId == _currentUserId;
+        final displayName = username.isNotEmpty ? '@$username' : fullName;
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.02),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: AppColors.chipBg,
-                backgroundImage: avatarUrl != null
-                    ? NetworkImage(avatarUrl)
-                    : null,
-                child: avatarUrl == null
-                    ? Text(
-                        fullName.isNotEmpty ? fullName[0].toUpperCase() : '?',
-                        style: const TextStyle(color: AppColors.primaryAccent),
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      fullName,
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.headingText,
-                      ),
-                    ),
-                    if (department.isNotEmpty)
+        return GestureDetector(
+          onTap: () {
+            if (memberId.isNotEmpty) {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ProfileScreen(userId: memberId),
+                ),
+              );
+            }
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: AppColors.chipBg,
+                  backgroundImage: avatarUrl != null
+                      ? NetworkImage(avatarUrl)
+                      : null,
+                  child: avatarUrl == null
+                      ? Text(
+                          displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+                          style: const TextStyle(color: AppColors.primaryAccent),
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        department,
+                        isMe ? '$displayName (Sen)' : displayName,
                         style: GoogleFonts.inter(
-                          fontSize: 12,
-                          color: AppColors.mutedText,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.headingText,
                         ),
                       ),
-                  ],
+                      if (department.isNotEmpty)
+                        Text(
+                          department,
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: AppColors.mutedText,
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-              IconButton(
-                icon: const Icon(
-                  Icons.person_remove_outlined,
-                  color: Color(0xFFE53E3E),
-                  size: 20,
-                ),
-                tooltip: 'Üyeyi Çıkar',
-                onPressed: () =>
-                    _removeMember(memberRow['id'].toString(), fullName),
-              ),
-            ],
+                // Sadece kurucu görebilir ve kendini çıkaramaz
+                if (widget.team.isOwner && !isMe)
+                  IconButton(
+                    icon: const Icon(
+                      Icons.person_remove_outlined,
+                      color: Color(0xFFE53E3E),
+                      size: 20,
+                    ),
+                    tooltip: 'Üyeyi Çıkar',
+                    onPressed: () =>
+                        _removeMember(memberRow['id'].toString(), displayName),
+                  ),
+              ],
+            ),
           ),
         );
       },

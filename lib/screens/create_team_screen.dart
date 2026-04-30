@@ -739,9 +739,10 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
           DateTime.now().millisecondsSinceEpoch % _teamColors.length;
 
       // Team objesi oluştur ve provider'a ekle (Arayüzde anlık göstermek için)
+      final currentUserId = _teamService.currentUserId ?? '';
       final newTeam = Team(
-        id: DateTime.now().millisecondsSinceEpoch
-            .toString(), // İleride Supabase'den insert sonucu dönen ID de kullanılabilir
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        adminId: currentUserId,
         name: _teamNameController.text.trim(),
         description: _descriptionController.text.trim(),
         roles: _selectedRoles.toList(),

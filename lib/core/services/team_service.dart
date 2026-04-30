@@ -95,42 +95,65 @@ class TeamService {
   }
 
   /// Takımları getirir ve her takımın gerçek üye sayısını team_members'dan hesaplar.
+  /// Hem kurucusu olunan hem de üye olarak girilen takımları birleştirerek döner.
   Future<List<Map<String, dynamic>>> fetchTeamsWithMemberCount() async {
     final user = _client.auth.currentUser;
     if (user == null) return [];
 
     // 1. Kurucusu olduğu takımları çek
-    final teamsResponse = await _client
+    final ownedResponse = await _client
         .from('teams')
         .select()
         .eq('admin_id', user.id)
         .order('created_at', ascending: false);
+    final ownedTeams = List<Map<String, dynamic>>.from(ownedResponse);
+    final ownedTeamIds = ownedTeams.map((t) => t['id'].toString()).toSet();
 
-    final teams = List<Map<String, dynamic>>.from(teamsResponse);
-    if (teams.isEmpty) return [];
+    // 2. Üye olarak girilen takımların ID'lerini team_members'dan çek
+    final memberRowsResponse = await _client
+        .from('team_members')
+        .select('team_id')
+        .eq('user_id', user.id);
 
-    // 2. Bu takımların id'lerini al
-    final teamIds = teams.map((t) => t['id'].toString()).toList();
+    final joinedTeamIds = List<Map<String, dynamic>>.from(memberRowsResponse)
+        .map((r) => r['team_id'].toString())
+        .where((id) => !ownedTeamIds.contains(id)) // Kurucu olduğu takımları tekrar ekleme
+        .toList();
 
-    // 3. team_members tablosundan bu takımlara ait kayıt sayısını çek
+    // 3. Üye olunan takımların detaylarını çek
+    List<Map<String, dynamic>> joinedTeams = [];
+    if (joinedTeamIds.isNotEmpty) {
+      final joinedResponse = await _client
+          .from('teams')
+          .select()
+          .inFilter('id', joinedTeamIds);
+      joinedTeams = List<Map<String, dynamic>>.from(joinedResponse);
+    }
+
+    // 4. İkisini birleştir — kurucusu olunanlar önce
+    final allTeams = [...ownedTeams, ...joinedTeams];
+    if (allTeams.isEmpty) return [];
+
+    // 5. Tüm takımların üye sayılarını çek
+    final allTeamIds = allTeams.map((t) => t['id'].toString()).toList();
     final membersResponse = await _client
         .from('team_members')
         .select('team_id')
-        .inFilter('team_id', teamIds);
+        .inFilter('team_id', allTeamIds);
 
-    // 4. Her takım için üye sayısını hesapla
+    // 6. Her takım için üye sayısını hesapla
     final memberCountMap = <String, int>{};
     for (final row in List<Map<String, dynamic>>.from(membersResponse)) {
       final tid = row['team_id'].toString();
       memberCountMap[tid] = (memberCountMap[tid] ?? 0) + 1;
     }
 
-    // 5. Takım verilerine current_members alanını ekle
-    return teams.map((t) {
+    // 7. Takım verilerine current_members ekle
+    // Kurucu hiçbir zaman team_members tablosuna eklenmez → her zaman +1
+    return allTeams.map((t) {
       final tid = t['id'].toString();
       return {
         ...t,
-        // +1 kurucu (admin) için (team_members'a eklenmemişse)
         'current_members': (memberCountMap[tid] ?? 0) + 1,
       };
     }).toList();
