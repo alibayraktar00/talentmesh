@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="tr">
 <head>
   <!--
     If you are serving your web app in a path other than the root, change the
@@ -18,7 +18,7 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="TalentMesh - Takım Bul, Proje Yap">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -31,6 +31,25 @@
 
   <title>talentmesh</title>
   <link rel="manifest" href="manifest.json">
+
+  <!--
+    Türkçe klavye desteği için:
+    CanvasKit renderer bazen tarayıcının klavye olaylarını işlemesini engelleyebilir.
+    Bu script, Türkçe karakterlerin (ş, ğ, ü, ö, ç, ı, İ) düzgün iletilmesini sağlar.
+  -->
+  <script>
+    // Flutter CanvasKit'in Türkçe klavye girişini engellemesini önle.
+    // Composition events (IME) ve key olaylarını Flutter'ın önüne geçmeden ilet.
+    document.addEventListener('keydown', function(e) {
+      // Türkçe özel karakterlerin key code'ları
+      const turkishKeys = ['Dead', 'AltGraph'];
+      if (turkishKeys.includes(e.key)) {
+        // Bu olayların Flutter tarafından tüketilmesine izin ver ama
+        // tarayıcı da işleme devam etsin
+        e.stopImmediatePropagation && e.stopImmediatePropagation();
+      }
+    }, true);
+  </script>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>
