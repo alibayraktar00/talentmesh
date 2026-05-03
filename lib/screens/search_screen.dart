@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/theme/app_colors.dart';
+import 'profile_screen.dart';
 
 enum _RelationType { none, accepted, pendingOutgoing, pendingIncoming }
 
@@ -1125,7 +1126,16 @@ class _SearchScreenState extends State<SearchScreen> {
             break;
         }
 
-        return Container(
+        return InkWell(
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => ProfileScreen(userId: userId),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
           margin: const EdgeInsets.only(bottom: 14),
           decoration: BoxDecoration(
             color: AppColors.white,
@@ -1237,6 +1247,7 @@ class _SearchScreenState extends State<SearchScreen> {
               ],
             ),
           ),
+        ),
         );
   }
 
