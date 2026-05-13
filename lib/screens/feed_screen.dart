@@ -7,9 +7,9 @@ import 'profile_screen.dart';
 import '../providers/team_provider.dart';
 import 'my_teams_screen.dart';
 import 'create_team_screen.dart';
-import 'teammates_screen.dart';
 import 'search_screen.dart';
 import 'friends_screen.dart';
+import 'settings_screen.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
@@ -244,6 +244,21 @@ class _FeedScreenState extends State<FeedScreen> {
               color: AppColors.headingText.withValues(alpha: 0.7),
               size: 26,
             ),
+            tooltip: 'Ara',
+          ),
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              );
+            },
+            icon: Icon(
+              Icons.settings,
+              color: AppColors.headingText.withValues(alpha: 0.7),
+              size: 24,
+            ),
+            tooltip: 'Ayarlar',
           ),
           // Çıkış butonu
           IconButton(
