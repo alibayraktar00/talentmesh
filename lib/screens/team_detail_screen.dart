@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/theme/app_colors.dart';
 import '../models/team_model.dart';
 import '../providers/meeting_provider.dart';
@@ -8,8 +9,6 @@ import '../core/services/team_service.dart';
 import 'widgets/create_meeting_dialog.dart';
 import 'widgets/meeting_card.dart';
 
-/// Takım detay ekranı.
-/// Üyeleri ve toplantıları (yaklaşan/geçmiş) sekmeli yapıda gösterir.
 class TeamDetailScreen extends StatefulWidget {
   final Team team;
   final TeamProvider teamProvider;
@@ -26,452 +25,664 @@ class TeamDetailScreen extends StatefulWidget {
 
 class _TeamDetailScreenState extends State<TeamDetailScreen>
     with SingleTickerProviderStateMixin {
-  late final TabController _tabController;
+  late TabController _tabController;
   final MeetingProvider _meetingProvider = MeetingProvider();
   final TeamService _teamService = TeamService();
-  
+  final _client = Supabase.instance.client;
+
+  // Members
+  bool _isLoadingMembers = true;
+  List<Map<String, dynamic>> _members = [];
+  Map<String, dynamic>? _adminProfile;
+
+  // Requests
+  bool _isLoadingRequests = true;
   List<Map<String, dynamic>> _incomingRequests = [];
-  bool _isLoadingRequests = false;
+
+  // Description edit
+  bool _isEditingDescription = false;
+  bool _isUpdatingDescription = false;
+  late TextEditingController _descController;
+  late String _currentDescription;
+
+  bool get _isAdmin => widget.team.isOwner;
+  String get _currentUserId => _client.auth.currentUser?.id ?? '';
+  bool _isMember = false;
+  bool _hasPendingRequest = false;
+  bool _isSendingRequest = false;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: widget.team.isOwner ? 3 : 2, vsync: this);
+    _currentDescription = widget.team.description;
+    _descController = TextEditingController(text: _currentDescription);
+    final tabCount = _isAdmin ? 4 : 3;
+    _tabController = TabController(length: tabCount, vsync: this);
+    
+    // Üye olmayanlar için Detaylar sekmesinden başlat
+    _isMember = _isAdmin; // Geçici, members yüklendiğinde netleşecek
+    if (!_isMember) {
+      _tabController.index = 2;
+    }
 
-    // Toplantıları çek
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _meetingProvider.fetchMeetings(widget.team.id);
-      if (widget.team.isOwner) {
+      _fetchMembers();
+      _fetchAdminProfile();
+      _checkRequestStatus();
+      if (_isAdmin) {
         _fetchIncomingRequests();
-      }
-    });
-  }
-
-  Future<void> _fetchIncomingRequests() async {
-    setState(() => _isLoadingRequests = true);
-    try {
-      final reqs = await _teamService.getIncomingRequests(widget.team.id);
-      setState(() => _incomingRequests = reqs);
-    } catch (e) {
-      print('İstekleri çekerken hata: $e');
-    } finally {
-      if (mounted) {
+      } else {
         setState(() => _isLoadingRequests = false);
       }
-    }
+    });
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _descController.dispose();
     super.dispose();
   }
 
-  bool get _isAdmin => widget.team.isOwner;
+  Future<void> _fetchAdminProfile() async {
+    try {
+      final res = await _client
+          .from('profiles')
+          .select('id, username, full_name, avatar_url, department')
+          .eq('id', widget.team.adminId)
+          .maybeSingle();
+      if (mounted && res != null) {
+        setState(() => _adminProfile = Map<String, dynamic>.from(res));
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _fetchMembers() async {
+    setState(() => _isLoadingMembers = true);
+    try {
+      final membersRes = await _client
+          .from('team_members')
+          .select('id, user_id, role, created_at')
+          .eq('team_id', widget.team.id);
+      final membersList = List<Map<String, dynamic>>.from(membersRes);
+      final userIds = membersList.map((m) => m['user_id'].toString()).toList();
+      List<Map<String, dynamic>> enriched = [];
+      if (userIds.isNotEmpty) {
+        final profilesRes = await _client
+            .from('profiles')
+            .select('id, username, full_name, avatar_url, department')
+            .inFilter('id', userIds);
+        final profilesMap = <String, Map<String, dynamic>>{};
+        for (final p in List<Map<String, dynamic>>.from(profilesRes)) {
+          profilesMap[p['id'].toString()] = p;
+        }
+        for (final m in membersList) {
+          enriched.add({...m, 'profiles': profilesMap[m['user_id'].toString()] ?? {}});
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _members = enriched;
+          _isLoadingMembers = false;
+          final wasMember = _isMember;
+          _isMember = _isAdmin || enriched.any((m) => m['user_id'].toString() == _currentUserId);
+          
+          // Üye olduğu yeni anlaşıldıysa ve ilk sekme detaysa (üye olmayan başlangıcı), toplantılara geçebilir
+          if (!wasMember && _isMember && _tabController.index == 2) {
+             _tabController.animateTo(0);
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoadingMembers = false);
+    }
+  }
+
+  Future<void> _checkRequestStatus() async {
+    if (_isAdmin) return;
+    try {
+      final res = await _client
+          .from('team_requests')
+          .select('id')
+          .eq('team_id', widget.team.id)
+          .eq('user_id', _currentUserId)
+          .eq('status', 'pending')
+          .maybeSingle();
+      if (mounted) {
+        setState(() => _hasPendingRequest = res != null);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _sendJoinRequest() async {
+    setState(() => _isSendingRequest = true);
+    try {
+      await _client.from('team_requests').insert({
+        'team_id': widget.team.id,
+        'user_id': _currentUserId,
+        'status': 'pending',
+      });
+      if (mounted) {
+        setState(() {
+          _hasPendingRequest = true;
+          _isSendingRequest = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Katılma isteği gönderildi.'), backgroundColor: AppColors.onlineGreen),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSendingRequest = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Hata: $e'), backgroundColor: const Color(0xFFE53E3E)),
+        );
+      }
+    }
+  }
+
+  Future<void> _fetchIncomingRequests() async {
+    setState(() => _isLoadingRequests = true);
+    try {
+      final res = await _client
+          .from('team_requests')
+          .select('*, profiles:user_id(id, username, full_name, avatar_url, department)')
+          .eq('team_id', widget.team.id)
+          .eq('status', 'pending');
+      if (mounted) setState(() { _incomingRequests = List<Map<String, dynamic>>.from(res); _isLoadingRequests = false; });
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingRequests = false);
+    }
+  }
+
+  Future<void> _updateDescription() async {
+    setState(() => _isUpdatingDescription = true);
+    try {
+      await _teamService.updateTeamDescription(widget.team.id, _descController.text.trim());
+      if (mounted) {
+        setState(() { _currentDescription = _descController.text.trim(); _isEditingDescription = false; });
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Açıklama güncellendi.'), backgroundColor: AppColors.onlineGreen));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e'), backgroundColor: const Color(0xFFE53E3E)));
+    } finally {
+      if (mounted) setState(() => _isUpdatingDescription = false);
+    }
+  }
+
+  Future<void> _removeMember(String membershipId, String memberName) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Üyeyi Çıkar', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+        content: Text('$memberName isimli üyeyi takımdan çıkarmak istiyor musunuz?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('İptal')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE53E3E), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Çıkar', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      await _teamService.removeTeamMember(membershipId);
+      if (mounted) {
+        setState(() => _members.removeWhere((m) => m['id'].toString() == membershipId));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Üye çıkarıldı.'), backgroundColor: AppColors.onlineGreen));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final color = widget.team.color;
     return Scaffold(
       backgroundColor: AppColors.background,
       body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) => [
-          // ─── SliverAppBar ─────────────────────────────
+        headerSliverBuilder: (context, _) => [
           SliverAppBar(
-            expandedHeight: 200,
+            expandedHeight: 220,
             floating: false,
             pinned: true,
-            backgroundColor: const Color(0xFF6E61FF),
-            foregroundColor: AppColors.white,
+            backgroundColor: color,
+            foregroundColor: Colors.white,
             elevation: 0,
             flexibleSpace: FlexibleSpaceBar(
-              titlePadding: const EdgeInsets.only(left: 56, bottom: 72),
-              title: Text(
-                widget.team.name,
-                style: GoogleFonts.inter(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.white,
-                ),
-              ),
-              background: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF6E61FF), Color(0xFF8F84FF)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+              titlePadding: const EdgeInsets.only(left: 16, bottom: 64),
+              title: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.team.name,
+                    style: GoogleFonts.inter(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
                   ),
-                ),
-                child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 60, 20, 60),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        // Üye sayısı
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.people_rounded,
-                              color: Colors.white70,
-                              size: 18,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '${widget.team.currentMembers} üye',
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                color: Colors.white70,
-                              ),
-                            ),
-                            if (_isAdmin) ...[
-                              const SizedBox(width: 16),
-                              _buildHeaderChip(
-                                icon: Icons.star_rounded,
-                                label: 'Yönetici',
-                              ),
-                            ],
-                          ],
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      _headerBadge(
+                        icon: Icons.people_rounded,
+                        label: '${widget.team.currentMembers} / ${widget.team.maxMembers}',
+                      ),
+                      if (_isAdmin) ...[
+                        const SizedBox(width: 8),
+                        _headerBadge(
+                          icon: Icons.star_rounded,
+                          label: 'Yönetici',
+                          iconColor: Colors.amber,
                         ),
                       ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            actions: [],
-            bottom: TabBar(
-              controller: _tabController,
-              indicatorColor: AppColors.white,
-              indicatorWeight: 3,
-              labelColor: AppColors.white,
-              unselectedLabelColor: Colors.white54,
-              labelStyle: GoogleFonts.inter(
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
-              tabs: [
-                const Tab(text: 'Yaklaşan Toplantılar'),
-                const Tab(text: 'Geçmiş'),
-                if (_isAdmin) const Tab(text: 'Gelen İstekler'),
-              ],
-            ),
-          ),
-        ],
-        body: ListenableBuilder(
-          listenable: _meetingProvider,
-          builder: (context, _) {
-            return TabBarView(
-              controller: _tabController,
-              children: [
-                // ─── Yaklaşan Toplantılar ──────────────────
-                _buildMeetingsTab(
-                  meetings: _meetingProvider.upcomingMeetings,
-                  isUpcoming: true,
-                ),
-
-                // ─── Geçmiş Toplantılar ────────────────────
-                _buildMeetingsTab(
-                  meetings: _meetingProvider.pastMeetings,
-                  isUpcoming: false,
-                ),
-
-                // ─── Gelen İstekler ────────────────────────
-                if (_isAdmin) _buildRequestsTab(),
-              ],
-            );
-          },
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => showCreateMeetingDialog(
-          context,
-          teamId: widget.team.id,
-          meetingProvider: _meetingProvider,
-        ),
-        backgroundColor: const Color(0xFF6E61FF),
-        foregroundColor: AppColors.white,
-        elevation: 4,
-        icon: const Icon(Icons.add_rounded),
-        label: Text(
-          'Toplantı Planla',
-          style: GoogleFonts.inter(fontWeight: FontWeight.w600),
-        ),
-      ),
-    );
-  }
-
-  // ─── Gelen İstekler Sekmesi ──────────────────────────────────
-  Widget _buildRequestsTab() {
-    if (_isLoadingRequests) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (_incomingRequests.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.inbox_rounded,
-                size: 56,
-                color: AppColors.mutedText.withValues(alpha: 0.5),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Bekleyen istek yok',
-                style: GoogleFonts.inter(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.mutedText,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: _fetchIncomingRequests,
-      color: AppColors.primaryAccent,
-      child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-        itemCount: _incomingRequests.length,
-        itemBuilder: (context, index) {
-          final request = _incomingRequests[index];
-          final profile = request['profiles'] as Map<String, dynamic>? ?? {};
-          final username = profile['username']?.toString() ?? 'Bilinmeyen';
-          final fullName = profile['full_name']?.toString() ?? '';
-          final requestId = request['id'].toString();
-          final userId = request['user_id'].toString();
-
-          return Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    backgroundColor: AppColors.chipBg,
-                    child: Text(
-                      username.isNotEmpty ? username.substring(0, 1).toUpperCase() : '?',
-                      style: const TextStyle(color: AppColors.primaryAccent, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('@$username', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-                        if (fullName.isNotEmpty)
-                          Text(fullName, style: GoogleFonts.inter(fontSize: 12, color: AppColors.mutedText)),
-                      ],
-                    ),
-                  ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.check_circle, color: Colors.green),
-                        onPressed: () async {
-                          try {
-                            // 1. İşlemi bitmesini bekle
-                            await _teamService.acceptJoinRequest(
-                              requestId,
-                              widget.team.id,
-                              userId,
-                              widget.team.maxMembers,
-                            );
-                            
-                            if (!mounted) return;
-
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('İstek onaylandı ve kullanıcı takıma eklendi.')),
-                            );
-
-                            // 2. Bekleme durumuna geçir
-                            setState(() {
-                              widget.team.currentMembers++;
-                              _isLoadingRequests = true;
-                            });
-
-                            // 3. Verileri tazele
-                            await _fetchIncomingRequests();
-                            
-                          } catch (e) {
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
-                              );
-                            }
-                          }
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.cancel, color: Colors.red),
-                        onPressed: () async {
-                          try {
-                            await _teamService.rejectJoinRequest(requestId);
-                            if (!mounted) return;
-
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('İstek reddedildi.')),
-                            );
-
-                            setState(() {
-                              _isLoadingRequests = true;
-                            });
-
-                            await _fetchIncomingRequests();
-
-                          } catch (e) {
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Reddedilirken hata oluştu.')),
-                              );
-                            }
-                          }
-                        },
-                      ),
                     ],
                   ),
                 ],
               ),
+              background: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [color, color.withValues(alpha: 0.8)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      right: -20,
+                      top: -20,
+                      child: Icon(
+                        Icons.groups_rounded,
+                        size: 150,
+                        color: Colors.white.withValues(alpha: 0.1),
+                      ),
+                    ),
+                    SafeArea(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 48, 16, 0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (widget.team.roles.isNotEmpty)
+                              Wrap(
+                                spacing: 6,
+                                children: widget.team.roles.take(2).map((r) => Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    r,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 10,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                )).toList(),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(48),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.1),
+                ),
+                child: TabBar(
+                  controller: _tabController,
+                  indicatorColor: Colors.white,
+                  indicatorWeight: 3,
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.white.withValues(alpha: 0.6),
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
+                  dividerColor: Colors.transparent,
+                  labelStyle: GoogleFonts.inter(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    letterSpacing: 0.2,
+                  ),
+                  unselectedLabelStyle: GoogleFonts.inter(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 13,
+                  ),
+                  tabs: [
+                    const Tab(text: 'Toplantılar'),
+                    const Tab(text: 'Üyeler'),
+                    const Tab(text: 'Detaylar'),
+                    if (_isAdmin) const Tab(text: 'İstekler'),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+        body: TabBarView(
+          controller: _tabController,
+          children: [
+            _buildMeetingsTab(),
+            _buildMembersTab(),
+            _buildDetailsTab(),
+            if (_isAdmin) _buildRequestsTab(),
+          ],
+        ),
+      ),
+      floatingActionButton: ListenableBuilder(
+        listenable: _tabController,
+        builder: (context, _) {
+          if (_tabController.index != 0 || !_isMember) return const SizedBox.shrink();
+          return FloatingActionButton.extended(
+            onPressed: () => showCreateMeetingDialog(context, teamId: widget.team.id, meetingProvider: _meetingProvider),
+            backgroundColor: color,
+            foregroundColor: Colors.white,
+            icon: const Icon(Icons.add_rounded),
+            label: Text('Toplantı Planla', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
           );
         },
+      ),
+      bottomNavigationBar: (!_isMember && !_isLoadingMembers)
+          ? Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                child: ElevatedButton(
+                  onPressed: (_hasPendingRequest || _isSendingRequest) ? null : _sendJoinRequest,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _hasPendingRequest ? Colors.orange : widget.team.color,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    elevation: 0,
+                  ),
+                  child: _isSendingRequest
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : Text(
+                          _hasPendingRequest ? 'İstek Gönderildi' : 'Takıma Katılma İsteği Gönder',
+                          style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold),
+                        ),
+                ),
+              ),
+            )
+          : null,
+    );
+  }
+
+  // ─── DETAILS TAB ──────────────────────────────────────────────
+  Widget _buildDetailsTab() {
+    final team = widget.team;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Description
+          _sectionCard(
+            title: 'Takım Açıklaması',
+            trailing: _isAdmin
+                ? IconButton(
+                    icon: Icon(_isEditingDescription ? Icons.close_rounded : Icons.edit_rounded, size: 18, color: AppColors.mutedText),
+                    onPressed: () => setState(() => _isEditingDescription = !_isEditingDescription),
+                  )
+                : null,
+            child: _isEditingDescription
+                ? Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                    TextField(
+                      controller: _descController,
+                      maxLines: 4,
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: AppColors.chipBg,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    ElevatedButton(
+                      onPressed: _isUpdatingDescription ? null : _updateDescription,
+                      style: ElevatedButton.styleFrom(backgroundColor: widget.team.color, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                      child: _isUpdatingDescription ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text('Kaydet'),
+                    ),
+                  ])
+                : Text(_currentDescription.isEmpty ? 'Açıklama eklenmemiş.' : _currentDescription, style: GoogleFonts.inter(fontSize: 14, color: AppColors.bodyText, height: 1.6)),
+          ),
+          const SizedBox(height: 16),
+
+          // Roles
+          if (team.roles.isNotEmpty)
+            _sectionCard(
+              title: 'Aranan Roller',
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: team.roles.map((r) => _chip(r, AppColors.chipBg, AppColors.bodyText)).toList(),
+              ),
+            ),
+          const SizedBox(height: 16),
+
+          // Skills
+          if (team.skills.isNotEmpty)
+            _sectionCard(
+              title: 'Gerekli Yetenekler',
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: team.skills.map((s) => _chip(s, widget.team.color.withValues(alpha: 0.1), widget.team.color)).toList(),
+              ),
+            ),
+          const SizedBox(height: 16),
+
+          // Capacity
+          _sectionCard(
+            title: 'Kapasite',
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                const Icon(Icons.people_outline, size: 16, color: AppColors.mutedText),
+                const SizedBox(width: 8),
+                Text('${team.currentMembers} / ${team.maxMembers} Üye', style: GoogleFonts.inter(fontSize: 14, color: AppColors.bodyText)),
+              ]),
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: team.currentMembers / team.maxMembers,
+                  minHeight: 6,
+                  backgroundColor: AppColors.chipBg,
+                  valueColor: AlwaysStoppedAnimation<Color>(widget.team.color),
+                ),
+              ),
+            ]),
+          ),
+        ],
       ),
     );
   }
 
-  // ─── Toplantı Listesi Sekmesi ────────────────────────────────
+  // ─── MEMBERS TAB ──────────────────────────────────────────────
+  Widget _buildMembersTab() {
+    if (_isLoadingMembers) return const Center(child: CircularProgressIndicator(color: AppColors.primaryAccent));
+    
+    // Build combined list: admin + members
+    final List<Widget> items = [];
+    
+    // Admin card
+    final adminUsername = _adminProfile?['username']?.toString() ?? widget.team.adminId.substring(0, 6);
+    final adminFullName = _adminProfile?['full_name']?.toString() ?? '';
+    items.add(_memberTile(
+      userId: widget.team.adminId,
+      username: adminUsername,
+      fullName: adminFullName,
+      badge: 'Kurucu',
+      badgeColor: widget.team.color,
+      membershipId: null,
+      isCurrentUser: widget.team.adminId == _currentUserId,
+    ));
 
-  Widget _buildMeetingsTab({
-    required List<dynamic> meetings,
-    required bool isUpcoming,
+    for (final m in _members) {
+      final p = m['profiles'] as Map<String, dynamic>? ?? {};
+      final uid = m['user_id'].toString();
+      if (uid == widget.team.adminId) continue;
+      items.add(_memberTile(
+        userId: uid,
+        username: p['username']?.toString() ?? uid.substring(0, 6),
+        fullName: p['full_name']?.toString() ?? '',
+        badge: 'Üye',
+        badgeColor: AppColors.mutedText,
+        membershipId: m['id'].toString(),
+        isCurrentUser: uid == _currentUserId,
+      ));
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: items.length,
+      itemBuilder: (_, i) => items[i],
+    );
+  }
+
+  Widget _memberTile({
+    required String userId,
+    required String username,
+    required String fullName,
+    required String badge,
+    required Color badgeColor,
+    required String? membershipId,
+    required bool isCurrentUser,
   }) {
-    if (_meetingProvider.isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (_meetingProvider.errorMessage.isNotEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.error_outline_rounded,
-                size: 48,
-                color: Color(0xFFE53E3E),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                _meetingProvider.errorMessage,
-                style: GoogleFonts.inter(color: AppColors.bodyText),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              OutlinedButton.icon(
-                onPressed: () => _meetingProvider.fetchMeetings(widget.team.id),
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Tekrar Dene'),
-              ),
-            ],
-          ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 3))],
+      ),
+      child: Row(children: [
+        CircleAvatar(
+          radius: 22,
+          backgroundColor: widget.team.color.withValues(alpha: 0.12),
+          child: Text(username.substring(0, 1).toUpperCase(), style: TextStyle(color: widget.team.color, fontWeight: FontWeight.bold, fontSize: 16)),
         ),
-      );
-    }
+        const SizedBox(width: 12),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('@$username', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.headingText)),
+          if (fullName.isNotEmpty) Text(fullName, style: GoogleFonts.inter(fontSize: 12, color: AppColors.mutedText)),
+        ])),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(color: badgeColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
+          child: Text(badge, style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: badgeColor)),
+        ),
+        if (_isAdmin && membershipId != null && !isCurrentUser) ...[
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () => _removeMember(membershipId, username),
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(color: const Color(0xFFE53E3E).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+              child: const Icon(Icons.person_remove_rounded, size: 16, color: Color(0xFFE53E3E)),
+            ),
+          ),
+        ],
+      ]),
+    );
+  }
 
+  // ─── MEETINGS TAB ─────────────────────────────────────────────
+  Widget _buildMeetingsTab() {
+    return ListenableBuilder(
+      listenable: _meetingProvider,
+      builder: (context, _) {
+        if (_meetingProvider.isLoading) return const Center(child: CircularProgressIndicator(color: AppColors.primaryAccent));
+        if (!_isMember) {
+           return Center(
+             child: Column(
+               mainAxisAlignment: MainAxisAlignment.center,
+               children: [
+                 Icon(Icons.lock_outline_rounded, size: 64, color: widget.team.color.withValues(alpha: 0.3)),
+                 const SizedBox(height: 16),
+                 Text('Toplantılar Gizlidir', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.headingText)),
+                 const SizedBox(height: 8),
+                 Text('Toplantı detaylarını görmek için\ntakıma katılmanız gerekiyor.', textAlign: TextAlign.center, style: GoogleFonts.inter(color: AppColors.mutedText)),
+               ],
+             ),
+           );
+        }
+        return DefaultTabController(
+          length: 2,
+          child: Column(children: [
+            Container(
+              color: AppColors.white,
+              child: TabBar(
+                labelColor: widget.team.color,
+                unselectedLabelColor: AppColors.mutedText,
+                indicatorColor: widget.team.color,
+                labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
+                tabs: const [Tab(text: 'Yaklaşan'), Tab(text: 'Geçmiş')],
+              ),
+            ),
+            Expanded(child: TabBarView(children: [
+              _meetingList(_meetingProvider.upcomingMeetings, true),
+              _meetingList(_meetingProvider.pastMeetings, false),
+            ])),
+          ]),
+        );
+      },
+    );
+  }
+
+  Widget _meetingList(List<dynamic> meetings, bool isUpcoming) {
     if (meetings.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                isUpcoming
-                    ? Icons.event_available_rounded
-                    : Icons.history_rounded,
-                size: 56,
-                color: AppColors.mutedText.withValues(alpha: 0.5),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                isUpcoming ? 'Yaklaşan toplantı yok' : 'Geçmiş toplantı yok',
-                style: GoogleFonts.inter(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.mutedText,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                isUpcoming
-                    ? 'Yeni bir toplantı planlamak için aşağıdaki butona dokunun.'
-                    : 'Tamamlanmış toplantılarınız burada görünecek.',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: AppColors.mutedText.withValues(alpha: 0.7),
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      );
+      return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Icon(isUpcoming ? Icons.event_available_rounded : Icons.history_rounded, size: 56, color: AppColors.mutedText.withValues(alpha: 0.4)),
+        const SizedBox(height: 14),
+        Text(isUpcoming ? 'Yaklaşan toplantı yok' : 'Geçmiş toplantı yok', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.mutedText)),
+        const SizedBox(height: 6),
+        if (isUpcoming && _isMember) Text('Toplantı planlamak için + butonuna dokun', style: GoogleFonts.inter(fontSize: 12, color: AppColors.mutedText.withValues(alpha: 0.6))),
+      ]));
     }
-
     return RefreshIndicator(
       onRefresh: () => _meetingProvider.fetchMeetings(widget.team.id),
       color: AppColors.primaryAccent,
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
         itemCount: meetings.length,
-        itemBuilder: (context, index) {
-          final meeting = meetings[index];
-          // Silme yetkisi: oluşturan kişi veya takım admini
-          final canDelete =
-              meeting.createdBy == TeamService().currentUserId || _isAdmin;
-
+        itemBuilder: (_, i) {
+          final m = meetings[i];
+          final canDelete = m.createdBy == _teamService.currentUserId || _isAdmin;
           return MeetingCard(
-            meeting: meeting,
+            meeting: m,
             canDelete: canDelete,
             onDelete: () async {
-              final messenger = ScaffoldMessenger.of(context);
               try {
-                await _meetingProvider.deleteMeeting(
-                  meeting.id,
-                  widget.team.id,
-                );
-                messenger.showSnackBar(
-                  SnackBar(
-                    content: const Text('Toplantı silindi.'),
-                    backgroundColor: AppColors.onlineGreen,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                );
+                await _meetingProvider.deleteMeeting(m.id, widget.team.id);
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Toplantı silindi.'), backgroundColor: AppColors.onlineGreen));
               } catch (e) {
-                messenger.showSnackBar(
-                  SnackBar(
-                    content: Text(e.toString().replaceAll('Exception: ', '')),
-                    backgroundColor: const Color(0xFFE53E3E),
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                );
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
               }
             },
           );
@@ -480,30 +691,112 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
     );
   }
 
-  // ─── Yardımcı Widget'lar ─────────────────────────────────────
+  // ─── REQUESTS TAB ─────────────────────────────────────────────
+  Widget _buildRequestsTab() {
+    if (_isLoadingRequests) return const Center(child: CircularProgressIndicator(color: AppColors.primaryAccent));
+    if (_incomingRequests.isEmpty) {
+      return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Icon(Icons.inbox_rounded, size: 56, color: AppColors.mutedText.withValues(alpha: 0.4)),
+        const SizedBox(height: 14),
+        Text('Bekleyen istek yok', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.mutedText)),
+      ]));
+    }
+    return RefreshIndicator(
+      onRefresh: _fetchIncomingRequests,
+      color: AppColors.primaryAccent,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+        itemCount: _incomingRequests.length,
+        itemBuilder: (_, i) {
+          final req = _incomingRequests[i];
+          final profile = req['profiles'] as Map<String, dynamic>? ?? {};
+          final username = profile['username']?.toString() ?? 'Bilinmeyen';
+          final fullName = profile['full_name']?.toString() ?? '';
+          final reqId = req['id'].toString();
+          final userId = req['user_id'].toString();
+          return Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 3))]),
+            child: Row(children: [
+              CircleAvatar(backgroundColor: AppColors.chipBg, child: Text(username.substring(0, 1).toUpperCase(), style: const TextStyle(color: AppColors.primaryAccent, fontWeight: FontWeight.bold))),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('@$username', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                if (fullName.isNotEmpty) Text(fullName, style: GoogleFonts.inter(fontSize: 12, color: AppColors.mutedText)),
+              ])),
+              IconButton(
+                icon: const Icon(Icons.check_circle_rounded, color: Colors.green, size: 28),
+                onPressed: () async {
+                  try {
+                    await _teamService.acceptJoinRequest(reqId, widget.team.id, userId, widget.team.maxMembers);
+                    if (mounted) { setState(() => widget.team.currentMembers++); await _fetchIncomingRequests(); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('İstek onaylandı.'), backgroundColor: AppColors.onlineGreen)); }
+                  } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); }
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.cancel_rounded, color: Color(0xFFE53E3E), size: 28),
+                onPressed: () async {
+                  try {
+                    await _teamService.rejectJoinRequest(reqId);
+                    if (mounted) { await _fetchIncomingRequests(); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('İstek reddedildi.'))); }
+                  } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); }
+                },
+              ),
+            ]),
+          );
+        },
+      ),
+    );
+  }
 
-  Widget _buildHeaderChip({required IconData icon, required String label}) {
+  Widget _headerBadge({required IconData icon, required String label, Color iconColor = Colors.white70}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(20),
+        color: Colors.white.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: Colors.amber),
+          Icon(icon, size: 12, color: iconColor),
           const SizedBox(width: 4),
           Text(
             label,
             style: GoogleFonts.inter(
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: FontWeight.w600,
               color: Colors.white,
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _sectionCard({required String title, required Widget child, Widget? trailing}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))]),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Text(title, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.headingText)),
+          const Spacer(),
+          if (trailing != null) trailing,
+        ]),
+        const SizedBox(height: 12),
+        child,
+      ]),
+    );
+  }
+
+  Widget _chip(String label, Color bgColor, Color textColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(20)),
+      child: Text(label, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: textColor)),
     );
   }
 }
