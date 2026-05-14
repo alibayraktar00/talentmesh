@@ -112,6 +112,74 @@ class ProfileService {
     }
   }
 
+  /// İki kullanıcının arkadaş olup olmadığını kontrol et
+  Future<bool> areUsersFriends(String user1, String user2) async {
+    try {
+      final response = await _client
+          .from('friend_requests')
+          .select()
+          .eq('status', 'accepted')
+          .eq('request_type', 'friend')
+          .or('and(requester_id.eq.$user1,addressee_id.eq.$user2),and(requester_id.eq.$user2,addressee_id.eq.$user1)')
+          .maybeSingle();
+      return response != null;
+    } catch (e) {
+      print('Arkadaşlık kontrolü hatası: $e');
+      return false;
+    }
+  }
+
+  /// Kullanıcının yetenek onaylarını getir
+  Future<List<Map<String, dynamic>>> fetchSkillEndorsements([
+    String? targetUserId,
+  ]) async {
+    final idToUse = targetUserId ?? _userId;
+    if (idToUse == null) return [];
+    try {
+      final data = await _client
+          .from('skill_endorsements')
+          .select()
+          .eq('user_id', idToUse);
+      return List<Map<String, dynamic>>.from(data);
+    } catch (e) {
+      print('Yetenek onayları çekilirken hata: $e');
+      return [];
+    }
+  }
+
+  /// Yetenek onayını ekle veya çıkar (Toggle)
+  Future<void> toggleSkillEndorsement({
+    required String targetUserId,
+    required String skillName,
+    required bool isCurrentlyEndorsed,
+  }) async {
+    if (_userId == null || _userId == targetUserId) return;
+    
+    try {
+      if (isCurrentlyEndorsed) {
+        // Onayı kaldır
+        await _client
+            .from('skill_endorsements')
+            .delete()
+            .match({
+              'user_id': targetUserId,
+              'endorser_id': _userId!,
+              'skill_name': skillName,
+            });
+      } else {
+        // Onay ekle
+        await _client.from('skill_endorsements').insert({
+          'user_id': targetUserId,
+          'endorser_id': _userId!,
+          'skill_name': skillName,
+        });
+      }
+    } catch (e) {
+      print('Yetenek onayı güncellenirken hata: $e');
+      rethrow;
+    }
+  }
+
   /// 2. Yeni Yetenek Ekleme (Add Skill)
   Future<void> addSkill(String newSkill) async {
     try {

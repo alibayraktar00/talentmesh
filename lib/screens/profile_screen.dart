@@ -42,6 +42,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   int _completedProjects = 0;
   int _teamsJoined = 0;
   List<Map<String, dynamic>> _reviews = [];
+  List<Map<String, dynamic>> _skillEndorsements = [];
+  bool _isFriend = false;
 
   bool get _isMyProfile {
     final currentUserId = _profileService.userId;
@@ -58,6 +60,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadProfile() async {
     final data = await _profileService.fetchProfile(widget.userId);
     final reviews = await _profileService.fetchReviews(widget.userId);
+    final endorsements = await _profileService.fetchSkillEndorsements(widget.userId);
+    
+    bool isFriend = false;
+    final currentUserId = _profileService.userId;
+    if (widget.userId != null && currentUserId != null && widget.userId != currentUserId) {
+      isFriend = await _profileService.areUsersFriends(currentUserId, widget.userId!);
+    }
+
     if (data != null) {
       setState(() {
         _fullName = data['full_name'] ?? '';
@@ -95,11 +105,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _completedProjects = stats['completed_projects'] ?? 0;
         _teamsJoined = stats['teams_joined'] ?? 0;
         _reviews = reviews;
+        _skillEndorsements = endorsements;
+        _isFriend = isFriend;
         _isLoading = false;
       });
     } else {
       setState(() {
         _reviews = reviews;
+        _skillEndorsements = endorsements;
+        _isFriend = isFriend;
         _isLoading = false;
       });
     }
@@ -1012,17 +1026,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               spacing: 8,
               runSpacing: 8,
               children: _skills
-                  .map(
-                    (s) => _buildDeletableChip(s, () async {
-                      setState(() => _skills.remove(s));
-                      try {
-                        await _profileService.updateDynamicProfileField(
-                          'skills',
-                          _skills,
-                        );
-                      } catch (e) {}
-                    }, AppColors.primaryDark),
-                  )
+                  .map((s) => _buildSkillChip(s))
                   .toList(),
             ),
     );
@@ -1428,6 +1432,123 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: AppColors.mutedText.withValues(alpha: 0.5),
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSkillChip(String skillName) {
+    // Bu yetenek için onayları bul
+    final endorsements = _skillEndorsements.where((e) => e['skill_name'] == skillName).toList();
+    final endorsementCount = endorsements.length;
+    
+    final currentUserId = _profileService.userId;
+    final isEndorsedByMe = currentUserId != null && endorsements.any((e) => e['endorser_id'] == currentUserId);
+
+    // Renk hesaplama (en fazla 10 onayda en koyu renk)
+    final intensity = (endorsementCount / 10).clamp(0.0, 1.0);
+    final bgColor = AppColors.chipBg.withValues(alpha: 1.0 - (intensity * 0.5));
+    final textColor = endorsementCount > 0 ? AppColors.primaryDark : AppColors.bodyText;
+    final borderColor = endorsementCount > 0 ? AppColors.primaryAccent : AppColors.inputBorder.withValues(alpha: 0.5);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: isEndorsedByMe ? AppColors.primaryAccent.withValues(alpha: 0.15) : bgColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: isEndorsedByMe ? AppColors.primaryAccent : borderColor),
+        boxShadow: endorsementCount >= 5
+            ? [
+                BoxShadow(
+                  color: AppColors.primaryAccent.withValues(alpha: 0.2),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                )
+              ]
+            : [],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (endorsementCount > 0) ...[
+            Icon(
+              endorsementCount >= 10 ? Icons.local_fire_department : Icons.thumb_up,
+              size: 14,
+              color: endorsementCount >= 10 ? Colors.orange : AppColors.primaryAccent,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              '$endorsementCount',
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primaryAccent,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              width: 1,
+              height: 12,
+              color: AppColors.inputBorder,
+            ),
+            const SizedBox(width: 6),
+          ],
+          Text(
+            skillName,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              fontWeight: endorsementCount > 0 ? FontWeight.w600 : FontWeight.w500,
+              color: textColor,
+            ),
+          ),
+          if (_isMyProfile) ...[
+            const SizedBox(width: 6),
+            GestureDetector(
+              onTap: () async {
+                setState(() => _skills.remove(skillName));
+                try {
+                  await _profileService.updateDynamicProfileField('skills', _skills);
+                } catch (e) {}
+              },
+              child: Icon(
+                Icons.close,
+                size: 14,
+                color: AppColors.mutedText.withValues(alpha: 0.6),
+              ),
+            ),
+          ] else if (currentUserId != null && _isFriend) ...[
+            const SizedBox(width: 6),
+            GestureDetector(
+              onTap: () async {
+                try {
+                  // Toggle endorsement
+                  await _profileService.toggleSkillEndorsement(
+                    targetUserId: widget.userId!,
+                    skillName: skillName,
+                    isCurrentlyEndorsed: isEndorsedByMe,
+                  );
+                  // Refresh endorsements
+                  final newEndorsements = await _profileService.fetchSkillEndorsements(widget.userId);
+                  if (mounted) {
+                    setState(() {
+                      _skillEndorsements = newEndorsements;
+                    });
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('İşlem başarısız: $e')),
+                    );
+                  }
+                }
+              },
+              child: Icon(
+                isEndorsedByMe ? Icons.check_circle : Icons.add_circle_outline,
+                size: 16,
+                color: isEndorsedByMe ? AppColors.primaryAccent : AppColors.mutedText,
+              ),
+            ),
+          ],
         ],
       ),
     );

@@ -266,6 +266,36 @@ class _FriendsScreenState extends State<FriendsScreen> {
     }
   }
 
+  Future<void> _removeFriend(String friendId) async {
+    final myId = _myUserId;
+    if (myId == null) return;
+
+    setState(() => _actionLoadingIds.add(friendId));
+    try {
+      await _client
+          .from('friend_requests')
+          .delete()
+          .eq('status', 'accepted')
+          .eq('request_type', 'friend')
+          .or('and(requester_id.eq.$myId,addressee_id.eq.$friendId),and(requester_id.eq.$friendId,addressee_id.eq.$myId)');
+      
+      if (!mounted) return;
+      setState(() {
+        _friends.removeWhere((f) => f['id'].toString() == friendId);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Arkadaşlıktan çıkarıldı.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      _showError('Arkadaşlıktan çıkarma başarısız oldu.');
+    } finally {
+      if (mounted) setState(() => _actionLoadingIds.remove(friendId));
+    }
+  }
+
   void _setupRealtime() {
     final myId = _myUserId;
     if (myId == null) return;
@@ -742,24 +772,63 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 ),
                 child: const Text('Mesaj Gönder'),
               ),
-              OutlinedButton(
-                onPressed: () {
-                  if (id.isNotEmpty) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ProfileScreen(userId: id),
-                      ),
-                    );
-                  }
-                },
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(0, 36),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
+              if (_actionLoadingIds.contains(friendId))
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 10),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              else
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert, color: AppColors.mutedText),
+                  onSelected: (value) async {
+                    if (value == 'profile') {
+                      if (id.isNotEmpty) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ProfileScreen(userId: id),
+                          ),
+                        );
+                      }
+                    } else if (value == 'remove') {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Arkadaşlıktan Çıkar'),
+                          content: Text('@$username kişisini arkadaşlıktan çıkarmak istediğinize emin misiniz?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text('İptal'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              style: TextButton.styleFrom(foregroundColor: Colors.red),
+                              child: const Text('Evet, Çıkar'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirm == true) {
+                        await _removeFriend(friendId);
+                      }
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'profile',
+                      child: Text('Profili Gör'),
+                    ),
+                    const PopupMenuItem(
+                      value: 'remove',
+                      child: Text('Arkadaşlıktan Çıkar', style: TextStyle(color: Colors.red)),
+                    ),
+                  ],
                 ),
-                child: const Text('Profil'),
-              ),
             ],
           ),
         );

@@ -309,51 +309,18 @@ class _SearchScreenState extends State<SearchScreen> {
     });
 
     try {
-      // Dinamik PostgREST Query Builder
-      var queryBuilder = _client
-          .from('profiles')
-          .select(
-            'id, username, full_name, school, department, education_year, degree, skills, looking_for',
-          );
-
-      // İsim Filtresi (full_name üzerinden ilike)
-      if (query.isNotEmpty) {
-        queryBuilder = queryBuilder.ilike('full_name', '%$query%');
-      }
-
-      // Eğitim Filtreleri
-      if (_filterSchool.isNotEmpty) {
-        queryBuilder = queryBuilder.ilike('school', '%$_filterSchool%');
-      }
-      if (_filterDepartment.isNotEmpty) {
-        queryBuilder = queryBuilder.ilike('department', '%$_filterDepartment%');
-      }
-      if (_filterYear.isNotEmpty) {
-        // education_year sütunu text olduğu varsayımıyla eq veya ilike kullanılabilir
-        queryBuilder = queryBuilder.eq('education_year', _filterYear);
-      }
-      if (_filterDegree.isNotEmpty) {
-        queryBuilder = queryBuilder.ilike('degree', '%$_filterDegree%');
-      }
-
-      // Array (Dizi) Filtreleri
-      if (_filterSkills.isNotEmpty) {
-        queryBuilder = queryBuilder.overlaps('skills', _filterSkills.toList());
-      }
-      if (_filterRoles.isNotEmpty) {
-        queryBuilder = queryBuilder.overlaps(
-          'looking_for',
-          _filterRoles.toList(),
-        );
-      }
-
-      // Kendimizi (aktif kullanıcıyı) her zaman dışarıda bırak
-      queryBuilder = queryBuilder.neq('id', myId);
-
-      // Çalıştır ve sınırlandır
-      final response = await queryBuilder
-          .order('username', ascending: true)
-          .limit(30);
+      // Supabase RPC kullanarak yetenek onaylarına göre sıralı sonuçları getiriyoruz.
+      // Not: Bu fonksiyonun veritabanında "search_users_by_skills" adıyla oluşturulmuş olması gereklidir.
+      final response = await _client.rpc('search_users_by_skills', params: {
+        'query_text': query,
+        'filter_school': _filterSchool,
+        'filter_department': _filterDepartment,
+        'filter_year': _filterYear,
+        'filter_degree': _filterDegree,
+        'filter_skills': _filterSkills.toList(),
+        'filter_roles': _filterRoles.toList(),
+        'exclude_id': myId,
+      });
 
       final data = List<Map<String, dynamic>>.from(response);
 
