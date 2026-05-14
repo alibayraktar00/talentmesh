@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../core/theme/app_colors.dart';
 import '../core/services/profile_service.dart';
+import '../core/constants/app_constants.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String? userId;
@@ -1920,23 +1921,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showAddSkillDialog() {
-    final c = TextEditingController();
-    _showSheet(
-      'Yetenek Ekle',
-      [_buildField(c, 'Yetenek (ör: Python)', Icons.code)],
-      () async {
-        final s = c.text.trim();
-        if (s.isNotEmpty && !_skills.contains(s)) {
-          setState(() => _skills.add(s));
-          try {
-            await _profileService.addSkill(s);
-          } catch (e) {
-            if (mounted)
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text('Hata: $e')));
-          }
-        }
+    showDialog(
+      context: context,
+      builder: (context) {
+        return _SkillAddPanel(
+          existingSkills: _skills,
+          onSave: (skill) async {
+            setState(() => _skills.add(skill));
+            try {
+              await _profileService.addSkill(skill);
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+              }
+            }
+          },
+        );
       },
     );
   }
@@ -2069,23 +2069,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showAddRoleDialog() {
-    final c = TextEditingController();
-    _showSheet(
-      'Rol Tercihi Ekle',
-      [_buildField(c, 'Rol (ör: Backend Developer)', Icons.person_search)],
-      () async {
-        final r = c.text.trim();
-        if (r.isNotEmpty && !_rolePreferences.contains(r)) {
-          setState(() => _rolePreferences.add(r));
-          try {
-            await _profileService.addLookingForRole(r);
-          } catch (e) {
-            if (mounted)
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text('Hata: $e')));
-          }
-        }
+    showDialog(
+      context: context,
+      builder: (context) {
+        return _RoleAddPanel(
+          existingRoles: _rolePreferences,
+          onSave: (role) async {
+            setState(() => _rolePreferences.add(role));
+            try {
+              await _profileService.addLookingForRole(role);
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+              }
+            }
+          },
+        );
       },
     );
   }
@@ -2109,18 +2108,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     List<Widget> children,
     VoidCallback onSave,
   ) {
-    return Container(
-      padding: EdgeInsets.fromLTRB(
-        20,
-        20,
-        20,
-        MediaQuery.of(ctx).viewInsets.bottom + 20,
-      ),
-      decoration: const BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: SingleChildScrollView(
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+        decoration: const BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2172,8 +2168,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildField(TextEditingController c, String hint, IconData icon) {
     return TextField(
@@ -2197,3 +2194,343 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 }
+
+class _SkillAddPanel extends StatefulWidget {
+  final List<String> existingSkills;
+  final Function(String) onSave;
+
+  const _SkillAddPanel({
+    Key? key,
+    required this.existingSkills,
+    required this.onSave,
+  }) : super(key: key);
+
+  @override
+  State<_SkillAddPanel> createState() => _SkillAddPanelState();
+}
+
+class _SkillAddPanelState extends State<_SkillAddPanel> {
+  String _selectedSkill = '';
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Yetenek Ekle',
+                style: GoogleFonts.inter(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.headingText,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Autocomplete<String>(
+                optionsBuilder: (TextEditingValue textEditingValue) {
+                  if (textEditingValue.text.isEmpty) {
+                    return const Iterable<String>.empty();
+                  }
+                  final query = textEditingValue.text.toLowerCase();
+                  return AppConstants.availableSkills.where((skill) {
+                    return skill.toLowerCase().contains(query);
+                  });
+                },
+                onSelected: (String selection) {
+                  _selectedSkill = selection;
+                },
+                fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                  controller.addListener(() {
+                    _selectedSkill = controller.text;
+                  });
+                  return TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    style: GoogleFonts.inter(fontSize: 14, color: AppColors.bodyText),
+                    decoration: InputDecoration(
+                      hintText: 'Yetenek Ara (ör: Python)',
+                      hintStyle: GoogleFonts.inter(fontSize: 14, color: AppColors.mutedText),
+                      prefixIcon: const Icon(Icons.code, size: 20, color: AppColors.mutedText),
+                      filled: true,
+                      fillColor: AppColors.chipBg,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                    ),
+                  );
+                },
+                optionsViewBuilder: (context, onSelected, options) {
+                  return Align(
+                    alignment: Alignment.topLeft,
+                    child: Material(
+                      elevation: 4.0,
+                      borderRadius: BorderRadius.circular(8),
+                      color: AppColors.white,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxHeight: 160,
+                          // Ekran genisligi eksi (dialog inset * 2) ve container padding'ini hesaba katarak genislik sinirlamasi yapiyoruz
+                          maxWidth: MediaQuery.of(context).size.width - 88, 
+                        ),
+                        child: ListView.builder(
+                          padding: EdgeInsets.zero,
+                          shrinkWrap: true,
+                          itemCount: options.length,
+                          itemBuilder: (BuildContext context, int index) {
+                            final String option = options.elementAt(index);
+                            return ListTile(
+                              title: Text(option, style: GoogleFonts.inter(fontSize: 14)),
+                              onTap: () {
+                                onSelected(option);
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () {
+                    final s = _selectedSkill.trim();
+                    final matchedSkill = AppConstants.availableSkills.firstWhere(
+                      (skill) => skill.toLowerCase() == s.toLowerCase(),
+                      orElse: () => '',
+                    );
+
+                    if (matchedSkill.isNotEmpty && !widget.existingSkills.contains(matchedSkill)) {
+                      widget.onSave(matchedSkill);
+                      Navigator.of(context).pop();
+                    } else if (matchedSkill.isEmpty && s.isNotEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Lütfen listedeki yeteneklerden birini seçin.'),
+                          backgroundColor: Colors.redAccent,
+                        ),
+                      );
+                    } else {
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryAccent,
+                    foregroundColor: AppColors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    'Kaydet',
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RoleAddPanel extends StatefulWidget {
+  final List<String> existingRoles;
+  final Function(String) onSave;
+
+  const _RoleAddPanel({
+    Key? key,
+    required this.existingRoles,
+    required this.onSave,
+  }) : super(key: key);
+
+  @override
+  State<_RoleAddPanel> createState() => _RoleAddPanelState();
+}
+
+class _RoleAddPanelState extends State<_RoleAddPanel> {
+  String _selectedRole = '';
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Rol Tercihi Ekle',
+                style: GoogleFonts.inter(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.headingText,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Autocomplete<String>(
+                optionsBuilder: (TextEditingValue textEditingValue) {
+                  if (textEditingValue.text.isEmpty) {
+                    return const Iterable<String>.empty();
+                  }
+                  final query = textEditingValue.text.toLowerCase();
+                  return AppConstants.availableRoles.where((role) {
+                    return role.toLowerCase().contains(query);
+                  });
+                },
+                onSelected: (String selection) {
+                  _selectedRole = selection;
+                },
+                fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                  controller.addListener(() {
+                    _selectedRole = controller.text;
+                  });
+                  return TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    style: GoogleFonts.inter(fontSize: 14, color: AppColors.bodyText),
+                    decoration: InputDecoration(
+                      hintText: 'Rol Ara (ör: Backend Developer)',
+                      hintStyle: GoogleFonts.inter(fontSize: 14, color: AppColors.mutedText),
+                      prefixIcon: const Icon(Icons.person_search, size: 20, color: AppColors.mutedText),
+                      filled: true,
+                      fillColor: AppColors.chipBg,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                    ),
+                  );
+                },
+                optionsViewBuilder: (context, onSelected, options) {
+                  return Align(
+                    alignment: Alignment.topLeft,
+                    child: Material(
+                      elevation: 4.0,
+                      borderRadius: BorderRadius.circular(8),
+                      color: AppColors.white,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxHeight: 160,
+                          maxWidth: MediaQuery.of(context).size.width - 88, 
+                        ),
+                        child: ListView.builder(
+                          padding: EdgeInsets.zero,
+                          shrinkWrap: true,
+                          itemCount: options.length,
+                          itemBuilder: (BuildContext context, int index) {
+                            final String option = options.elementAt(index);
+                            return ListTile(
+                              title: Text(option, style: GoogleFonts.inter(fontSize: 14)),
+                              onTap: () {
+                                onSelected(option);
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () {
+                    final s = _selectedRole.trim();
+                    final matchedRole = AppConstants.availableRoles.firstWhere(
+                      (role) => role.toLowerCase() == s.toLowerCase(),
+                      orElse: () => '',
+                    );
+
+                    if (matchedRole.isNotEmpty && !widget.existingRoles.contains(matchedRole)) {
+                      widget.onSave(matchedRole);
+                      Navigator.of(context).pop();
+                    } else if (matchedRole.isEmpty && s.isNotEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Lütfen listedeki rollerden birini seçin.'),
+                          backgroundColor: Colors.redAccent,
+                        ),
+                      );
+                    } else {
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryAccent,
+                    foregroundColor: AppColors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    'Kaydet',
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+

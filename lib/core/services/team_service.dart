@@ -338,4 +338,78 @@ class TeamService {
       rethrow;
     }
   }
+
+  // ═══════════════════════════════════════════════════════════════
+  // AKILLI EŞLEŞTİRME (SMART MATCHMAKING) İŞLEMLERİ
+  // ═══════════════════════════════════════════════════════════════
+
+  /// Kullanıcının yetenekleriyle aranan rolleri/yetenekleri örtüşen takımları getirir.
+  Future<List<Map<String, dynamic>>> fetchSmartMatches() async {
+    final user = _client.auth.currentUser;
+    if (user == null) {
+      print('[SmartMatch] Kullanıcı oturumu bulunamadı.');
+      return [];
+    }
+
+    try {
+      // 1. Kullanıcının profil bilgilerini çek
+      final profileResponse = await _client
+          .from('profiles')
+          .select('open_to_work, skills')
+          .eq('id', user.id)
+          .maybeSingle();
+
+      print('[SmartMatch] Profil verisi: $profileResponse');
+
+      if (profileResponse == null) {
+        print('[SmartMatch] Profil bulunamadı.');
+        return [];
+      }
+
+      final userSkills = List<String>.from(profileResponse['skills'] ?? []);
+
+      print('[SmartMatch] Kullanıcı yetenekleri: $userSkills');
+
+      if (userSkills.isEmpty) {
+        print('[SmartMatch] Yetenek listesi boş, çıkılıyor.');
+        return [];
+      }
+
+
+      // 2. Kendi olmadığımız tüm takımları çek
+      final matchesResponse = await _client
+          .from('teams')
+          .select()
+          .neq('admin_id', user.id)
+          .order('created_at', ascending: false)
+          .limit(50);
+
+      final allTeams = List<Map<String, dynamic>>.from(matchesResponse);
+      print('[SmartMatch] Toplam bulunan takım sayısı: ${allTeams.length}');
+
+      for (final team in allTeams) {
+        print('[SmartMatch] Takım: ${team['name']} | skills: ${team['required_skills']} | roles: ${team['required_roles']}');
+      }
+
+      final userSkillsLower = userSkills.map((e) => e.toLowerCase().trim()).toSet();
+
+      final filteredTeams = allTeams.where((team) {
+        final teamSkills = List<String>.from(team['required_skills'] ?? []);
+        final teamSkillsLower = teamSkills.map((e) => e.toLowerCase().trim()).toSet();
+
+        final bool hasSkillMatch = teamSkillsLower.intersection(userSkillsLower).isNotEmpty;
+
+        print('[SmartMatch] ${team['name']} -> skillMatch: $hasSkillMatch | team: $teamSkillsLower | user: $userSkillsLower');
+
+        return hasSkillMatch;
+      }).take(5).toList();
+
+
+      print('[SmartMatch] Eşleşen takım sayısı: ${filteredTeams.length}');
+      return filteredTeams;
+    } catch (e) {
+      print('[SmartMatch] HATA: $e');
+      return [];
+    }
+  }
 }

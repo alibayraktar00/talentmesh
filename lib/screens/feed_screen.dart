@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/theme/app_colors.dart';
 import '../core/services/project_service.dart';
 import '../core/services/auth_service.dart';
 import 'profile_screen.dart';
 import '../providers/team_provider.dart';
 import 'my_teams_screen.dart';
-import 'create_team_screen.dart';
 import 'search_screen.dart';
 import 'friends_screen.dart';
 import 'settings_screen.dart';
+import '../core/services/team_service.dart';
+import '../models/team_model.dart';
+import 'team_detail_screen.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
@@ -21,20 +24,45 @@ class FeedScreen extends StatefulWidget {
 class _FeedScreenState extends State<FeedScreen> {
   int _selectedNavIndex = 0;
   final _projectService = ProjectService();
+  final _teamService = TeamService();
   final _authService = AuthService();
   late Future<List<Map<String, dynamic>>> _projectsFuture;
+  late Future<List<Map<String, dynamic>>> _smartMatchesFuture;
   final TeamProvider _teamProvider = TeamProvider();
+  Set<String> _pendingTeamIds = {};
+  final _client = Supabase.instance.client;
 
   @override
   void initState() {
     super.initState();
     _projectsFuture = _projectService.fetchProjects();
+    _smartMatchesFuture = _teamService.fetchSmartMatches();
+    _fetchPendingRequests();
+  }
+  
+  Future<void> _fetchPendingRequests() async {
+    final user = _client.auth.currentUser;
+    if (user == null) return;
+    try {
+      final res = await _client
+          .from('team_requests')
+          .select('team_id')
+          .eq('user_id', user.id)
+          .eq('status', 'pending');
+      if (mounted) {
+        setState(() {
+          _pendingTeamIds = (res as List).map((e) => e['team_id'].toString()).toSet();
+        });
+      }
+    } catch (_) {}
   }
 
   void _refresh() {
     setState(() {
       _projectsFuture = _projectService.fetchProjects();
+      _smartMatchesFuture = _teamService.fetchSmartMatches();
     });
+    _fetchPendingRequests();
   }
 
   Future<void> _signOut() async {
@@ -47,9 +75,11 @@ class _FeedScreenState extends State<FeedScreen> {
       case 0:
         return 'Takımlarım';
       case 1:
+        return 'Ana Sayfa';
+      case 2:
         return 'Arkadaşlar';
       default:
-        return 'Takımlarım';
+        return 'Ana Sayfa';
     }
   }
 
@@ -58,20 +88,12 @@ class _FeedScreenState extends State<FeedScreen> {
       case 0:
         return MyTeamsScreen(teamProvider: _teamProvider);
       case 1:
+        return _buildFeedList();
+      case 2:
         return const FriendsScreen();
       default:
-        return MyTeamsScreen(teamProvider: _teamProvider);
+        return _buildFeedList();
     }
-  }
-
-  void _openCreateTeamSheet() {
-    showCreateTeamSheet(
-      context,
-      teamProvider: _teamProvider,
-      onTeamCreated: () {
-        setState(() => _selectedNavIndex = 0);
-      },
-    );
   }
 
   @override
@@ -117,62 +139,278 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   Widget _buildFeedList() {
+    return RefreshIndicator(
+      onRefresh: () async {
+        _refresh();
+        await Future.wait([_projectsFuture, _smartMatchesFuture]);
+      },
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(bottom: 100),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 1. Sana Uygun Takımlar 🔥
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+              child: Text(
+                'Sana Uygun Takımlar 🔥',
+                style: GoogleFonts.inter(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.headingText,
+                ),
+              ),
+            ),
+            _buildSmartMatchesFuture(),
+
+            // 2. Keşfet (Tüm İlanlar)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+              child: Text(
+                'Keşfet',
+                style: GoogleFonts.inter(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.headingText,
+                ),
+              ),
+            ),
+            _buildProjectsFuture(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSmartMatchesFuture() {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _smartMatchesFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox(
+            height: 180,
+            child: Center(
+              child: CircularProgressIndicator(color: AppColors.primaryAccent),
+            ),
+          );
+        }
+        if (snapshot.hasError) {
+          return const SizedBox(
+            height: 180,
+            child: Center(child: Text('Bir hata oluştu.')),
+          );
+        }
+
+        final matches = snapshot.data ?? [];
+        if (matches.isEmpty) {
+          return Container(
+            height: 160,
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            alignment: Alignment.center,
+            child: Text(
+              'Şu an profiline uygun takım bulunamadı. Yeteneklerini güncellemeyi deneyin.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: AppColors.mutedText,
+                height: 1.5,
+              ),
+            ),
+          );
+        }
+
+        return SizedBox(
+          height: 180,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: matches.length,
+            itemBuilder: (context, index) {
+              final teamMap = matches[index];
+              return _buildMatchCard(teamMap);
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMatchCard(Map<String, dynamic> teamMap) {
+    final team = Team.fromMap(teamMap, _teamService.currentUserId ?? '');
+
+    return Container(
+      width: 260,
+      margin: const EdgeInsets.only(right: 12, top: 4, bottom: 8),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Üst kısımdaki renkli bant
+            Container(
+              height: 6,
+              color: team.color,
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    team.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.headingText,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    team.description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      height: 1.4,
+                      color: AppColors.bodyText,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      const Icon(Icons.people_outline, size: 14, color: AppColors.mutedText),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${team.maxMembers} Kişilik',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          color: AppColors.mutedText,
+                        ),
+                      ),
+                      const Spacer(),
+                      SizedBox(
+                        height: 32,
+                        width: 76,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => TeamDetailScreen(
+                                  team: team,
+                                  teamProvider: _teamProvider,
+                                ),
+                              ),
+                            );
+                            _fetchPendingRequests();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: team.color.withValues(alpha: 0.1),
+                            foregroundColor: team.color,
+                            elevation: 0,
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: Text(
+                            _pendingTeamIds.contains(team.id) ? 'Bekliyor' : 'İncele',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProjectsFuture() {
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: _projectsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Padding(
+            padding: EdgeInsets.all(32),
+            child: Center(child: CircularProgressIndicator(color: AppColors.primaryAccent)),
+          );
         }
         if (snapshot.hasError) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.error_outline,
-                  color: Colors.redAccent,
-                  size: 48,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Veri yüklenemedi.',
-                  style: GoogleFonts.inter(color: AppColors.mutedText),
-                ),
-                const SizedBox(height: 8),
-                TextButton(
-                  onPressed: _refresh,
-                  child: const Text('Tekrar dene'),
-                ),
-              ],
+          return Padding(
+            padding: const EdgeInsets.all(32),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.error_outline,
+                    color: Colors.redAccent,
+                    size: 48,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Veri yüklenemedi.',
+                    style: GoogleFonts.inter(color: AppColors.mutedText),
+                  ),
+                ],
+              ),
             ),
           );
         }
         final projects = snapshot.data ?? [];
         if (projects.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.work_outline,
-                  size: 56,
-                  color: AppColors.mutedText.withValues(alpha: 0.5),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Henüz ilan yok.',
-                  style: GoogleFonts.inter(
-                    fontSize: 15,
-                    color: AppColors.mutedText,
+          return Padding(
+            padding: const EdgeInsets.all(32),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.work_outline,
+                    size: 48,
+                    color: AppColors.mutedText.withValues(alpha: 0.5),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  Text(
+                    'Henüz ilan yok.',
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
+                      color: AppColors.mutedText,
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         }
         return ListView.builder(
-          padding: const EdgeInsets.only(bottom: 100),
-          physics: const BouncingScrollPhysics(),
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
           itemCount: projects.length,
           itemBuilder: (context, index) {
             return _buildProjectCard(projects[index], index);
@@ -453,7 +691,9 @@ class _FeedScreenState extends State<FeedScreen> {
               Expanded(
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTap: _openCreateTeamSheet,
+                  onTap: () {
+                    setState(() => _selectedNavIndex = 1);
+                  },
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -473,37 +713,17 @@ class _FeedScreenState extends State<FeedScreen> {
                             ),
                           ],
                         ),
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            const Icon(
-                              Icons.group_add,
-                              color: AppColors.white,
-                              size: 26,
-                            ),
-                            Positioned(
-                              top: 8,
-                              right: 8,
-                              child: Container(
-                                width: 14,
-                                height: 14,
-                                decoration: BoxDecoration(
-                                  color: AppColors.white.withValues(alpha: 0.3),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.add,
-                                  color: AppColors.white,
-                                  size: 10,
-                                ),
-                              ),
-                            ),
-                          ],
+                        child: const Center(
+                          child: Icon(
+                            Icons.home,
+                            color: AppColors.white,
+                            size: 26,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Takım Oluştur',
+                        'Ana Sayfa',
                         style: GoogleFonts.inter(
                           fontSize: 10,
                           fontWeight: FontWeight.w500,
@@ -518,8 +738,8 @@ class _FeedScreenState extends State<FeedScreen> {
                 child: _buildNavItem(
                   icon: Icons.people_outline,
                   activeIcon: Icons.people,
-                  label: 'Arkadaşlar\n', // Hizalamayı korumak için gerekirse \n kalabilir
-                  index: 1,
+                  label: 'Arkadaşlar',
+                  index: 2,
                 ),
               ),
             ],
