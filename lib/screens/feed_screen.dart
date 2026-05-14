@@ -30,6 +30,7 @@ class _FeedScreenState extends State<FeedScreen> {
   late Future<List<Map<String, dynamic>>> _smartMatchesFuture;
   final TeamProvider _teamProvider = TeamProvider();
   Set<String> _pendingTeamIds = {};
+  int _teamsRefreshKey = 0;
   final _client = Supabase.instance.client;
 
   @override
@@ -61,6 +62,7 @@ class _FeedScreenState extends State<FeedScreen> {
     setState(() {
       _projectsFuture = _projectService.fetchProjects();
       _smartMatchesFuture = _teamService.fetchSmartMatches();
+      _teamsRefreshKey++;
     });
     _fetchPendingRequests();
   }
@@ -86,7 +88,7 @@ class _FeedScreenState extends State<FeedScreen> {
   Widget _buildPageContent() {
     switch (_selectedNavIndex) {
       case 0:
-        return MyTeamsScreen(teamProvider: _teamProvider);
+        return MyTeamsScreen(key: ValueKey(_teamsRefreshKey), teamProvider: _teamProvider);
       case 1:
         return _buildFeedList();
       case 2:
