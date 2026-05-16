@@ -425,11 +425,14 @@ class TeamService {
           .from('team_tasks')
           .select('''
             *,
-            assigned_profile:assigned_to (
-              id,
-              username,
-              full_name,
-              avatar_url
+            assignees:team_task_assignees (
+              user_id,
+              profiles:user_id (
+                id,
+                username,
+                full_name,
+                avatar_url
+              )
             ),
             creator_profile:created_by (
               id,
@@ -453,12 +456,12 @@ class TeamService {
     }
   }
 
-  /// Yeni bir görev oluşturur.
+  /// Yeni bir görev oluşturur ve görevlileri atar.
   Future<void> createTask({
     required String teamId,
     required String title,
     String? description,
-    String? assignedTo,
+    List<String> assignedTo = const [],
   }) async {
     try {
       final user = _client.auth.currentUser;
@@ -466,15 +469,27 @@ class TeamService {
         throw Exception('Oturum açmış bir kullanıcı bulunamadı.');
       }
 
-      await _client.from('team_tasks').insert({
+      // 1. Görevi oluştur ve ID'sini al
+      final taskResponse = await _client.from('team_tasks').insert({
         'team_id': teamId,
         'title': title,
         'description': description,
         'status': 'todo',
-        'assigned_to': assignedTo,
         'created_by': user.id,
-      });
-      print('Görev oluşturuldu: $title');
+      }).select('id').single();
+
+      final taskId = taskResponse['id'].toString();
+
+      // 2. Görevlileri junction tablosuna ekle
+      if (assignedTo.isNotEmpty) {
+        final assigneeRows = assignedTo.map((userId) => {
+          'task_id': taskId,
+          'user_id': userId,
+        }).toList();
+        await _client.from('team_task_assignees').insert(assigneeRows);
+      }
+
+      print('Görev oluşturuldu: $title (${assignedTo.length} kişi atandı)');
     } on PostgrestException catch (e) {
       print('Görev oluşturma (Postgrest) hatası: ${e.message}');
       throw Exception(e.message);

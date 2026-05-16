@@ -407,13 +407,26 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           }
           // Görevler sekmesi
           if (_tabController.index == 1) {
+            // Admin + üyeleri birleştir
+            final allMembers = <Map<String, dynamic>>[];
+            if (_adminProfile != null) {
+              allMembers.add({
+                'user_id': widget.team.adminId,
+                'profiles': _adminProfile,
+              });
+            }
+            for (final m in _members) {
+              if (m['user_id'].toString() != widget.team.adminId) {
+                allMembers.add(m);
+              }
+            }
             return FloatingActionButton.extended(
               onPressed: () => showCreateTaskDialog(
                 context,
                 teamId: widget.team.id,
                 taskProvider: _taskProvider,
                 teamColor: color,
-                members: _members,
+                members: allMembers,
               ),
               backgroundColor: color,
               foregroundColor: Colors.white,
@@ -884,30 +897,51 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                 ),
               ),
             ],
-            // Assigned user
-            if (task.assignedUsername != null) ...[
+            // Assigned users (multiple)
+            if (task.assignees.isNotEmpty) ...[
               const SizedBox(height: 8),
               Row(
                 children: [
-                  CircleAvatar(
-                    radius: 10,
-                    backgroundColor: widget.team.color.withValues(alpha: 0.12),
-                    child: Text(
-                      task.assignedUsername![0].toUpperCase(),
-                      style: TextStyle(
-                        color: widget.team.color,
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  // Avatar stack
+                  SizedBox(
+                    width: task.assignees.length == 1
+                        ? 26
+                        : 20.0 + (task.assignees.length.clamp(0, 4) * 14),
+                    height: 20,
+                    child: Stack(
+                      children: task.assignees.take(4).toList().asMap().entries.map((entry) {
+                        final idx = entry.key;
+                        final assignee = entry.value;
+                        return Positioned(
+                          left: idx * 14.0,
+                          child: CircleAvatar(
+                            radius: 10,
+                            backgroundColor: widget.team.color.withValues(alpha: 0.12),
+                            child: Text(
+                              (assignee.username ?? '?')[0].toUpperCase(),
+                              style: TextStyle(
+                                color: widget.team.color,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
                     ),
                   ),
                   const SizedBox(width: 6),
-                  Text(
-                    '@${task.assignedUsername}',
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.mutedText,
+                  Expanded(
+                    child: Text(
+                      task.assignees.length == 1
+                          ? '@${task.assignees.first.username ?? ''}'
+                          : '${task.assignees.length} kişi atandı',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.mutedText,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],

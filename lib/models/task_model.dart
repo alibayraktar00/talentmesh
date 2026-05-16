@@ -42,6 +42,31 @@ enum TaskStatus {
   }
 }
 
+/// Göreve atanan kişiyi temsil eden model
+class TaskAssignee {
+  final String userId;
+  final String? username;
+  final String? fullName;
+  final String? avatarUrl;
+
+  TaskAssignee({
+    required this.userId,
+    this.username,
+    this.fullName,
+    this.avatarUrl,
+  });
+
+  factory TaskAssignee.fromJson(Map<String, dynamic> json) {
+    final profiles = json['profiles'] as Map<String, dynamic>?;
+    return TaskAssignee(
+      userId: json['user_id']?.toString() ?? '',
+      username: profiles?['username']?.toString(),
+      fullName: profiles?['full_name']?.toString(),
+      avatarUrl: profiles?['avatar_url']?.toString(),
+    );
+  }
+}
+
 /// Takım görevini temsil eden model sınıfı
 class TeamTask {
   final String id;
@@ -49,14 +74,14 @@ class TeamTask {
   final String title;
   final String? description;
   final TaskStatus status;
-  final String? assignedTo;
   final String createdBy;
   final DateTime createdAt;
   final DateTime? updatedAt;
 
-  // JOIN ile gelen profil bilgileri
-  final String? assignedUsername;
-  final String? assignedFullName;
+  // Birden fazla görevli
+  final List<TaskAssignee> assignees;
+
+  // Oluşturan kişi profil bilgileri
   final String? creatorUsername;
   final String? creatorFullName;
 
@@ -66,21 +91,23 @@ class TeamTask {
     required this.title,
     this.description,
     required this.status,
-    this.assignedTo,
     required this.createdBy,
     required this.createdAt,
     this.updatedAt,
-    this.assignedUsername,
-    this.assignedFullName,
+    this.assignees = const [],
     this.creatorUsername,
     this.creatorFullName,
   });
 
   factory TeamTask.fromJson(Map<String, dynamic> json) {
-    // assigned_to profil bilgileri (nullable)
-    final assignedProfile = json['assigned_profile'] as Map<String, dynamic>?;
     // created_by profil bilgileri
     final creatorProfile = json['creator_profile'] as Map<String, dynamic>?;
+
+    // Birden fazla görevli (junction table)
+    final assigneesRaw = json['assignees'] as List<dynamic>? ?? [];
+    final assignees = assigneesRaw
+        .map((a) => TaskAssignee.fromJson(a as Map<String, dynamic>))
+        .toList();
 
     return TeamTask(
       id: json['id'].toString(),
@@ -88,7 +115,6 @@ class TeamTask {
       title: json['title'] ?? '',
       description: json['description'],
       status: TaskStatus.fromString(json['status'] ?? 'todo'),
-      assignedTo: json['assigned_to']?.toString(),
       createdBy: json['created_by'].toString(),
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
@@ -96,22 +122,9 @@ class TeamTask {
       updatedAt: json['updated_at'] != null
           ? DateTime.parse(json['updated_at'])
           : null,
-      assignedUsername: assignedProfile?['username']?.toString(),
-      assignedFullName: assignedProfile?['full_name']?.toString(),
+      assignees: assignees,
       creatorUsername: creatorProfile?['username']?.toString(),
       creatorFullName: creatorProfile?['full_name']?.toString(),
     );
-  }
-
-  /// Yeni görev oluşturmak için Map'e çevirir (Supabase insert)
-  Map<String, dynamic> toInsertMap() {
-    return {
-      'team_id': teamId,
-      'title': title,
-      'description': description,
-      'status': status.toDbString(),
-      'assigned_to': assignedTo,
-      'created_by': createdBy,
-    };
   }
 }

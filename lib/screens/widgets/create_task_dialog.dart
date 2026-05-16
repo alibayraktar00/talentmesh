@@ -44,7 +44,7 @@ class _CreateTaskSheet extends StatefulWidget {
 class _CreateTaskSheetState extends State<_CreateTaskSheet> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  String? _selectedAssignee;
+  final Set<String> _selectedAssignees = {};
   bool _isCreating = false;
 
   @override
@@ -74,7 +74,7 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
         description: _descriptionController.text.trim().isEmpty
             ? null
             : _descriptionController.text.trim(),
-        assignedTo: _selectedAssignee,
+        assignedTo: _selectedAssignees.toList(),
       );
       if (mounted) {
         Navigator.of(context).pop();
@@ -96,6 +96,16 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
         );
       }
     }
+  }
+
+  void _toggleAssignee(String userId) {
+    setState(() {
+      if (_selectedAssignees.contains(userId)) {
+        _selectedAssignees.remove(userId);
+      } else {
+        _selectedAssignees.add(userId);
+      }
+    });
   }
 
   @override
@@ -244,96 +254,135 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
               ),
               const SizedBox(height: 20),
 
-              // Assignee dropdown
-              Text(
-                'Görevli (Opsiyonel)',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.headingText,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                decoration: BoxDecoration(
-                  color: AppColors.chipBg,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String?>(
-                    value: _selectedAssignee,
-                    isExpanded: true,
-                    hint: Text(
-                      'Bir üye seçin',
-                      style: GoogleFonts.inter(
-                        color: AppColors.mutedText.withValues(alpha: 0.5),
-                        fontSize: 14,
+              // Multi-select assignees
+              Row(
+                children: [
+                  Text(
+                    'Görevliler (Opsiyonel)',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.headingText,
+                    ),
+                  ),
+                  if (_selectedAssignees.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: widget.teamColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                    ),
-                    icon: Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      color: AppColors.mutedText,
-                    ),
-                    items: [
-                      DropdownMenuItem<String?>(
-                        value: null,
-                        child: Text(
-                          'Atanmamış',
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            color: AppColors.mutedText,
-                          ),
+                      child: Text(
+                        '${_selectedAssignees.length} kişi',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: widget.teamColor,
                         ),
                       ),
-                      ...widget.members.map((member) {
-                        final profiles =
-                            member['profiles'] as Map<String, dynamic>? ?? {};
-                        final userId = member['user_id']?.toString() ?? '';
-                        final username =
-                            profiles['username']?.toString() ?? 'Bilinmeyen';
-                        final fullName =
-                            profiles['full_name']?.toString() ?? '';
-                        return DropdownMenuItem<String?>(
-                          value: userId,
-                          child: Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 12,
-                                backgroundColor:
-                                    widget.teamColor.withValues(alpha: 0.12),
-                                child: Text(
-                                  username.isNotEmpty
-                                      ? username[0].toUpperCase()
-                                      : '?',
-                                  style: TextStyle(
-                                    color: widget.teamColor,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 10),
+              // Member chips
+              if (widget.members.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text(
+                    'Takımda henüz üye yok.',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: AppColors.mutedText,
+                    ),
+                  ),
+                )
+              else
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: widget.members.map((member) {
+                    final profiles =
+                        member['profiles'] as Map<String, dynamic>? ?? {};
+                    final userId = member['user_id']?.toString() ?? '';
+                    final username =
+                        profiles['username']?.toString() ?? 'Bilinmeyen';
+                    final fullName =
+                        profiles['full_name']?.toString() ?? '';
+                    final isSelected = _selectedAssignees.contains(userId);
+                    final displayName = fullName.isNotEmpty
+                        ? fullName
+                        : '@$username';
+
+                    return GestureDetector(
+                      onTap: () => _toggleAssignee(userId),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? widget.teamColor.withValues(alpha: 0.12)
+                              : AppColors.chipBg,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: isSelected
+                                ? widget.teamColor
+                                : Colors.transparent,
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircleAvatar(
+                              radius: 10,
+                              backgroundColor: isSelected
+                                  ? widget.teamColor
+                                  : widget.teamColor.withValues(alpha: 0.15),
+                              child: Text(
+                                username.isNotEmpty
+                                    ? username[0].toUpperCase()
+                                    : '?',
+                                style: TextStyle(
+                                  color: isSelected
+                                      ? Colors.white
+                                      : widget.teamColor,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  fullName.isNotEmpty
-                                      ? '$fullName (@$username)'
-                                      : '@$username',
-                                  style: GoogleFonts.inter(fontSize: 14),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              displayName,
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                fontWeight: isSelected
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                                color: isSelected
+                                    ? widget.teamColor
+                                    : AppColors.bodyText,
+                              ),
+                            ),
+                            if (isSelected) ...[
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.check_circle_rounded,
+                                size: 14,
+                                color: widget.teamColor,
                               ),
                             ],
-                          ),
-                        );
-                      }),
-                    ],
-                    onChanged: (value) {
-                      setState(() => _selectedAssignee = value);
-                    },
-                  ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
                 ),
-              ),
               const SizedBox(height: 32),
 
               // Create button

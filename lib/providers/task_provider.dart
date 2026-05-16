@@ -63,7 +63,7 @@ class TaskProvider extends ChangeNotifier {
     required String teamId,
     required String title,
     String? description,
-    String? assignedTo,
+    List<String> assignedTo = const [],
   }) async {
     try {
       await _teamService.createTask(
