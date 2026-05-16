@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/meeting_model.dart';
+import '../../models/task_model.dart';
 
 class TeamService {
   final _client = Supabase.instance.client;
@@ -410,6 +411,130 @@ class TeamService {
     } catch (e) {
       print('[SmartMatch] HATA: $e');
       return [];
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // GÖREV (TASK) İŞLEMLERİ
+  // ═══════════════════════════════════════════════════════════════
+
+  /// Takıma ait görevleri profil bilgileriyle birlikte çeker.
+  Future<List<TeamTask>> fetchTeamTasks(String teamId) async {
+    try {
+      final response = await _client
+          .from('team_tasks')
+          .select('''
+            *,
+            assigned_profile:assigned_to (
+              id,
+              username,
+              full_name,
+              avatar_url
+            ),
+            creator_profile:created_by (
+              id,
+              username,
+              full_name,
+              avatar_url
+            )
+          ''')
+          .eq('team_id', teamId)
+          .order('created_at', ascending: false);
+
+      return List<Map<String, dynamic>>.from(response)
+          .map((item) => TeamTask.fromJson(item))
+          .toList();
+    } on PostgrestException catch (e) {
+      print('Görevleri çekerken (Postgrest) hatası: ${e.message}');
+      throw Exception(e.message);
+    } catch (e) {
+      print('Görevleri çekerken hata: $e');
+      rethrow;
+    }
+  }
+
+  /// Yeni bir görev oluşturur.
+  Future<void> createTask({
+    required String teamId,
+    required String title,
+    String? description,
+    String? assignedTo,
+  }) async {
+    try {
+      final user = _client.auth.currentUser;
+      if (user == null) {
+        throw Exception('Oturum açmış bir kullanıcı bulunamadı.');
+      }
+
+      await _client.from('team_tasks').insert({
+        'team_id': teamId,
+        'title': title,
+        'description': description,
+        'status': 'todo',
+        'assigned_to': assignedTo,
+        'created_by': user.id,
+      });
+      print('Görev oluşturuldu: $title');
+    } on PostgrestException catch (e) {
+      print('Görev oluşturma (Postgrest) hatası: ${e.message}');
+      throw Exception(e.message);
+    } catch (e) {
+      print('Görev oluşturma hatası: $e');
+      rethrow;
+    }
+  }
+
+  /// Görev durumunu günceller (Kanban geçişleri).
+  Future<void> updateTaskStatus(String taskId, TaskStatus newStatus) async {
+    try {
+      await _client
+          .from('team_tasks')
+          .update({'status': newStatus.toDbString()})
+          .eq('id', taskId);
+      print('Görev durumu güncellendi: $taskId -> ${newStatus.toDbString()}');
+    } on PostgrestException catch (e) {
+      print('Görev durumu güncelleme (Postgrest) hatası: ${e.message}');
+      throw Exception(e.message);
+    } catch (e) {
+      print('Görev durumu güncelleme hatası: $e');
+      rethrow;
+    }
+  }
+
+  /// Görev detaylarını günceller.
+  Future<void> updateTask({
+    required String taskId,
+    required String title,
+    String? description,
+    String? assignedTo,
+  }) async {
+    try {
+      await _client.from('team_tasks').update({
+        'title': title,
+        'description': description,
+        'assigned_to': assignedTo,
+      }).eq('id', taskId);
+      print('Görev güncellendi: $taskId');
+    } on PostgrestException catch (e) {
+      print('Görev güncelleme (Postgrest) hatası: ${e.message}');
+      throw Exception(e.message);
+    } catch (e) {
+      print('Görev güncelleme hatası: $e');
+      rethrow;
+    }
+  }
+
+  /// Görevi siler.
+  Future<void> deleteTask(String taskId) async {
+    try {
+      await _client.from('team_tasks').delete().eq('id', taskId);
+      print('Görev silindi: $taskId');
+    } on PostgrestException catch (e) {
+      print('Görev silme (Postgrest) hatası: ${e.message}');
+      throw Exception(e.message);
+    } catch (e) {
+      print('Görev silme hatası: $e');
+      rethrow;
     }
   }
 }

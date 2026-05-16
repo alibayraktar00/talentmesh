@@ -3,10 +3,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/theme/app_colors.dart';
 import '../models/team_model.dart';
+import '../models/task_model.dart';
 import '../providers/meeting_provider.dart';
+import '../providers/task_provider.dart';
 import '../providers/team_provider.dart';
 import '../core/services/team_service.dart';
 import 'widgets/create_meeting_dialog.dart';
+import 'widgets/create_task_dialog.dart';
 import 'widgets/meeting_card.dart';
 
 class TeamDetailScreen extends StatefulWidget {
@@ -27,6 +30,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final MeetingProvider _meetingProvider = MeetingProvider();
+  final TaskProvider _taskProvider = TaskProvider();
   final TeamService _teamService = TeamService();
   final _client = Supabase.instance.client;
 
@@ -56,7 +60,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
     super.initState();
     _currentDescription = widget.team.description;
     _descController = TextEditingController(text: _currentDescription);
-    final tabCount = _isAdmin ? 4 : 3;
+    final tabCount = _isAdmin ? 5 : 4;
     _tabController = TabController(length: tabCount, vsync: this);
     
     // Üye olmayanlar için Detaylar sekmesinden başlat
@@ -67,6 +71,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _meetingProvider.fetchMeetings(widget.team.id);
+      _taskProvider.fetchTasks(widget.team.id);
       _fetchMembers();
       _fetchAdminProfile();
       _checkRequestStatus();
@@ -365,6 +370,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                   ),
                   tabs: [
                     const Tab(text: 'Toplantılar'),
+                    const Tab(text: 'Görevler'),
                     const Tab(text: 'Üyeler'),
                     const Tab(text: 'Detaylar'),
                     if (_isAdmin) const Tab(text: 'İstekler'),
@@ -378,6 +384,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           controller: _tabController,
           children: [
             _buildMeetingsTab(),
+            _buildTasksTab(),
             _buildMembersTab(),
             _buildDetailsTab(),
             if (_isAdmin) _buildRequestsTab(),
@@ -387,14 +394,34 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
       floatingActionButton: ListenableBuilder(
         listenable: _tabController,
         builder: (context, _) {
-          if (_tabController.index != 0 || !_isMember) return const SizedBox.shrink();
-          return FloatingActionButton.extended(
-            onPressed: () => showCreateMeetingDialog(context, teamId: widget.team.id, meetingProvider: _meetingProvider),
-            backgroundColor: color,
-            foregroundColor: Colors.white,
-            icon: const Icon(Icons.add_rounded),
-            label: Text('Toplantı Planla', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-          );
+          if (!_isMember) return const SizedBox.shrink();
+          // Toplantılar sekmesi
+          if (_tabController.index == 0) {
+            return FloatingActionButton.extended(
+              onPressed: () => showCreateMeetingDialog(context, teamId: widget.team.id, meetingProvider: _meetingProvider),
+              backgroundColor: color,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.add_rounded),
+              label: Text('Toplantı Planla', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+            );
+          }
+          // Görevler sekmesi
+          if (_tabController.index == 1) {
+            return FloatingActionButton.extended(
+              onPressed: () => showCreateTaskDialog(
+                context,
+                teamId: widget.team.id,
+                taskProvider: _taskProvider,
+                teamColor: color,
+                members: _members,
+              ),
+              backgroundColor: color,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.add_task_rounded),
+              label: Text('Görev Ekle', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+            );
+          }
+          return const SizedBox.shrink();
         },
       ),
       bottomNavigationBar: (!_isMember && !_isLoadingMembers)
@@ -431,6 +458,508 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
             )
           : null,
     );
+  }
+
+  // ─── TASKS TAB ───────────────────────────────────────────────
+  Widget _buildTasksTab() {
+    return ListenableBuilder(
+      listenable: _taskProvider,
+      builder: (context, _) {
+        if (_taskProvider.isLoading) {
+          return const Center(
+            child: CircularProgressIndicator(color: AppColors.primaryAccent),
+          );
+        }
+        if (!_isMember) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.lock_outline_rounded, size: 64, color: widget.team.color.withValues(alpha: 0.3)),
+                const SizedBox(height: 16),
+                Text('Görevler Gizlidir', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.headingText)),
+                const SizedBox(height: 8),
+                Text('Görev detaylarını görmek için\ntakıma katılmanız gerekiyor.', textAlign: TextAlign.center, style: GoogleFonts.inter(color: AppColors.mutedText)),
+              ],
+            ),
+          );
+        }
+
+        final todoTasks = _taskProvider.todoTasks;
+        final inProgressTasks = _taskProvider.inProgressTasks;
+        final doneTasks = _taskProvider.doneTasks;
+        final allTasks = _taskProvider.tasks;
+        final progress = _taskProvider.progress;
+        final progressPercent = _taskProvider.progressPercent;
+
+        return RefreshIndicator(
+          onRefresh: () => _taskProvider.fetchTasks(widget.team.id),
+          color: widget.team.color,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ─── İlerleme Çubuğu ─────────────────────
+                _buildProgressCard(progress, progressPercent, allTasks.length, doneTasks.length),
+                const SizedBox(height: 20),
+
+                // ─── Kanban Sütunları ─────────────────────
+                _buildKanbanColumn(
+                  title: 'Yapılacak',
+                  icon: Icons.radio_button_unchecked_rounded,
+                  color: const Color(0xFFF6AD55),
+                  tasks: todoTasks,
+                  emptyMessage: 'Yapılacak görev yok',
+                ),
+                const SizedBox(height: 16),
+                _buildKanbanColumn(
+                  title: 'Devam Eden',
+                  icon: Icons.timelapse_rounded,
+                  color: const Color(0xFF4299E1),
+                  tasks: inProgressTasks,
+                  emptyMessage: 'Devam eden görev yok',
+                ),
+                const SizedBox(height: 16),
+                _buildKanbanColumn(
+                  title: 'Tamamlandı',
+                  icon: Icons.check_circle_rounded,
+                  color: AppColors.onlineGreen,
+                  tasks: doneTasks,
+                  emptyMessage: 'Tamamlanan görev yok',
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildProgressCard(double progress, int percent, int total, int done) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            widget.team.color.withValues(alpha: 0.08),
+            widget.team.color.withValues(alpha: 0.03),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: widget.team.color.withValues(alpha: 0.12),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.trending_up_rounded, size: 20, color: widget.team.color),
+              const SizedBox(width: 8),
+              Text(
+                'Takım İlerlemesi',
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.headingText,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: widget.team.color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '$done / $total',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: widget.team.color,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Progress bar with percentage
+          Row(
+            children: [
+              Expanded(
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: progress),
+                  duration: const Duration(milliseconds: 800),
+                  curve: Curves.easeOutCubic,
+                  builder: (context, value, _) {
+                    return Stack(
+                      children: [
+                        // Background
+                        Container(
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: AppColors.chipBg,
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                        ),
+                        // Filled
+                        FractionallySizedBox(
+                          widthFactor: value.clamp(0.0, 1.0),
+                          child: Container(
+                            height: 10,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  widget.team.color,
+                                  widget.team.color.withValues(alpha: 0.7),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(5),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: widget.team.color.withValues(alpha: 0.3),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 14),
+              TweenAnimationBuilder<int>(
+                tween: IntTween(begin: 0, end: percent),
+                duration: const Duration(milliseconds: 800),
+                curve: Curves.easeOutCubic,
+                builder: (context, value, _) {
+                  return Text(
+                    '%$value',
+                    style: GoogleFonts.inter(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: widget.team.color,
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+          if (total == 0) ...[
+            const SizedBox(height: 12),
+            Text(
+              'Henüz görev eklenmemiş. Görev eklemek için + butonuna dokun.',
+              style: GoogleFonts.inter(fontSize: 12, color: AppColors.mutedText),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKanbanColumn({
+    required String title,
+    required IconData icon,
+    required Color color,
+    required List<TeamTask> tasks,
+    required String emptyMessage,
+  }) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Column header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.08),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            child: Row(
+              children: [
+                Icon(icon, size: 18, color: color),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '${tasks.length}',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: color,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Tasks
+          if (tasks.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Center(
+                child: Text(
+                  emptyMessage,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: AppColors.mutedText.withValues(alpha: 0.6),
+                  ),
+                ),
+              ),
+            )
+          else
+            ...tasks.map((task) => _buildTaskCard(task)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTaskCard(TeamTask task) {
+    // Durum geçiş butonları
+    final canMoveForward = task.status != TaskStatus.done;
+    final canMoveBackward = task.status != TaskStatus.todo;
+
+    TaskStatus? nextStatus;
+    TaskStatus? prevStatus;
+    if (task.status == TaskStatus.todo) {
+      nextStatus = TaskStatus.inProgress;
+    } else if (task.status == TaskStatus.inProgress) {
+      nextStatus = TaskStatus.done;
+      prevStatus = TaskStatus.todo;
+    } else {
+      prevStatus = TaskStatus.inProgress;
+    }
+
+    return Dismissible(
+      key: Key(task.id),
+      direction: (_isAdmin || task.createdBy == _currentUserId)
+          ? DismissDirection.endToStart
+          : DismissDirection.none,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE53E3E),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Icon(Icons.delete_rounded, color: Colors.white, size: 22),
+      ),
+      confirmDismiss: (direction) async {
+        return await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Text('Görevi Sil', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+            content: Text('"${task.title}" görevini silmek istiyor musunuz?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('İptal'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE53E3E),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Sil', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+        );
+      },
+      onDismissed: (_) async {
+        try {
+          await _taskProvider.deleteTask(taskId: task.id, teamId: widget.team.id);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Görev silindi.'), backgroundColor: AppColors.onlineGreen),
+            );
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Hata: $e')),
+            );
+          }
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppColors.chipBg,
+            width: 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Title row
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    task.title,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.headingText,
+                      decoration: task.status == TaskStatus.done
+                          ? TextDecoration.lineThrough
+                          : null,
+                      decorationColor: AppColors.mutedText,
+                    ),
+                  ),
+                ),
+                // Navigation arrows
+                if (canMoveBackward && prevStatus != null)
+                  _statusArrow(
+                    icon: Icons.arrow_back_rounded,
+                    color: const Color(0xFFF6AD55),
+                    onTap: () => _changeTaskStatus(task, prevStatus!),
+                  ),
+                if (canMoveForward && nextStatus != null) ...[
+                  const SizedBox(width: 4),
+                  _statusArrow(
+                    icon: Icons.arrow_forward_rounded,
+                    color: nextStatus == TaskStatus.done
+                        ? AppColors.onlineGreen
+                        : const Color(0xFF4299E1),
+                    onTap: () => _changeTaskStatus(task, nextStatus!),
+                  ),
+                ],
+              ],
+            ),
+            // Description
+            if (task.description != null && task.description!.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                task.description!,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  color: AppColors.mutedText,
+                  height: 1.4,
+                ),
+              ),
+            ],
+            // Assigned user
+            if (task.assignedUsername != null) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 10,
+                    backgroundColor: widget.team.color.withValues(alpha: 0.12),
+                    child: Text(
+                      task.assignedUsername![0].toUpperCase(),
+                      style: TextStyle(
+                        color: widget.team.color,
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '@${task.assignedUsername}',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.mutedText,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _statusArrow({
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, size: 16, color: color),
+      ),
+    );
+  }
+
+  Future<void> _changeTaskStatus(TeamTask task, TaskStatus newStatus) async {
+    try {
+      await _taskProvider.updateTaskStatus(
+        taskId: task.id,
+        teamId: widget.team.id,
+        newStatus: newStatus,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Görev "${newStatus.label}" durumuna taşındı.'),
+            backgroundColor: AppColors.onlineGreen,
+            duration: const Duration(seconds: 1),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Hata: $e')),
+        );
+      }
+    }
   }
 
   // ─── DETAILS TAB ──────────────────────────────────────────────
