@@ -461,6 +461,8 @@ class TeamService {
     required String teamId,
     required String title,
     String? description,
+    DateTime? dueDate,
+    List<Map<String, dynamic>> subtasks = const [],
     List<String> assignedTo = const [],
   }) async {
     try {
@@ -474,6 +476,8 @@ class TeamService {
         'team_id': teamId,
         'title': title,
         'description': description,
+        'due_date': dueDate?.toIso8601String(),
+        'subtasks': subtasks,
         'status': 'todo',
         'created_by': user.id,
       }).select('id').single();
@@ -519,16 +523,23 @@ class TeamService {
   /// Görev detaylarını günceller.
   Future<void> updateTask({
     required String taskId,
-    required String title,
+    String? title,
     String? description,
+    DateTime? dueDate,
+    List<Map<String, dynamic>>? subtasks,
     String? assignedTo,
   }) async {
     try {
-      await _client.from('team_tasks').update({
-        'title': title,
-        'description': description,
-        'assigned_to': assignedTo,
-      }).eq('id', taskId);
+      final updates = <String, dynamic>{};
+      if (title != null) updates['title'] = title;
+      if (description != null) updates['description'] = description;
+      if (dueDate != null) updates['due_date'] = dueDate.toIso8601String();
+      if (subtasks != null) updates['subtasks'] = subtasks;
+      if (assignedTo != null) updates['assigned_to'] = assignedTo;
+
+      if (updates.isNotEmpty) {
+        await _client.from('team_tasks').update(updates).eq('id', taskId);
+      }
       print('Görev güncellendi: $taskId');
     } on PostgrestException catch (e) {
       print('Görev güncelleme (Postgrest) hatası: ${e.message}');

@@ -28,6 +28,19 @@ class TaskProvider extends ChangeNotifier {
   List<TeamTask> get doneTasks =>
       _tasks.where((t) => t.status == TaskStatus.done).toList();
 
+  /// Aktif görevleri (todo + inProgress)
+  List<TeamTask> get activeTasks =>
+      _tasks.where((t) => t.status != TaskStatus.done).toList();
+
+  /// Gecikmiş görevler (tamamlanmamış ve due_date geçmiş)
+  List<TeamTask> get overdueTasks {
+    final now = DateTime.now();
+    return _tasks.where((t) =>
+        t.status != TaskStatus.done &&
+        t.dueDate != null &&
+        t.dueDate!.isBefore(now)).toList();
+  }
+
   /// İlerleme oranı (0.0 - 1.0)
   double get progress {
     if (_tasks.isEmpty) return 0.0;
@@ -63,6 +76,8 @@ class TaskProvider extends ChangeNotifier {
     required String teamId,
     required String title,
     String? description,
+    DateTime? dueDate,
+    List<Map<String, dynamic>> subtasks = const [],
     List<String> assignedTo = const [],
   }) async {
     try {
@@ -70,6 +85,8 @@ class TaskProvider extends ChangeNotifier {
         teamId: teamId,
         title: title,
         description: description,
+        dueDate: dueDate,
+        subtasks: subtasks,
         assignedTo: assignedTo,
       );
       await fetchTasks(teamId);
@@ -104,8 +121,10 @@ class TaskProvider extends ChangeNotifier {
   Future<void> updateTask({
     required String taskId,
     required String teamId,
-    required String title,
+    String? title,
     String? description,
+    DateTime? dueDate,
+    List<Map<String, dynamic>>? subtasks,
     String? assignedTo,
   }) async {
     try {
@@ -113,9 +132,41 @@ class TaskProvider extends ChangeNotifier {
         taskId: taskId,
         title: title,
         description: description,
+        dueDate: dueDate,
+        subtasks: subtasks,
         assignedTo: assignedTo,
       );
       await fetchTasks(teamId);
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  // ────────── TOGGLE SUBTASK ──────────
+
+  /// Bir alt görevin durumunu değiştirir
+  Future<void> toggleSubtask({
+    required TeamTask task,
+    required int subtaskIndex,
+    required bool isCompleted,
+  }) async {
+    try {
+      // Create a deep copy of subtasks to mutate
+      final newSubtasks = List<Map<String, dynamic>>.from(
+        task.subtasks.map((e) => Map<String, dynamic>.from(e))
+      );
+      
+      if (subtaskIndex >= 0 && subtaskIndex < newSubtasks.length) {
+        newSubtasks[subtaskIndex]['is_completed'] = isCompleted;
+        
+        await _teamService.updateTask(
+          taskId: task.id,
+          subtasks: newSubtasks,
+        );
+        await fetchTasks(task.teamId);
+      }
     } catch (e) {
       _error = e.toString();
       notifyListeners();

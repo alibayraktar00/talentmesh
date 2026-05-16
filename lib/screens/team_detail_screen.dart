@@ -10,6 +10,7 @@ import '../providers/team_provider.dart';
 import '../core/services/team_service.dart';
 import 'widgets/create_meeting_dialog.dart';
 import 'widgets/create_task_dialog.dart';
+import 'widgets/task_detail_dialog.dart';
 import 'widgets/meeting_card.dart';
 
 class TeamDetailScreen extends StatefulWidget {
@@ -498,8 +499,8 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           );
         }
 
-        final todoTasks = _taskProvider.todoTasks;
-        final inProgressTasks = _taskProvider.inProgressTasks;
+        final activeTasks = _taskProvider.activeTasks;
+        final overdueTasks = _taskProvider.overdueTasks;
         final doneTasks = _taskProvider.doneTasks;
         final allTasks = _taskProvider.tasks;
         final progress = _taskProvider.progress;
@@ -514,29 +515,45 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ─── İlerleme Çubuğu ─────────────────────
-                _buildProgressCard(progress, progressPercent, allTasks.length, doneTasks.length),
+                // ─── Özet Kartları ─────────────────────
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildSummaryCard(
+                        title: 'Aktif',
+                        count: activeTasks.length,
+                        icon: Icons.play_circle_fill_rounded,
+                        color: const Color(0xFF4299E1),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildSummaryCard(
+                        title: 'Geciken',
+                        count: overdueTasks.length,
+                        icon: Icons.warning_rounded,
+                        color: const Color(0xFFE53E3E),
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 20),
 
-                // ─── Kanban Sütunları ─────────────────────
-                _buildKanbanColumn(
-                  title: 'Yapılacak',
-                  icon: Icons.radio_button_unchecked_rounded,
-                  color: const Color(0xFFF6AD55),
-                  tasks: todoTasks,
-                  emptyMessage: 'Yapılacak görev yok',
+                // ─── İlerleme Çubuğu ─────────────────────
+                _buildProgressCard(progress, progressPercent, allTasks.length, doneTasks.length),
+                const SizedBox(height: 24),
+
+                // ─── Görev Listeleri ─────────────────────
+                _buildTaskList(
+                  title: 'Aktif Görevler',
+                  icon: Icons.list_alt_rounded,
+                  color: widget.team.color,
+                  tasks: activeTasks,
+                  emptyMessage: 'Aktif görev bulunmuyor',
                 ),
                 const SizedBox(height: 16),
-                _buildKanbanColumn(
-                  title: 'Devam Eden',
-                  icon: Icons.timelapse_rounded,
-                  color: const Color(0xFF4299E1),
-                  tasks: inProgressTasks,
-                  emptyMessage: 'Devam eden görev yok',
-                ),
-                const SizedBox(height: 16),
-                _buildKanbanColumn(
-                  title: 'Tamamlandı',
+                _buildTaskList(
+                  title: 'Tamamlananlar',
                   icon: Icons.check_circle_rounded,
                   color: AppColors.onlineGreen,
                   tasks: doneTasks,
@@ -680,7 +697,63 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
     );
   }
 
-  Widget _buildKanbanColumn({
+  Widget _buildSummaryCard({
+    required String title,
+    required int count,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                count.toString(),
+                style: GoogleFonts.inter(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.headingText,
+                ),
+              ),
+              Text(
+                title,
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.mutedText,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTaskList({
     required String title,
     required IconData icon,
     required Color color,
@@ -763,20 +836,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   }
 
   Widget _buildTaskCard(TeamTask task) {
-    // Durum geçiş butonları
-    final canMoveForward = task.status != TaskStatus.done;
-    final canMoveBackward = task.status != TaskStatus.todo;
-
-    TaskStatus? nextStatus;
-    TaskStatus? prevStatus;
-    if (task.status == TaskStatus.todo) {
-      nextStatus = TaskStatus.inProgress;
-    } else if (task.status == TaskStatus.inProgress) {
-      nextStatus = TaskStatus.done;
-      prevStatus = TaskStatus.todo;
-    } else {
-      prevStatus = TaskStatus.inProgress;
-    }
+    final isOverdue = task.status != TaskStatus.done &&
+        task.dueDate != null &&
+        task.dueDate!.isBefore(DateTime.now());
 
     return Dismissible(
       key: Key(task.id),
@@ -833,21 +895,31 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           }
         }
       },
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.background,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: AppColors.chipBg,
-            width: 1,
-          ),
+      child: GestureDetector(
+        onTap: () => showTaskDetailDialog(
+          context,
+          task: task,
+          taskProvider: _taskProvider,
+          teamColor: widget.team.color,
+          isMember: _isMember,
+          isAdmin: _isAdmin,
+          currentUserId: _currentUserId,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Title row
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.background,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isOverdue ? const Color(0xFFE53E3E).withValues(alpha: 0.3) : AppColors.chipBg,
+              width: 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Title row
             Row(
               children: [
                 Expanded(
@@ -864,23 +936,30 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                     ),
                   ),
                 ),
-                // Navigation arrows
-                if (canMoveBackward && prevStatus != null)
-                  _statusArrow(
-                    icon: Icons.arrow_back_rounded,
-                    color: const Color(0xFFF6AD55),
-                    onTap: () => _changeTaskStatus(task, prevStatus!),
+                // Status Badge instead of arrows
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: task.status == TaskStatus.done
+                        ? AppColors.onlineGreen.withValues(alpha: 0.1)
+                        : task.status == TaskStatus.inProgress
+                            ? const Color(0xFF4299E1).withValues(alpha: 0.1)
+                            : const Color(0xFFF6AD55).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
                   ),
-                if (canMoveForward && nextStatus != null) ...[
-                  const SizedBox(width: 4),
-                  _statusArrow(
-                    icon: Icons.arrow_forward_rounded,
-                    color: nextStatus == TaskStatus.done
-                        ? AppColors.onlineGreen
-                        : const Color(0xFF4299E1),
-                    onTap: () => _changeTaskStatus(task, nextStatus!),
+                  child: Text(
+                    task.status.label,
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: task.status == TaskStatus.done
+                          ? AppColors.onlineGreen
+                          : task.status == TaskStatus.inProgress
+                              ? const Color(0xFF4299E1)
+                              : const Color(0xFFF6AD55),
+                    ),
                   ),
-                ],
+                ),
               ],
             ),
             // Description
@@ -950,51 +1029,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           ],
         ),
       ),
-    );
-  }
-
-  Widget _statusArrow({
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(icon, size: 16, color: color),
-      ),
-    );
-  }
-
-  Future<void> _changeTaskStatus(TeamTask task, TaskStatus newStatus) async {
-    try {
-      await _taskProvider.updateTaskStatus(
-        taskId: task.id,
-        teamId: widget.team.id,
-        newStatus: newStatus,
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Görev "${newStatus.label}" durumuna taşındı.'),
-            backgroundColor: AppColors.onlineGreen,
-            duration: const Duration(seconds: 1),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: $e')),
-        );
-      }
-    }
-  }
+    ),
+  );
+}
 
   // ─── DETAILS TAB ──────────────────────────────────────────────
   Widget _buildDetailsTab() {

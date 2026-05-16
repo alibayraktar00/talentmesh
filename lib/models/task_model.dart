@@ -77,6 +77,8 @@ class TeamTask {
   final String createdBy;
   final DateTime createdAt;
   final DateTime? updatedAt;
+  final DateTime? dueDate;
+  final List<Map<String, dynamic>> subtasks;
 
   // Birden fazla görevli
   final List<TaskAssignee> assignees;
@@ -94,6 +96,8 @@ class TeamTask {
     required this.createdBy,
     required this.createdAt,
     this.updatedAt,
+    this.dueDate,
+    this.subtasks = const [],
     this.assignees = const [],
     this.creatorUsername,
     this.creatorFullName,
@@ -109,6 +113,10 @@ class TeamTask {
         .map((a) => TaskAssignee.fromJson(a as Map<String, dynamic>))
         .toList();
 
+    // Alt görevler (subtasks) jsonb alanı
+    final subtasksRaw = json['subtasks'] as List<dynamic>? ?? [];
+    final subtasksList = subtasksRaw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+
     return TeamTask(
       id: json['id'].toString(),
       teamId: json['team_id'].toString(),
@@ -122,6 +130,10 @@ class TeamTask {
       updatedAt: json['updated_at'] != null
           ? DateTime.parse(json['updated_at'])
           : null,
+      dueDate: json['due_date'] != null
+          ? DateTime.parse(json['due_date'])
+          : null,
+      subtasks: subtasksList,
       assignees: assignees,
       creatorUsername: creatorProfile?['username']?.toString(),
       creatorFullName: creatorProfile?['full_name']?.toString(),

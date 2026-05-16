@@ -45,12 +45,17 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final Set<String> _selectedAssignees = {};
+  DateTime? _dueDate;
+  final List<TextEditingController> _subtaskControllers = [TextEditingController()];
   bool _isCreating = false;
 
   @override
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
+    for (var c in _subtaskControllers) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -68,12 +73,20 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
 
     setState(() => _isCreating = true);
     try {
+      final subtasks = _subtaskControllers
+          .map((c) => c.text.trim())
+          .where((text) => text.isNotEmpty)
+          .map((text) => {'title': text, 'is_completed': false})
+          .toList();
+
       await widget.taskProvider.createTask(
         teamId: widget.teamId,
         title: title,
         description: _descriptionController.text.trim().isEmpty
             ? null
             : _descriptionController.text.trim(),
+        dueDate: _dueDate,
+        subtasks: subtasks,
         assignedTo: _selectedAssignees.toList(),
       );
       if (mounted) {
@@ -105,6 +118,45 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
       } else {
         _selectedAssignees.add(userId);
       }
+    });
+  }
+
+  Future<void> _pickDueDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _dueDate ?? DateTime.now().add(const Duration(days: 1)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: widget.teamColor,
+              onPrimary: Colors.white,
+              onSurface: AppColors.headingText,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        _dueDate = picked;
+      });
+    }
+  }
+
+  void _addSubtaskField() {
+    setState(() {
+      _subtaskControllers.add(TextEditingController());
+    });
+  }
+
+  void _removeSubtaskField(int index) {
+    setState(() {
+      _subtaskControllers[index].dispose();
+      _subtaskControllers.removeAt(index);
     });
   }
 
@@ -253,6 +305,106 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
                 ),
               ),
               const SizedBox(height: 20),
+
+              // Due Date field
+              Text(
+                'Bitiş Tarihi (Opsiyonel)',
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.headingText,
+                ),
+              ),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: _pickDueDate,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: AppColors.chipBg,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.calendar_today_rounded, size: 18, color: widget.teamColor),
+                      const SizedBox(width: 10),
+                      Text(
+                        _dueDate == null
+                            ? 'Tarih seçin'
+                            : '${_dueDate!.day}.${_dueDate!.month}.${_dueDate!.year}',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          color: _dueDate == null ? AppColors.mutedText.withValues(alpha: 0.5) : AppColors.headingText,
+                        ),
+                      ),
+                      if (_dueDate != null) ...[
+                        const Spacer(),
+                        GestureDetector(
+                          onTap: () => setState(() => _dueDate = null),
+                          child: const Icon(Icons.close_rounded, size: 18, color: AppColors.mutedText),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Subtasks field
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Alt Görevler / Maddeler (Opsiyonel)',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.headingText,
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: _addSubtaskField,
+                    icon: Icon(Icons.add_rounded, size: 16, color: widget.teamColor),
+                    label: Text('Madde Ekle', style: TextStyle(color: widget.teamColor, fontSize: 12)),
+                    style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 0)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ...List.generate(_subtaskControllers.length, (index) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Row(
+                    children: [
+                      Icon(Icons.radio_button_unchecked_rounded, size: 16, color: AppColors.mutedText.withValues(alpha: 0.5)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: _subtaskControllers[index],
+                          decoration: InputDecoration(
+                            hintText: '${index + 1}. madde',
+                            hintStyle: GoogleFonts.inter(color: AppColors.mutedText.withValues(alpha: 0.5), fontSize: 13),
+                            filled: true,
+                            fillColor: AppColors.chipBg,
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          ),
+                        ),
+                      ),
+                      if (_subtaskControllers.length > 1) ...[
+                        const SizedBox(width: 4),
+                        IconButton(
+                          icon: const Icon(Icons.remove_circle_outline_rounded, color: Color(0xFFE53E3E), size: 20),
+                          onPressed: () => _removeSubtaskField(index),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ]
+                    ],
+                  ),
+                );
+              }),
+              const SizedBox(height: 12),
 
               // Multi-select assignees
               Row(
