@@ -6,10 +6,13 @@ import '../core/services/project_service.dart';
 import '../core/services/auth_service.dart';
 import 'profile_screen.dart';
 import '../providers/team_provider.dart';
+import '../providers/notification_provider.dart';
 import 'my_teams_screen.dart';
 import 'search_screen.dart';
 import 'friends_screen.dart';
 import 'settings_screen.dart';
+import 'notifications_screen.dart';
+import 'widgets/notification_bell.dart';
 import '../core/services/team_service.dart';
 import '../models/team_model.dart';
 import 'team_detail_screen.dart';
@@ -29,6 +32,7 @@ class _FeedScreenState extends State<FeedScreen> {
   late Future<List<Map<String, dynamic>>> _projectsFuture;
   late Future<List<Map<String, dynamic>>> _smartMatchesFuture;
   final TeamProvider _teamProvider = TeamProvider();
+  final NotificationProvider _notificationProvider = NotificationProvider();
   Set<String> _pendingTeamIds = {};
   int _teamsRefreshKey = 0;
   final _client = Supabase.instance.client;
@@ -36,9 +40,16 @@ class _FeedScreenState extends State<FeedScreen> {
   @override
   void initState() {
     super.initState();
+    _notificationProvider.startListening();
     _projectsFuture = _projectService.fetchProjects();
     _smartMatchesFuture = _teamService.fetchSmartMatches();
     _fetchPendingRequests();
+  }
+
+  @override
+  void dispose() {
+    _notificationProvider.dispose();
+    super.dispose();
   }
   
   Future<void> _fetchPendingRequests() async {
@@ -485,6 +496,20 @@ class _FeedScreenState extends State<FeedScreen> {
               size: 26,
             ),
             tooltip: 'Ara',
+          ),
+          ListenableBuilder(
+            listenable: _notificationProvider,
+            builder: (context, _) => NotificationBell(
+              unreadCount: _notificationProvider.unreadCount,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const NotificationsScreen(),
+                  ),
+                );
+              },
+            ),
           ),
           IconButton(
             onPressed: () {

@@ -164,11 +164,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   Future<void> _sendJoinRequest() async {
     setState(() => _isSendingRequest = true);
     try {
-      await _client.from('team_requests').insert({
-        'team_id': widget.team.id,
-        'user_id': _currentUserId,
-        'status': 'pending',
-      });
+      await _teamService.sendJoinRequest(widget.team.id);
       if (mounted) {
         setState(() {
           _hasPendingRequest = true;

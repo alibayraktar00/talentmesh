@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../services/notification_service.dart';
 import '../chat_repository.dart';
 import '../models/message.dart';
 
@@ -15,6 +16,7 @@ class ChatController extends ChangeNotifier {
   }) : _repo = repo;
 
   final ChatRepository _repo;
+  final _notificationService = NotificationService();
   final String conversationId;
   final String myUserId;
   final String otherUserId;
@@ -120,6 +122,12 @@ class ChatController extends ChangeNotifier {
       _messagesDesc.insert(0, inserted);
     }
     notifyListeners();
+
+    await _notificationService.notifyMessageIfNeeded(
+      receiverId: otherUserId,
+      conversationId: conversationId,
+      messageId: inserted.id,
+    );
   }
 
   Future<void> markReadNow() async {

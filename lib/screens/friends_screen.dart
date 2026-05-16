@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/theme/app_colors.dart';
+import '../core/services/notification_service.dart';
+import '../core/services/profile_service.dart';
 import 'profile_screen.dart';
 import 'chat_screen.dart';
 import 'inbox_screen.dart';
@@ -17,6 +19,8 @@ class FriendsScreen extends StatefulWidget {
 
 class _FriendsScreenState extends State<FriendsScreen> {
   final _client = Supabase.instance.client;
+  final _notificationService = NotificationService();
+  final _profileService = ProfileService();
 
   bool _isIncomingLoading = true;
   bool _isFriendsLoading = true;
@@ -244,11 +248,26 @@ class _FriendsScreenState extends State<FriendsScreen> {
     if (_actionLoadingIds.contains(requestId)) return;
     setState(() => _actionLoadingIds.add(requestId));
 
+    Map<String, dynamic>? matchedRequest;
+    for (final r in _incomingRequests) {
+      if (r['id'].toString() == requestId) {
+        matchedRequest = r;
+        break;
+      }
+    }
+    final requesterId = (matchedRequest?['requester_id'] ?? '').toString();
+
     try {
       await _client
           .from('friend_requests')
           .update({'status': newStatus, 'is_read': true})
           .eq('id', requestId);
+
+      if (newStatus == 'accepted' && requesterId.isNotEmpty) {
+        await _notificationService.notifyFriendAccepted(
+          requesterId: requesterId,
+        );
+      }
 
       if (!mounted) return;
       setState(() {
@@ -267,18 +286,18 @@ class _FriendsScreenState extends State<FriendsScreen> {
   }
 
   Future<void> _removeFriend(String friendId) async {
-    final myId = _myUserId;
-    if (myId == null) return;
+    if (_myUserId == null) return;
 
     setState(() => _actionLoadingIds.add(friendId));
     try {
-      await _client
-          .from('friend_requests')
-          .delete()
-          .eq('status', 'accepted')
-          .eq('request_type', 'friend')
-          .or('and(requester_id.eq.$myId,addressee_id.eq.$friendId),and(requester_id.eq.$friendId,addressee_id.eq.$myId)');
-      
+      final removed = await _profileService.removeFriend(friendId);
+      if (!removed) {
+        _showError(
+          'Arkadaşlık kaydı bulunamadı veya kaldırılamadı. Lütfen sayfayı yenileyip tekrar deneyin.',
+        );
+        return;
+      }
+
       if (!mounted) return;
       setState(() {
         _friends.removeWhere((f) => f['id'].toString() == friendId);
@@ -289,6 +308,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
           behavior: SnackBarBehavior.floating,
         ),
       );
+    } on PostgrestException catch (e) {
+      _showError('Arkadaşlıktan çıkarma başarısız: ${e.message}');
     } catch (e) {
       _showError('Arkadaşlıktan çıkarma başarısız oldu.');
     } finally {

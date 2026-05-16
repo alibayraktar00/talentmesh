@@ -115,16 +115,120 @@ class ProfileService {
   /// İki kullanıcının arkadaş olup olmadığını kontrol et
   Future<bool> areUsersFriends(String user1, String user2) async {
     try {
-      final response = await _client
+      final outgoing = await _client
           .from('friend_requests')
-          .select()
+          .select('id')
+          .eq('requester_id', user1)
+          .eq('addressee_id', user2)
           .eq('status', 'accepted')
           .eq('request_type', 'friend')
-          .or('and(requester_id.eq.$user1,addressee_id.eq.$user2),and(requester_id.eq.$user2,addressee_id.eq.$user1)')
           .maybeSingle();
-      return response != null;
+      if (outgoing != null) return true;
+
+      final incoming = await _client
+          .from('friend_requests')
+          .select('id')
+          .eq('requester_id', user2)
+          .eq('addressee_id', user1)
+          .eq('status', 'accepted')
+          .eq('request_type', 'friend')
+          .maybeSingle();
+      return incoming != null;
     } catch (e) {
       print('Arkadaşlık kontrolü hatası: $e');
+      return false;
+    }
+  }
+
+  /// İki kullanıcı arasındaki accepted arkadaşlık satır id'lerini bulur.
+  Future<List<String>> _findAcceptedFriendshipIds(
+    String myId,
+    String friendUserId,
+  ) async {
+    final ids = <String>{};
+
+    Future<void> collectFromQuery(dynamic query) async {
+      final rows = List<Map<String, dynamic>>.from(await query);
+      for (final row in rows) {
+        final id = row['id']?.toString();
+        if (id != null && id.isNotEmpty) ids.add(id);
+      }
+    }
+
+    // Önce request_type=friend ile dene
+    await collectFromQuery(
+      _client
+          .from('friend_requests')
+          .select('id')
+          .eq('requester_id', myId)
+          .eq('addressee_id', friendUserId)
+          .eq('status', 'accepted')
+          .eq('request_type', 'friend'),
+    );
+    await collectFromQuery(
+      _client
+          .from('friend_requests')
+          .select('id')
+          .eq('requester_id', friendUserId)
+          .eq('addressee_id', myId)
+          .eq('status', 'accepted')
+          .eq('request_type', 'friend'),
+    );
+
+    // Eski kayıtlar için request_type filtresi olmadan dene
+    if (ids.isEmpty) {
+      await collectFromQuery(
+        _client
+            .from('friend_requests')
+            .select('id')
+            .eq('requester_id', myId)
+            .eq('addressee_id', friendUserId)
+            .eq('status', 'accepted'),
+      );
+      await collectFromQuery(
+        _client
+            .from('friend_requests')
+            .select('id')
+            .eq('requester_id', friendUserId)
+            .eq('addressee_id', myId)
+            .eq('status', 'accepted'),
+      );
+    }
+
+    return ids.toList();
+  }
+
+  /// Arkadaşlık kaydını kaldırır (önce sil, RLS engellerse status=rejected).
+  Future<bool> removeFriend(String friendUserId) async {
+    final myId = _userId;
+    if (myId == null) return false;
+
+    try {
+      final rowIds = await _findAcceptedFriendshipIds(myId, friendUserId);
+      if (rowIds.isEmpty) {
+        print('removeFriend: accepted kayıt bulunamadı ($myId <-> $friendUserId)');
+        return false;
+      }
+
+      // 1) Silmeyi dene (select dönüşüne güvenme — RLS RETURNING'i gizleyebilir)
+      await _client.from('friend_requests').delete().inFilter('id', rowIds);
+
+      var remaining = await _findAcceptedFriendshipIds(myId, friendUserId);
+      if (remaining.isEmpty) return true;
+
+      // 2) DELETE yetkisi yoksa status güncelle (arkadaş listesi accepted filtreli)
+      await _client
+          .from('friend_requests')
+          .update({'status': 'rejected'})
+          .inFilter('id', remaining);
+
+      remaining = await _findAcceptedFriendshipIds(myId, friendUserId);
+      return remaining.isEmpty;
+    } on PostgrestException catch (e) {
+      print('Arkadaşlıktan çıkarma (Postgrest): ${e.message}');
+      rethrow;
+    } catch (e) {
+      print('Arkadaşlıktan çıkarma hatası: $e');
       return false;
     }
   }

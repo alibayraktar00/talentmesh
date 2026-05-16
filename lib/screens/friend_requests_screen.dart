@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/theme/app_colors.dart';
+import '../core/services/notification_service.dart';
 
 class FriendRequestsScreen extends StatefulWidget {
   const FriendRequestsScreen({super.key});
@@ -12,6 +13,7 @@ class FriendRequestsScreen extends StatefulWidget {
 
 class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
   final _client = Supabase.instance.client;
+  final _notificationService = NotificationService();
 
   bool _isLoading = true;
   final Set<String> _actionLoadingIds = {};
@@ -107,11 +109,27 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
     if (_actionLoadingIds.contains(requestId)) return;
 
     setState(() => _actionLoadingIds.add(requestId));
+
+    Map<String, dynamic>? matchedRequest;
+    for (final r in _requests) {
+      if (r['id'].toString() == requestId) {
+        matchedRequest = r;
+        break;
+      }
+    }
+    final requesterId = (matchedRequest?['requester_id'] ?? '').toString();
+
     try {
       await _client
           .from('friend_requests')
           .update({'status': newStatus})
           .eq('id', requestId);
+
+      if (newStatus == 'accepted' && requesterId.isNotEmpty) {
+        await _notificationService.notifyFriendAccepted(
+          requesterId: requesterId,
+        );
+      }
 
       if (!mounted) return;
       setState(() {

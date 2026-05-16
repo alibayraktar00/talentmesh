@@ -1,9 +1,11 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/meeting_model.dart';
 import '../../models/task_model.dart';
+import 'notification_service.dart';
 
 class TeamService {
   final _client = Supabase.instance.client;
+  final _notificationService = NotificationService();
 
   /// Yeni takım oluşturur ve "teams" tablosuna ekler.
   /// auth.currentUser üzerinden admin_id otomatik alınır.
@@ -180,6 +182,23 @@ class TeamService {
         'user_id': user.id,
         'status': 'pending',
       });
+
+      final teamRow = await _client
+          .from('teams')
+          .select('name, admin_id')
+          .eq('id', teamId)
+          .maybeSingle();
+
+      if (teamRow != null) {
+        final adminId = (teamRow['admin_id'] ?? '').toString();
+        final teamName = (teamRow['name'] ?? 'bir takım').toString();
+        if (adminId.isNotEmpty) {
+          await _notificationService.notifyTeamJoinRequest(
+            adminId: adminId,
+            teamName: teamName,
+          );
+        }
+      }
     } catch (e) {
       print('İstek gönderilirken hata: $e');
       rethrow;
@@ -238,6 +257,18 @@ class TeamService {
         'user_id': userId,
         'role': 'member',
       });
+
+      // 4. Kabul edilen üyeye bildirim gönder
+      final teamRow = await _client
+          .from('teams')
+          .select('name')
+          .eq('id', teamId)
+          .maybeSingle();
+      final teamName = (teamRow?['name'] ?? 'bir takım').toString();
+      await _notificationService.notifyTeamJoinAccepted(
+        memberUserId: userId,
+        teamName: teamName,
+      );
     } catch (e) {
       print('İstek kabul edilirken hata: $e');
       rethrow;
@@ -260,6 +291,36 @@ class TeamService {
   // ═══════════════════════════════════════════════════════════════
   // TOPLANTI (MEETING) İŞLEMLERİ
   // ═══════════════════════════════════════════════════════════════
+
+  /// Bir takıma ait tüm üye ID'lerini (admin + team_members) döndürür.
+  Future<List<String>> _getTeamMemberUserIds(String teamId) async {
+    try {
+      final teamRow = await _client
+          .from('teams')
+          .select('admin_id')
+          .eq('id', teamId)
+          .maybeSingle();
+      final adminId = teamRow?['admin_id']?.toString();
+
+      final membersRes = await _client
+          .from('team_members')
+          .select('user_id')
+          .eq('team_id', teamId);
+
+      final memberIds = List<Map<String, dynamic>>.from(membersRes)
+          .map((m) => m['user_id'].toString())
+          .toList();
+
+      if (adminId != null && !memberIds.contains(adminId)) {
+        memberIds.add(adminId);
+      }
+
+      return memberIds;
+    } catch (e) {
+      print('Takım üyeleri alınamadı: $e');
+      return [];
+    }
+  }
 
   /// Yeni bir takım toplantısı oluşturur.
   Future<void> createMeeting({
@@ -284,6 +345,26 @@ class TeamService {
         'meeting_link': meetingLink,
       });
       print('Toplantı oluşturuldu: $title');
+
+      // Tüm takım üyelerine toplantı bildirimi gönder
+      try {
+        final teamRow = await _client
+            .from('teams')
+            .select('name')
+            .eq('id', teamId)
+            .maybeSingle();
+        final teamName = (teamRow?['name'] ?? 'bir takım').toString();
+        final memberIds = await _getTeamMemberUserIds(teamId);
+
+        await _notificationService.notifyMeetingCreated(
+          memberIds: memberIds,
+          meetingTitle: title,
+          teamName: teamName,
+          meetingDate: meetingDate,
+        );
+      } catch (notifError) {
+        print('Toplantı bildirimi gönderilemedi: $notifError');
+      }
     } on PostgrestException catch (e) {
       print('Toplantı oluşturma (Postgrest) hatası: ${e.message}');
       throw Exception(e.message);
@@ -491,6 +572,23 @@ class TeamService {
           'user_id': userId,
         }).toList();
         await _client.from('team_task_assignees').insert(assigneeRows);
+
+        // 3. Atanan kişilere bildirim gönder
+        try {
+          final teamRow = await _client
+              .from('teams')
+              .select('name')
+              .eq('id', teamId)
+              .maybeSingle();
+          final teamName = (teamRow?['name'] ?? 'bir takım').toString();
+          await _notificationService.notifyTaskAssigned(
+            assigneeIds: assignedTo,
+            taskTitle: title,
+            teamName: teamName,
+          );
+        } catch (notifError) {
+          print('Görev atama bildirimi gönderilemedi: $notifError');
+        }
       }
 
       print('Görev oluşturuldu: $title (${assignedTo.length} kişi atandı)');

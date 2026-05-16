@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../core/services/notification_service.dart';
+import '../core/services/team_service.dart';
 import '../core/theme/app_colors.dart';
 import 'profile_screen.dart';
 
@@ -24,6 +26,8 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final _client = Supabase.instance.client;
+  final _notificationService = NotificationService();
+  final _teamService = TeamService();
   final TextEditingController _searchController = TextEditingController();
   Timer? _debounce;
   bool _isLoading = false;
@@ -71,6 +75,39 @@ class _SearchScreenState extends State<SearchScreen> {
     _debounce?.cancel();
     _searchController.dispose();
     super.dispose();
+  }
+
+  @override
+  void activate() {
+    super.activate();
+    _refreshRelationsForCurrentResults();
+  }
+
+  /// Ekrana geri dönüldüğünde (ör. arkadaşlıktan çıkarma sonrası) ilişki durumlarını yeniler.
+  Future<void> _refreshRelationsForCurrentResults() async {
+    final myId = _myUserId;
+    if (myId == null || _searchMode != 0 || _results.isEmpty) return;
+
+    final listedUserIds = _results
+        .map((item) => item['id']?.toString() ?? '')
+        .where((id) => id.isNotEmpty)
+        .toList();
+    if (listedUserIds.isEmpty) return;
+
+    try {
+      final relations = await _loadRelationsForListedUsers(
+        myId: myId,
+        listedUserIds: listedUserIds,
+      );
+      if (!mounted) return;
+      setState(() {
+        _relationsByUserId
+          ..clear()
+          ..addAll(relations);
+      });
+    } catch (_) {
+      // Sessiz geç — bir sonraki aramada zaten yenilenir.
+    }
   }
 
   void _onSearchChanged() {
@@ -381,6 +418,8 @@ class _SearchScreenState extends State<SearchScreen> {
         'is_read': false,
       });
 
+      await _notificationService.notifyFriendRequest(addresseeId: addresseeId);
+
       if (!mounted) return;
       setState(() {
         _relationsByUserId[addresseeId] = const _RelationState(
@@ -415,11 +454,7 @@ class _SearchScreenState extends State<SearchScreen> {
     setState(() => _sendingRequestIds.add(teamId));
 
     try {
-      await _client.from('team_requests').insert({
-        'team_id': teamId,
-        'user_id': myId,
-        'status': 'pending',
-      });
+      await _teamService.sendJoinRequest(teamId);
 
       if (!mounted) return;
       setState(() {
@@ -453,6 +488,10 @@ class _SearchScreenState extends State<SearchScreen> {
           .from('friend_requests')
           .update({'status': 'accepted'})
           .eq('id', requestId);
+
+      await _notificationService.notifyFriendAccepted(
+        requesterId: otherUserId,
+      );
 
       if (!mounted) return;
       setState(() {
