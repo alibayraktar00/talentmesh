@@ -27,6 +27,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _phone = '';
   String _location = '';
   String _about = '';
+  DateTime? _dateOfBirth;
   bool _openToWork = true;
   List<Map<String, String>> _experiences = [];
   List<Map<String, String>> _languages = [];
@@ -34,7 +35,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ── Yeni veriler ──
   String _avatarUrl = '';
-  List<Map<String, String>> _education = [];
+  Map<String, String>? _education; // Tekil hale getirildi
   List<Map<String, String>> _certificates = [];
   List<Map<String, String>> _projects = [];
   Map<String, String> _socialLinks = {};
@@ -83,18 +84,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _languages = _parseJsonList(data['languages']);
         _skills = List<String>.from(data['skills'] ?? []);
         _avatarUrl = data['avatar_url'] ?? '';
+        
+        if (data['date_of_birth'] != null) {
+          _dateOfBirth = DateTime.tryParse(data['date_of_birth'].toString());
+        }
 
         if (data['school'] != null && data['school'].toString().isNotEmpty) {
-          _education = [
-            {
-              'school': data['school']?.toString() ?? '',
-              'department': data['department']?.toString() ?? '',
-              'year': data['education_year']?.toString() ?? '',
-              'degree': data['degree']?.toString() ?? '',
-            },
-          ];
+          _education = {
+            'school': data['school']?.toString() ?? '',
+            'department': data['department']?.toString() ?? '',
+            'year': data['education_year']?.toString() ?? '',
+            'degree': data['degree']?.toString() ?? '',
+          };
         } else {
-          _education = [];
+          _education = null;
         }
 
         _certificates = _parseJsonList(data['certificates']);
@@ -103,8 +106,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _availability = _parseStringMap(data['availability']);
         _rolePreferences = List<String>.from(data['looking_for'] ?? []);
         final stats = data['stats'] as Map<String, dynamic>? ?? {};
-        _completedProjects = stats['completed_projects'] ?? 0;
-        _teamsJoined = stats['teams_joined'] ?? 0;
+        _completedProjects = int.tryParse(stats['completed_projects']?.toString() ?? '0') ?? 0;
+        _teamsJoined = int.tryParse(stats['teams_joined']?.toString() ?? '0') ?? 0;
         _reviews = reviews;
         _skillEndorsements = endorsements;
         _isFriend = isFriend;
@@ -150,18 +153,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'email': _email,
         'phone': _phone,
         'location': _location,
-        'about': _about,
+        'bio': _about,
         'open_to_work': _openToWork,
-        'experiences': _experiences,
+        'experience': _experiences,
         'languages': _languages,
         'skills': _skills,
         'avatar_url': _avatarUrl,
-        'education': _education,
         'certificates': _certificates,
         'projects': _projects,
-        'social_links': _socialLinks,
+        'social_media': _socialLinks,
         'availability': _availability,
-        'role_preferences': _rolePreferences,
+        'looking_for': _rolePreferences,
         'stats': {
           'completed_projects': _completedProjects,
           'teams_joined': _teamsJoined,
@@ -181,15 +183,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: theme.scaffoldBackgroundColor,
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
@@ -220,6 +223,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ──────────────────────── HEADER ────────────────────────
   // ══════════════════════════════════════════════════════════
   Widget _buildHeader(BuildContext context) {
+    final theme = Theme.of(context);
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -262,7 +266,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           left: 12,
           child: _buildCircleButton(
             icon: Icons.arrow_back_ios_new,
-            color: AppColors.headingText,
+            color: theme.colorScheme.onSurface,
             onTap: () => Navigator.of(context).pop(),
           ),
         ),
@@ -292,7 +296,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Container(
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.white, width: 4),
+                        border: Border.all(color: theme.colorScheme.surface, width: 4),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.1),
@@ -303,7 +307,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       child: CircleAvatar(
                         radius: 48,
-                        backgroundColor: AppColors.chipBg,
+                        backgroundColor: theme.colorScheme.surfaceVariant,
                         backgroundImage: _avatarUrl.isNotEmpty
                             ? NetworkImage(_avatarUrl)
                             : null,
@@ -336,13 +340,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             color: AppColors.primaryAccent,
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: AppColors.white,
+                              color: theme.colorScheme.surface,
                               width: 2,
                             ),
                           ),
                           child: const Icon(
                             Icons.camera_alt,
-                            color: AppColors.white,
+                            color: Colors.white,
                             size: 14,
                           ),
                         ),
@@ -357,8 +361,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   fontSize: 24,
                   fontWeight: FontWeight.w700,
                   color: _fullName.isNotEmpty
-                      ? AppColors.headingText
-                      : AppColors.mutedText,
+                      ? theme.colorScheme.onSurface
+                      : theme.textTheme.bodySmall?.color,
                 ),
               ),
               const SizedBox(height: 2),
@@ -367,7 +371,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 style: GoogleFonts.inter(
                   fontSize: 15,
                   fontWeight: FontWeight.w400,
-                  color: AppColors.mutedText,
+                  color: theme.textTheme.bodySmall?.color,
                 ),
               ),
             ],
@@ -382,9 +386,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required Color color,
     required VoidCallback onTap,
   }) {
+    final theme = Theme.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.white.withValues(alpha: 0.85),
+        color: theme.colorScheme.surface.withValues(alpha: 0.85),
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
@@ -404,6 +409,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ──────────────────────── CONTACT INFO ────────────────────────
   Widget _buildContactInfo() {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 130, 20, 0),
       child: Row(
@@ -436,9 +442,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildContactRow(IconData icon, String text) {
+    final theme = Theme.of(context);
     return Row(
       children: [
-        Icon(icon, size: 18, color: AppColors.mutedText),
+        Icon(icon, size: 18, color: theme.textTheme.bodySmall?.color),
         const SizedBox(width: 10),
         Flexible(
           child: Text(
@@ -446,7 +453,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             style: GoogleFonts.inter(
               fontSize: 14,
               fontWeight: FontWeight.w400,
-              color: AppColors.bodyText,
+              color: theme.colorScheme.onSurface,
             ),
           ),
         ),
@@ -457,6 +464,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ──────────────────────── OPEN TO WORK ────────────────────────
   Widget _buildOpenToWorkBanner() {
     if (!_isMyProfile && !_openToWork) return const SizedBox.shrink();
+    final theme = Theme.of(context);
 
     return GestureDetector(
       onTap: _isMyProfile
@@ -474,12 +482,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: _openToWork
                 ? AppColors.onlineGreen.withValues(alpha: 0.3)
-                : AppColors.inputBorder,
+                : theme.dividerColor,
           ),
           boxShadow: [
             BoxShadow(
@@ -497,14 +505,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               decoration: BoxDecoration(
                 color: _openToWork
                     ? AppColors.onlineGreen.withValues(alpha: 0.12)
-                    : AppColors.chipBg,
+                    : theme.colorScheme.surfaceVariant,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
                 Icons.work_outline,
                 color: _openToWork
                     ? AppColors.onlineGreen
-                    : AppColors.mutedText,
+                    : theme.textTheme.bodySmall?.color,
                 size: 20,
               ),
             ),
@@ -518,7 +526,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     style: GoogleFonts.inter(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.headingText,
+                      color: theme.colorScheme.onSurface,
                       letterSpacing: 0.5,
                     ),
                   ),
@@ -530,7 +538,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           : 'Tap to change',
                       style: GoogleFonts.inter(
                         fontSize: 12,
-                        color: AppColors.mutedText,
+                        color: theme.textTheme.bodySmall?.color,
                       ),
                     ),
                 ],
@@ -557,6 +565,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ──────────────────────── 11. STATS ────────────────────────
   Widget _buildStatsSection() {
+    double averageRating = 0;
+    if (_reviews.isNotEmpty) {
+      final total = _reviews.fold<double>(
+        0,
+        (sum, r) => sum + (double.tryParse(r['rating']?.toString() ?? '0') ?? 0),
+      );
+      averageRating = total / _reviews.length;
+    }
+
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       padding: const EdgeInsets.all(18),
@@ -578,13 +595,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(width: 12),
               _buildStatCard(
                 Icons.star,
-                _reviews.isNotEmpty
-                    ? (_reviews
-                                  .map((r) => r['rating'] as int? ?? 0)
-                                  .reduce((a, b) => a + b) /
-                              _reviews.length)
-                          .toStringAsFixed(1)
-                    : '0',
+                averageRating.toStringAsFixed(1),
                 'Ortalama\nPuan',
               ),
             ],
@@ -595,11 +606,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildStatCard(IconData icon, String value, String label) {
+    final theme = Theme.of(context);
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: AppColors.chipBg,
+          color: theme.colorScheme.surfaceVariant,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -611,7 +623,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: GoogleFonts.inter(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
-                color: AppColors.headingText,
+                color: theme.colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: 4),
@@ -620,7 +632,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(
                 fontSize: 11,
-                color: AppColors.mutedText,
+                color: theme.textTheme.bodySmall?.color,
                 height: 1.3,
               ),
             ),
@@ -726,6 +738,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ──────────────────────── PROFILE ABOUT ────────────────────────
   Widget _buildProfileSection() {
+    final theme = Theme.of(context);
     return _buildSection(
       title: 'Profil',
       onEdit: _showEditAboutDialog,
@@ -734,7 +747,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         style: GoogleFonts.inter(
           fontSize: 13.5,
           height: 1.55,
-          color: _about.isNotEmpty ? AppColors.bodyText : AppColors.mutedText,
+          color: _about.isNotEmpty ? theme.textTheme.bodyMedium?.color : theme.textTheme.bodySmall?.color,
         ),
       ),
     );
@@ -742,6 +755,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ──────────────────────── 7. AVAILABILITY ────────────────────────
   Widget _buildAvailabilitySection() {
+    final theme = Theme.of(context);
     return _buildSection(
       title: 'Müsaitlik Durumu',
       onEdit: _showEditAvailabilityDialog,
@@ -752,7 +766,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   : 'Müsaitlik bilgisi eklenmemiş.',
               style: GoogleFonts.inter(
                 fontSize: 13.5,
-                color: AppColors.mutedText,
+                color: theme.textTheme.bodySmall?.color,
               ),
             )
           : Column(
@@ -778,6 +792,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ──────────────────────── 8. ROLE PREFERENCES ────────────────────────
   Widget _buildRolePreferencesSection() {
+    final theme = Theme.of(context);
     return _buildSection(
       title: 'Aranan Roller',
       onEdit: _showAddRoleDialog,
@@ -788,7 +803,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   : 'Rol tercihi eklenmemiş.',
               style: GoogleFonts.inter(
                 fontSize: 13.5,
-                color: AppColors.mutedText,
+                color: theme.textTheme.bodySmall?.color,
               ),
             )
           : Wrap(
@@ -813,6 +828,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ──────────────────────── EXPERIENCE ────────────────────────
   Widget _buildExperienceSection() {
+    final theme = Theme.of(context);
     return _buildSection(
       title: 'Deneyimler',
       onEdit: () => _showExperienceDialog(-1),
@@ -821,7 +837,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _isMyProfile ? 'Deneyim ekleyin...' : 'Deneyim eklenmemiş.',
               style: GoogleFonts.inter(
                 fontSize: 13.5,
-                color: AppColors.mutedText,
+                color: theme.textTheme.bodySmall?.color,
               ),
             )
           : Column(
@@ -832,7 +848,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     if (i > 0) ...[
                       const SizedBox(height: 12),
                       Divider(
-                        color: AppColors.inputBorder.withValues(alpha: 0.6),
+                        color: theme.dividerColor.withValues(alpha: 0.6),
                         height: 1,
                       ),
                       const SizedBox(height: 12),
@@ -863,55 +879,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ──────────────────────── 1. EDUCATION ────────────────────────
   Widget _buildEducationSection() {
+    final theme = Theme.of(context);
     return _buildSection(
       title: 'Eğitim',
       onEdit: () => _showEducationDialog(-1),
-      child: _education.isEmpty
+      child: _education == null
           ? Text(
               _isMyProfile
                   ? 'Eğitim bilgisi ekleyin...'
                   : 'Eğitim bilgisi eklenmemiş.',
               style: GoogleFonts.inter(
                 fontSize: 13.5,
-                color: AppColors.mutedText,
+                color: theme.textTheme.bodySmall?.color,
               ),
             )
-          : Column(
-              children: List.generate(_education.length, (i) {
-                final e = _education[i];
-                return Column(
-                  children: [
-                    if (i > 0) ...[
-                      const SizedBox(height: 12),
-                      Divider(
-                        color: AppColors.inputBorder.withValues(alpha: 0.6),
-                        height: 1,
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                    _buildTimelineItem(
-                      icon: Icons.school_outlined,
-                      title: e['school'] ?? '',
-                      subtitle: e['department'] ?? '',
-                      meta: e['year'] ?? '',
-                      description: e['degree'] ?? '',
-                      onTap: () => _showEducationDialog(i),
-                      onDelete: () async {
-                        setState(() => _education.removeAt(i));
-                        try {
-                          await _profileService.updateEducation('', '', '', '');
-                        } catch (e) {}
-                      },
-                    ),
-                  ],
-                );
-              }),
+          : _buildTimelineItem(
+              icon: Icons.school_outlined,
+              title: _education!['school'] ?? '',
+              subtitle: _education!['department'] ?? '',
+              meta: _education!['year'] ?? '',
+              description: _education!['degree'] ?? '',
+              onTap: () => _showEducationDialog(0),
+              onDelete: () async {
+                setState(() => _education = null);
+                try {
+                  await _profileService.updateEducation('', '', '', '');
+                } catch (e) {}
+              },
             ),
     );
   }
 
   // ──────────────────────── 2. CERTIFICATES ────────────────────────
   Widget _buildCertificatesSection() {
+    final theme = Theme.of(context);
     return _buildSection(
       title: 'Sertifikalar',
       onEdit: () => _showCertificateDialog(-1),
@@ -920,7 +921,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _isMyProfile ? 'Sertifika ekleyin...' : 'Sertifika eklenmemiş.',
               style: GoogleFonts.inter(
                 fontSize: 13.5,
-                color: AppColors.mutedText,
+                color: theme.textTheme.bodySmall?.color,
               ),
             )
           : Column(
@@ -931,7 +932,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     if (i > 0) ...[
                       const SizedBox(height: 12),
                       Divider(
-                        color: AppColors.inputBorder.withValues(alpha: 0.6),
+                        color: theme.dividerColor.withValues(alpha: 0.6),
                         height: 1,
                       ),
                       const SizedBox(height: 12),
@@ -962,6 +963,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ──────────────────────── 3. PROJECTS / PORTFOLIO ────────────────────────
   Widget _buildProjectsSection() {
+    final theme = Theme.of(context);
     return _buildSection(
       title: 'Projeler / Portfolyo',
       onEdit: () => _showProjectDialog(-1),
@@ -970,7 +972,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _isMyProfile ? 'Proje ekleyin...' : 'Proje eklenmemiş.',
               style: GoogleFonts.inter(
                 fontSize: 13.5,
-                color: AppColors.mutedText,
+                color: theme.textTheme.bodySmall?.color,
               ),
             )
           : Column(
@@ -981,7 +983,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     if (i > 0) ...[
                       const SizedBox(height: 12),
                       Divider(
-                        color: AppColors.inputBorder.withValues(alpha: 0.6),
+                        color: theme.dividerColor.withValues(alpha: 0.6),
                         height: 1,
                       ),
                       const SizedBox(height: 12),
@@ -1012,6 +1014,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ──────────────────────── SKILLS ────────────────────────
   Widget _buildSkillsSection() {
+    final theme = Theme.of(context);
     return _buildSection(
       title: 'Yetenekler',
       onEdit: _showAddSkillDialog,
@@ -1020,7 +1023,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _isMyProfile ? 'Yetenek ekleyin...' : 'Yetenek eklenmemiş.',
               style: GoogleFonts.inter(
                 fontSize: 13.5,
-                color: AppColors.mutedText,
+                color: theme.textTheme.bodySmall?.color,
               ),
             )
           : Wrap(
@@ -1035,6 +1038,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ──────────────────────── LANGUAGES ────────────────────────
   Widget _buildLanguagesSection() {
+    final theme = Theme.of(context);
     return _buildSection(
       title: 'Diller',
       onEdit: _showAddLanguageDialog,
@@ -1043,7 +1047,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _isMyProfile ? 'Dil ekleyin...' : 'Dil eklenmemiş.',
               style: GoogleFonts.inter(
                 fontSize: 13.5,
-                color: AppColors.mutedText,
+                color: theme.textTheme.bodySmall?.color,
               ),
             )
           : Column(
@@ -1067,7 +1071,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           '${l['language']} · ${l['level']}',
                           style: GoogleFonts.inter(
                             fontSize: 13.5,
-                            color: AppColors.bodyText,
+                            color: theme.textTheme.bodyMedium?.color,
                           ),
                         ),
                       ),
@@ -1085,7 +1089,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: Icon(
                             Icons.close,
                             size: 16,
-                            color: AppColors.mutedText.withValues(alpha: 0.5),
+                            color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.5),
                           ),
                         ),
                     ],
@@ -1098,6 +1102,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ──────────────────────── 4. SOCIAL LINKS ────────────────────────
   Widget _buildSocialLinksSection() {
+    final theme = Theme.of(context);
     return _buildSection(
       title: 'Sosyal Medya',
       onEdit: _showEditSocialLinksDialog,
@@ -1108,7 +1113,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   : 'Sosyal medya hesabı eklenmemiş.',
               style: GoogleFonts.inter(
                 fontSize: 13.5,
-                color: AppColors.mutedText,
+                color: theme.textTheme.bodySmall?.color,
               ),
             )
           : Column(
@@ -1150,6 +1155,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildSocialRow(IconData icon, String label, String url) {
+    final theme = Theme.of(context);
     return Row(
       children: [
         Icon(icon, size: 18, color: AppColors.primaryAccent),
@@ -1159,7 +1165,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           style: GoogleFonts.inter(
             fontSize: 13,
             fontWeight: FontWeight.w500,
-            color: AppColors.bodyText,
+            color: theme.textTheme.bodyMedium?.color,
           ),
         ),
         Expanded(
@@ -1178,6 +1184,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ──────────────────────── 6. REVIEWS ────────────────────────
   Widget _buildReviewsSection() {
+    final theme = Theme.of(context);
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       padding: const EdgeInsets.all(18),
@@ -1192,7 +1199,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   'Henüz değerlendirme yok.',
                   style: GoogleFonts.inter(
                     fontSize: 13.5,
-                    color: AppColors.mutedText,
+                    color: theme.textTheme.bodySmall?.color,
                   ),
                 )
               : Column(
@@ -1202,7 +1209,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: AppColors.chipBg,
+                          color: theme.colorScheme.surfaceVariant,
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Column(
@@ -1226,7 +1233,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 r['comment'].toString(),
                                 style: GoogleFonts.inter(
                                   fontSize: 12.5,
-                                  color: AppColors.bodyText,
+                                  color: theme.textTheme.bodyMedium?.color,
                                   height: 1.4,
                                 ),
                               ),
@@ -1244,6 +1251,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ──────────────────────── 12. QR CODE ────────────────────────
   Widget _buildQRSection() {
+    final theme = Theme.of(context);
     final userId = widget.userId ?? _profileService.userId;
     if (userId == null) return const SizedBox.shrink();
 
@@ -1258,17 +1266,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.white,
+              color: theme.colorScheme.surface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.inputBorder),
+              border: Border.all(color: theme.dividerColor),
             ),
             child: QrImageView(
               data: 'talentmesh://profile/$userId',
               version: QrVersions.auto,
               size: 180,
-              eyeStyle: const QrEyeStyle(
+              eyeStyle: QrEyeStyle(
                 eyeShape: QrEyeShape.square,
-                color: AppColors.primaryDark,
+                color: theme.colorScheme.onSurface,
               ),
               dataModuleStyle: const QrDataModuleStyle(
                 dataModuleShape: QrDataModuleShape.square,
@@ -1280,7 +1288,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Text(
             'Bu QR kodu paylaşarak profilinize erişim sağlayın',
             textAlign: TextAlign.center,
-            style: GoogleFonts.inter(fontSize: 12, color: AppColors.mutedText),
+            style: GoogleFonts.inter(fontSize: 12, color: theme.textTheme.bodySmall?.color),
           ),
         ],
       ),
@@ -1318,13 +1326,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildEditIcon(VoidCallback onTap) {
+    final theme = Theme.of(context);
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 32,
         height: 32,
         decoration: BoxDecoration(
-          color: AppColors.chipBg,
+          color: theme.colorScheme.surfaceVariant,
           borderRadius: BorderRadius.circular(8),
         ),
         child: const Icon(
@@ -1345,6 +1354,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required VoidCallback onTap,
     required VoidCallback onDelete,
   }) {
+    final theme = Theme.of(context);
     return GestureDetector(
       onTap: _isMyProfile ? onTap : null,
       child: Row(
@@ -1370,7 +1380,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.headingText,
+                    color: theme.colorScheme.onSurface,
                   ),
                 ),
                 if (subtitle.isNotEmpty) ...[
@@ -1379,7 +1389,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     subtitle,
                     style: GoogleFonts.inter(
                       fontSize: 13,
-                      color: AppColors.bodyText,
+                      color: theme.textTheme.bodyMedium?.color,
                     ),
                   ),
                 ],
@@ -1389,7 +1399,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     meta,
                     style: GoogleFonts.inter(
                       fontSize: 12,
-                      color: AppColors.mutedText,
+                      color: theme.textTheme.bodySmall?.color,
                     ),
                   ),
                 ],
@@ -1402,8 +1412,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         margin: const EdgeInsets.only(top: 6),
                         width: 5,
                         height: 5,
-                        decoration: const BoxDecoration(
-                          color: AppColors.mutedText,
+                        decoration: BoxDecoration(
+                          color: theme.textTheme.bodySmall?.color,
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -1414,7 +1424,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           style: GoogleFonts.inter(
                             fontSize: 12.5,
                             height: 1.5,
-                            color: AppColors.bodyText,
+                            color: theme.textTheme.bodyMedium?.color,
                           ),
                         ),
                       ),
@@ -1430,7 +1440,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Icon(
                 Icons.close,
                 size: 16,
-                color: AppColors.mutedText.withValues(alpha: 0.5),
+                color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.5),
               ),
             ),
         ],
@@ -1439,6 +1449,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildSkillChip(String skillName) {
+    final theme = Theme.of(context);
     // Bu yetenek için onayları bul
     final endorsements = _skillEndorsements.where((e) => e['skill_name'] == skillName).toList();
     final endorsementCount = endorsements.length;
@@ -1448,9 +1459,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     // Renk hesaplama (en fazla 10 onayda en koyu renk)
     final intensity = (endorsementCount / 10).clamp(0.0, 1.0);
-    final bgColor = AppColors.chipBg.withValues(alpha: 1.0 - (intensity * 0.5));
-    final textColor = endorsementCount > 0 ? AppColors.primaryDark : AppColors.bodyText;
-    final borderColor = endorsementCount > 0 ? AppColors.primaryAccent : AppColors.inputBorder.withValues(alpha: 0.5);
+    final bgColor = theme.colorScheme.surfaceVariant.withValues(alpha: 1.0 - (intensity * 0.5));
+    final textColor = endorsementCount > 0 ? AppColors.primaryDark : theme.textTheme.bodyMedium?.color;
+    final borderColor = endorsementCount > 0 ? AppColors.primaryAccent : theme.dividerColor.withValues(alpha: 0.5);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -1490,7 +1501,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Container(
               width: 1,
               height: 12,
-              color: AppColors.inputBorder,
+              color: theme.dividerColor,
             ),
             const SizedBox(width: 6),
           ],
@@ -1514,7 +1525,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Icon(
                 Icons.close,
                 size: 14,
-                color: AppColors.mutedText.withValues(alpha: 0.6),
+                color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
               ),
             ),
           ] else if (currentUserId != null && _isFriend) ...[
@@ -1546,7 +1557,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Icon(
                 isEndorsedByMe ? Icons.check_circle : Icons.add_circle_outline,
                 size: 16,
-                color: isEndorsedByMe ? AppColors.primaryAccent : AppColors.mutedText,
+                color: isEndorsedByMe ? AppColors.primaryAccent : theme.textTheme.bodySmall?.color,
               ),
             ),
           ],
@@ -1560,12 +1571,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     VoidCallback onDelete,
     Color textColor,
   ) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: AppColors.chipBg,
+        color: theme.colorScheme.surfaceVariant,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.inputBorder.withValues(alpha: 0.5)),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.5)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1585,7 +1597,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Icon(
                 Icons.close,
                 size: 14,
-                color: AppColors.mutedText.withValues(alpha: 0.6),
+                color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
               ),
             ),
           ],
@@ -1595,6 +1607,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildInfoRow(IconData icon, String text) {
+    final theme = Theme.of(context);
     return Row(
       children: [
         Icon(icon, size: 18, color: AppColors.primaryAccent),
@@ -1602,30 +1615,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Expanded(
           child: Text(
             text,
-            style: GoogleFonts.inter(fontSize: 13.5, color: AppColors.bodyText),
+            style: GoogleFonts.inter(fontSize: 13.5, color: theme.textTheme.bodyMedium?.color),
           ),
         ),
       ],
     );
   }
 
-  BoxDecoration _cardDecoration() => BoxDecoration(
-    color: AppColors.white,
-    borderRadius: BorderRadius.circular(14),
-    boxShadow: [
-      BoxShadow(
-        color: Colors.black.withValues(alpha: 0.03),
-        blurRadius: 8,
-        offset: const Offset(0, 2),
-      ),
-    ],
-  );
+  BoxDecoration _cardDecoration() {
+    final theme = Theme.of(context);
+    return BoxDecoration(
+      color: theme.colorScheme.surface,
+      borderRadius: BorderRadius.circular(14),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.03),
+          blurRadius: 8,
+          offset: const Offset(0, 2),
+        ),
+      ],
+    );
+  }
 
-  TextStyle _sectionTitleStyle() => GoogleFonts.inter(
-    fontSize: 17,
-    fontWeight: FontWeight.w700,
-    color: AppColors.headingText,
-  );
+  TextStyle _sectionTitleStyle() {
+    final theme = Theme.of(context);
+    return GoogleFonts.inter(
+      fontSize: 17,
+      fontWeight: FontWeight.w700,
+      color: theme.colorScheme.onSurface,
+    );
+  }
 
   // ══════════════════════════════════════════════════════════
   // ──────────────────── EDIT DIALOGS ────────────────────────
@@ -1633,13 +1652,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _pickAvatar() async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 512,
-    );
-    if (picked != null) {
-      final url = await _profileService.uploadAvatar(File(picked.path));
-      if (url != null) setState(() => _avatarUrl = url);
+    try {
+      final picked = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        imageQuality: 75,
+      );
+      if (picked != null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Fotoğraf yükleniyor...')),
+          );
+        }
+        final url = await _profileService.uploadAvatar(File(picked.path));
+        if (url != null) {
+          if (mounted) {
+            setState(() => _avatarUrl = url);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Fotoğraf başarıyla güncellendi.'),
+                backgroundColor: AppColors.onlineGreen,
+              ),
+            );
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Fotoğraf yüklenemedi. Lütfen tekrar deneyin.'),
+                backgroundColor: Colors.redAccent,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      print('Avatar picking/upload error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Bir hata oluştu: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
     }
   }
 
@@ -1709,6 +1765,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showEditAboutDialog() {
+    final theme = Theme.of(context);
     final c = TextEditingController(text: _about);
     _showSheet(
       'Hakkında',
@@ -1716,15 +1773,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         TextField(
           controller: c,
           maxLines: 5,
-          style: GoogleFonts.inter(fontSize: 14, color: AppColors.bodyText),
+          style: GoogleFonts.inter(fontSize: 14, color: theme.textTheme.bodyMedium?.color),
           decoration: InputDecoration(
             hintText: 'Kendinizi tanıtın...',
             hintStyle: GoogleFonts.inter(
               fontSize: 14,
-              color: AppColors.mutedText,
+              color: theme.textTheme.bodySmall?.color,
             ),
             filled: true,
-            fillColor: AppColors.chipBg,
+            fillColor: theme.colorScheme.surfaceVariant,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
@@ -1742,6 +1799,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showExperienceDialog(int idx) {
+    // ...
     final isNew = idx < 0;
     final e = isNew ? <String, String>{} : _experiences[idx];
     final tC = TextEditingController(text: e['title'] ?? '');
@@ -1789,8 +1847,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showEducationDialog(int idx) {
-    final isNew = idx < 0;
-    final e = isNew ? <String, String>{} : _education[idx];
+    final isNew = _education == null;
+    final e = _education ?? <String, String>{};
     final sC = TextEditingController(text: e['school'] ?? '');
     final dC = TextEditingController(text: e['department'] ?? '');
     final yC = TextEditingController(text: e['year'] ?? '');
@@ -1819,11 +1877,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           'degree': degree,
         };
         setState(() {
-          if (isNew) {
-            _education.add(m);
-          } else {
-            _education[idx] = m;
-          }
+          _education = m;
         });
 
         try {
@@ -1950,52 +2004,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setS) => _buildSheetContent(
-          ctx,
-          'Dil Ekle',
-          [
-            _buildField(c, 'Dil (ör: English)', Icons.language),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: AppColors.chipBg,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: level,
-                  isExpanded: true,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    color: AppColors.bodyText,
+        builder: (ctx, setS) {
+          final theme = Theme.of(ctx);
+          return _buildSheetContent(
+            ctx,
+            'Dil Ekle',
+            [
+              _buildField(c, 'Dil (ör: English)', Icons.language),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceVariant,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: level,
+                    isExpanded: true,
+                    dropdownColor: theme.colorScheme.surface,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                    items: levels
+                        .map((l) => DropdownMenuItem(value: l, child: Text(l)))
+                        .toList(),
+                    onChanged: (v) {
+                      if (v != null) setS(() => level = v);
+                    },
                   ),
-                  items: levels
-                      .map((l) => DropdownMenuItem(value: l, child: Text(l)))
-                      .toList(),
-                  onChanged: (v) {
-                    if (v != null) setS(() => level = v);
-                  },
                 ),
               ),
-            ),
-          ],
-          () async {
-            if (c.text.trim().isNotEmpty) {
-              setState(
-                () =>
-                    _languages.add({'language': c.text.trim(), 'level': level}),
-              );
-              try {
-                await _profileService.updateDynamicProfileField(
-                  'languages',
-                  _languages,
+            ],
+            () async {
+              if (c.text.trim().isNotEmpty) {
+                setState(
+                  () =>
+                      _languages.add({'language': c.text.trim(), 'level': level}),
                 );
-              } catch (e) {}
-            }
-            if (ctx.mounted) Navigator.pop(ctx);
-          },
-        ),
+                try {
+                  await _profileService.updateDynamicProfileField(
+                    'languages',
+                    _languages,
+                  );
+                } catch (e) {}
+              }
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+          );
+        },
       ),
     );
   }
@@ -2108,13 +2166,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     List<Widget> children,
     VoidCallback onSave,
   ) {
+    final theme = Theme.of(ctx);
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
       child: Container(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-        decoration: const BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: SingleChildScrollView(
         child: Column(
@@ -2126,7 +2185,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.inputBorder,
+                  color: theme.dividerColor,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -2137,7 +2196,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: GoogleFonts.inter(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
-                color: AppColors.headingText,
+                color: theme.colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: 20),
@@ -2150,7 +2209,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 onPressed: onSave,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryAccent,
-                  foregroundColor: AppColors.white,
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -2173,15 +2232,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
 }
 
   Widget _buildField(TextEditingController c, String hint, IconData icon) {
+    final theme = Theme.of(context);
     return TextField(
       controller: c,
-      style: GoogleFonts.inter(fontSize: 14, color: AppColors.bodyText),
+      style: GoogleFonts.inter(fontSize: 14, color: theme.textTheme.bodyMedium?.color),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: GoogleFonts.inter(fontSize: 14, color: AppColors.mutedText),
-        prefixIcon: Icon(icon, size: 20, color: AppColors.mutedText),
+        hintStyle: GoogleFonts.inter(fontSize: 14, color: theme.textTheme.bodySmall?.color),
+        prefixIcon: Icon(icon, size: 20, color: theme.textTheme.bodySmall?.color),
         filled: true,
-        fillColor: AppColors.chipBg,
+        fillColor: theme.colorScheme.surfaceVariant,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -2214,13 +2274,14 @@ class _SkillAddPanelState extends State<_SkillAddPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -2240,7 +2301,7 @@ class _SkillAddPanelState extends State<_SkillAddPanel> {
                 style: GoogleFonts.inter(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.headingText,
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 20),
@@ -2264,13 +2325,13 @@ class _SkillAddPanelState extends State<_SkillAddPanel> {
                   return TextField(
                     controller: controller,
                     focusNode: focusNode,
-                    style: GoogleFonts.inter(fontSize: 14, color: AppColors.bodyText),
+                    style: GoogleFonts.inter(fontSize: 14, color: theme.textTheme.bodyMedium?.color),
                     decoration: InputDecoration(
                       hintText: 'Yetenek Ara (ör: Python)',
-                      hintStyle: GoogleFonts.inter(fontSize: 14, color: AppColors.mutedText),
-                      prefixIcon: const Icon(Icons.code, size: 20, color: AppColors.mutedText),
+                      hintStyle: GoogleFonts.inter(fontSize: 14, color: theme.textTheme.bodySmall?.color),
+                      prefixIcon: Icon(Icons.code, size: 20, color: theme.textTheme.bodySmall?.color),
                       filled: true,
-                      fillColor: AppColors.chipBg,
+                      fillColor: theme.colorScheme.surfaceVariant,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
@@ -2288,7 +2349,7 @@ class _SkillAddPanelState extends State<_SkillAddPanel> {
                     child: Material(
                       elevation: 4.0,
                       borderRadius: BorderRadius.circular(8),
-                      color: AppColors.white,
+                      color: theme.colorScheme.surface,
                       child: ConstrainedBox(
                         constraints: BoxConstraints(
                           maxHeight: 160,
@@ -2342,7 +2403,7 @@ class _SkillAddPanelState extends State<_SkillAddPanel> {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryAccent,
-                    foregroundColor: AppColors.white,
+                    foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
@@ -2384,13 +2445,14 @@ class _RoleAddPanelState extends State<_RoleAddPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -2410,7 +2472,7 @@ class _RoleAddPanelState extends State<_RoleAddPanel> {
                 style: GoogleFonts.inter(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.headingText,
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 20),
@@ -2434,13 +2496,13 @@ class _RoleAddPanelState extends State<_RoleAddPanel> {
                   return TextField(
                     controller: controller,
                     focusNode: focusNode,
-                    style: GoogleFonts.inter(fontSize: 14, color: AppColors.bodyText),
+                    style: GoogleFonts.inter(fontSize: 14, color: theme.textTheme.bodyMedium?.color),
                     decoration: InputDecoration(
                       hintText: 'Rol Ara (ör: Backend Developer)',
-                      hintStyle: GoogleFonts.inter(fontSize: 14, color: AppColors.mutedText),
-                      prefixIcon: const Icon(Icons.person_search, size: 20, color: AppColors.mutedText),
+                      hintStyle: GoogleFonts.inter(fontSize: 14, color: theme.textTheme.bodySmall?.color),
+                      prefixIcon: Icon(Icons.person_search, size: 20, color: theme.textTheme.bodySmall?.color),
                       filled: true,
-                      fillColor: AppColors.chipBg,
+                      fillColor: theme.colorScheme.surfaceVariant,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide.none,
@@ -2458,7 +2520,7 @@ class _RoleAddPanelState extends State<_RoleAddPanel> {
                     child: Material(
                       elevation: 4.0,
                       borderRadius: BorderRadius.circular(8),
-                      color: AppColors.white,
+                      color: theme.colorScheme.surface,
                       child: ConstrainedBox(
                         constraints: BoxConstraints(
                           maxHeight: 160,
@@ -2511,7 +2573,7 @@ class _RoleAddPanelState extends State<_RoleAddPanel> {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryAccent,
-                    foregroundColor: AppColors.white,
+                    foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),

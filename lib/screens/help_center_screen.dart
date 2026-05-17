@@ -6,161 +6,207 @@ import 'package:url_launcher/url_launcher.dart';
 class HelpCenterScreen extends StatelessWidget {
   const HelpCenterScreen({super.key});
 
+  Future<void> _launchEmail(String email) async {
+    final Uri emailLaunchUri = Uri(
+      scheme: 'mailto',
+      path: email,
+      query: 'subject=TalentMesh Destek Talebi',
+    );
+    if (await canLaunchUrl(emailLaunchUri)) {
+      await launchUrl(emailLaunchUri);
+    }
+  }
+
   Future<void> _launchUrl(String url) async {
     final Uri uri = Uri.parse(url);
-    if (!await launchUrl(uri)) {
-      throw Exception('Could not launch $url');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: AppColors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           'Yardım Merkezi',
           style: GoogleFonts.inter(
-            color: AppColors.headingText,
+            color: theme.colorScheme.onSurface,
             fontWeight: FontWeight.w700,
             fontSize: 18,
           ),
         ),
-        backgroundColor: AppColors.white,
+        backgroundColor: theme.colorScheme.surface,
         elevation: 0.5,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.headingText),
+          icon: Icon(Icons.arrow_back, color: theme.colorScheme.onSurface),
           onPressed: () => Navigator.pop(context),
         ),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _buildSearchBox(),
+          _buildSearchBox(context),
           const SizedBox(height: 24),
-          _buildSectionHeader('Sıkça Sorulan Sorular'),
+          _buildSectionHeader(context, 'Sıkça Sorulan Sorular'),
           _buildFaqItem(
+            context,
+            'Nasıl takım kurabilirim?',
+            'Ana sayfadaki "+" butonuna basarak yeni bir takım oluşturabilir, takımınızın hedeflerini ve aradığınız rolleri belirleyebilirsiniz.',
+          ),
+          _buildFaqItem(
+            context,
+            'Takım arkadaşlarımı nasıl bulurum?',
+            'Arama kısmından yeteneklere veya isimlere göre arama yapabilir, uygun bulduğunuz kişilere bağlantı isteği gönderebilirsiniz.',
+          ),
+          _buildFaqItem(
+            context,
             'Profilimi nasıl güncellerim?',
-            'Ayarlar > Kişisel Bilgiler sayfasından veya Profil ekranınızdaki düzenle butonundan profilinizi güncelleyebilirsiniz.',
-          ),
-          _buildFaqItem(
-            'Takım nasıl oluşturulur?',
-            'Ana ekrandaki "Takım Oluştur" butonuna basarak yeni bir takım kurabilir ve üye arayabilirsiniz.',
-          ),
-          _buildFaqItem(
-            'Hesabımı nasıl silebilirim?',
-            'Ayarlar > Oturum Açma ve Güvenlik sayfasının en altında bulunan "Hesabı Kapat" seçeneği ile işleminizi gerçekleştirebilirsiniz.',
+            'Ayarlar > Kişisel Bilgiler sayfasından veya profil sayfanızdaki kalem ikonuna dokunarak bilgilerinizi güncelleyebilirsiniz.',
           ),
           const SizedBox(height: 24),
-          _buildSectionHeader('Bize Ulaşın'),
+          _buildSectionHeader(context, 'Bize Ulaşın'),
           _buildContactItem(
+            context,
             icon: Icons.email_outlined,
             title: 'E-posta Gönder',
-            subtitle: 'support@talentmesh.com',
-            onTap: () => _launchUrl('mailto:support@talentmesh.com'),
+            subtitle: 'destek@talentmesh.com',
+            onTap: () => _launchEmail('destek@talentmesh.com'),
           ),
           _buildContactItem(
-            icon: Icons.language_outlined,
-            title: 'Web Sitemizi Ziyaret Edin',
+            context,
+            icon: Icons.language,
+            title: 'Web Sitemiz',
             subtitle: 'www.talentmesh.com',
             onTap: () => _launchUrl('https://www.talentmesh.com'),
+          ),
+          const SizedBox(height: 40),
+          Center(
+            child: Text(
+              'Versiyon 1.0.0',
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                color: theme.textTheme.bodySmall?.color,
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSearchBox() {
+  Widget _buildSearchBox(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.chipBg,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: TextField(
+        style: TextStyle(color: theme.colorScheme.onSurface),
         decoration: InputDecoration(
           hintText: 'Nasıl yardımcı olabiliriz?',
-          hintStyle: GoogleFonts.inter(color: AppColors.mutedText),
-          prefixIcon: const Icon(Icons.search, color: AppColors.mutedText),
+          hintStyle: GoogleFonts.inter(color: theme.textTheme.bodySmall?.color),
+          prefixIcon: const Icon(Icons.search, color: AppColors.primaryAccent),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 15),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
       ),
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(BuildContext context, String title) {
+    final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Text(
         title,
         style: GoogleFonts.inter(
           fontSize: 16,
           fontWeight: FontWeight.w700,
-          color: AppColors.headingText,
+          color: theme.colorScheme.onSurface,
         ),
       ),
     );
   }
 
-  Widget _buildFaqItem(String question, String answer) {
-    return ExpansionTile(
-      tilePadding: EdgeInsets.zero,
-      title: Text(
-        question,
-        style: GoogleFonts.inter(
-          fontSize: 15,
-          fontWeight: FontWeight.w600,
-          color: AppColors.bodyText,
-        ),
+  Widget _buildFaqItem(BuildContext context, String question, String answer) {
+    final theme = Theme.of(context);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.dividerColor),
       ),
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: Text(
-            answer,
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              color: AppColors.mutedText,
-              height: 1.5,
-            ),
+      child: ExpansionTile(
+        title: Text(
+          question,
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: theme.colorScheme.onSurface,
           ),
         ),
-      ],
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Text(
+              answer,
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                color: theme.textTheme.bodyMedium?.color,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildContactItem({
+  Widget _buildContactItem(
+    BuildContext context, {
     required IconData icon,
     required String title,
     required String subtitle,
     required VoidCallback onTap,
   }) {
+    final theme = Theme.of(context);
     return ListTile(
-      contentPadding: EdgeInsets.zero,
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: AppColors.chipBg,
-          borderRadius: BorderRadius.circular(10),
+          color: AppColors.primaryAccent.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
         ),
-        child: Icon(icon, color: AppColors.primaryAccent),
+        child: Icon(icon, color: AppColors.primaryAccent, size: 20),
       ),
       title: Text(
         title,
         style: GoogleFonts.inter(
-          fontSize: 15,
+          fontSize: 14,
           fontWeight: FontWeight.w600,
-          color: AppColors.headingText,
+          color: theme.colorScheme.onSurface,
         ),
       ),
       subtitle: Text(
         subtitle,
         style: GoogleFonts.inter(
           fontSize: 13,
-          color: AppColors.mutedText,
+          color: theme.textTheme.bodySmall?.color,
         ),
       ),
-      trailing: const Icon(Icons.chevron_right, size: 20, color: AppColors.mutedText),
+      trailing: Icon(Icons.chevron_right, size: 20, color: theme.textTheme.bodySmall?.color),
       onTap: onTap,
     );
   }

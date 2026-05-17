@@ -43,7 +43,7 @@ class ProfileService {
     if (_userId == null) return null;
     try {
       final ext = imageFile.path.split('.').last;
-      final path = 'avatars/$_userId.$ext';
+      final path = '$_userId.$ext'; // avatars/ prefix'i kaldirildi, zaten avatars bucket'indayiz
 
       await _client.storage
           .from('avatars')
@@ -54,9 +54,11 @@ class ProfileService {
           );
 
       final url = _client.storage.from('avatars').getPublicUrl(path);
+      print('Fotoğraf yüklendi, URL: $url');
       await updateProfileField({'avatar_url': url});
       return url;
     } catch (e) {
+      print('Fotoğraf yükleme hatası: $e');
       return null;
     }
   }

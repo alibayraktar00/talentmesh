@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/theme/app_colors.dart';
-import '../core/services/notification_service.dart';
 
 class FriendRequestsScreen extends StatefulWidget {
   const FriendRequestsScreen({super.key});
@@ -13,271 +12,154 @@ class FriendRequestsScreen extends StatefulWidget {
 
 class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
   final _client = Supabase.instance.client;
-  final _notificationService = NotificationService();
-
   bool _isLoading = true;
-  final Set<String> _actionLoadingIds = {};
   List<Map<String, dynamic>> _requests = [];
-  String? _lastLoadedUserId;
-
-  String? get _myUserId => _client.auth.currentUser?.id;
 
   @override
   void initState() {
     super.initState();
-    _loadPendingRequests();
+    _fetchRequests();
   }
 
-  void _showError(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.redAccent,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  Future<void> _loadPendingRequests() async {
-    final myId = _myUserId;
-    if (myId == null) {
-      _showError('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
+  Future<void> _fetchRequests() async {
     try {
-      // Türkçe yorum: Önce pending istekleri çekiyoruz.
-      final response = await _client
+      final userId = _client.auth.currentUser?.id;
+      if (userId == null) return;
+
+      final res = await _client
           .from('friend_requests')
-          .select('*')
-          .eq('addressee_id', myId)
-          .eq('status', 'pending')
-          .order('id', ascending: false);
+          .select('*, requester_profile:requester_id(*)')
+          .eq('receiver_id', userId)
+          .eq('status', 'pending');
 
-      final requestRows = List<Map<String, dynamic>>.from(response);
-      final requesterIds = requestRows
-          .map((row) => (row['requester_id'] ?? '').toString())
-          .where((id) => id.isNotEmpty)
-          .toSet()
-          .toList();
-
-      Map<String, Map<String, dynamic>> profilesById = {};
-      if (requesterIds.isNotEmpty) {
-        final profiles = await _client
-            .from('profiles')
-            .select('id, username, full_name')
-            .inFilter('id', requesterIds);
-        for (final p in List<Map<String, dynamic>>.from(profiles)) {
-          final id = (p['id'] ?? '').toString();
-          if (id.isNotEmpty) {
-            profilesById[id] = p;
-          }
-        }
-      }
-
-      if (!mounted) return;
-      setState(() {
-        _lastLoadedUserId = myId;
-        _requests = requestRows.map((row) {
-          final requesterId = (row['requester_id'] ?? '').toString();
-          return {
-            ...row,
-            'requester': profilesById[requesterId] ?? <String, dynamic>{},
-          };
-        }).toList();
-      });
-    } on PostgrestException catch (e) {
-      print('Friend requests read error: ${e.message}');
-      _showError('İstekler alınamadı: ${e.message}');
-    } catch (e) {
-      print('Friend requests read unexpected error: $e');
-      _showError('İstekler yüklenemedi. Lütfen tekrar deneyin.');
-    } finally {
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() {
+          _requests = List<Map<String, dynamic>>.from(res);
+          _isLoading = false;
+        });
       }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  Future<void> _updateRequestStatus({
-    required String requestId,
-    required String newStatus,
-  }) async {
-    if (_actionLoadingIds.contains(requestId)) return;
-
-    setState(() => _actionLoadingIds.add(requestId));
-
-    Map<String, dynamic>? matchedRequest;
-    for (final r in _requests) {
-      if (r['id'].toString() == requestId) {
-        matchedRequest = r;
-        break;
-      }
-    }
-    final requesterId = (matchedRequest?['requester_id'] ?? '').toString();
-
+  Future<void> _respondToRequest(String requestId, String status) async {
     try {
       await _client
           .from('friend_requests')
-          .update({'status': newStatus})
+          .update({'status': status})
           .eq('id', requestId);
-
-      if (newStatus == 'accepted' && requesterId.isNotEmpty) {
-        await _notificationService.notifyFriendAccepted(
-          requesterId: requesterId,
-        );
-      }
-
-      if (!mounted) return;
-      setState(() {
-        // Türkçe yorum: İşlem yapılan isteği listeden kaldırıyoruz.
-        _requests.removeWhere((r) => r['id'].toString() == requestId);
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            newStatus == 'accepted'
-                ? 'Arkadaşlık isteği kabul edildi.'
-                : 'Arkadaşlık isteği reddedildi.',
-          ),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    } on PostgrestException catch (e) {
-      _showError('İşlem başarısız: ${e.message}');
-    } catch (_) {
-      _showError('İşlem başarısız. Lütfen tekrar deneyin.');
-    } finally {
+      
+      _fetchRequests();
+    } catch (e) {
       if (mounted) {
-        setState(() => _actionLoadingIds.remove(requestId));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Hata: $e')),
+        );
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final currentUserId = _myUserId;
-    if (currentUserId != null &&
-        currentUserId != _lastLoadedUserId &&
-        !_isLoading) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _loadPendingRequests();
-      });
-    }
-
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
-          'Gelen İstekler',
+          'Arkadaşlık İstekleri',
           style: GoogleFonts.inter(
-            color: AppColors.headingText,
+            color: theme.colorScheme.onSurface,
             fontWeight: FontWeight.w700,
           ),
         ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: AppColors.headingText,
-      ),
-      body: _buildBody(),
-    );
-  }
-
-  Widget _buildBody() {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (_requests.isEmpty) {
-      return Center(
-        child: Text(
-          'Henüz bir arkadaşlık isteğiniz yok',
-          style: GoogleFonts.inter(color: AppColors.mutedText, fontSize: 15),
+        backgroundColor: theme.colorScheme.surface,
+        elevation: 0.5,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: theme.colorScheme.onSurface),
+          onPressed: () => Navigator.pop(context),
         ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: _loadPendingRequests,
-      child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        itemCount: _requests.length,
-        itemBuilder: (context, index) {
-          final req = _requests[index];
-          final reqId = req['id'].toString();
-          final profile = (req['requester'] as Map<String, dynamic>?) ?? {};
-          final username = (profile['username'] ?? '').toString();
-          final fullName = (profile['full_name'] ?? '').toString();
-          final isActionLoading = _actionLoadingIds.contains(reqId);
-
-          return Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 10,
-              ),
-              leading: CircleAvatar(
-                backgroundColor: AppColors.chipBg,
-                child: Text(
-                  username.isNotEmpty ? username[0].toUpperCase() : '?',
-                  style: GoogleFonts.inter(
-                    color: AppColors.primaryAccent,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              title: Text(
-                '@$username',
-                style: GoogleFonts.inter(
-                  color: AppColors.headingText,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              subtitle: Text(
-                fullName.isEmpty ? 'İsim bilgisi yok' : fullName,
-                style: GoogleFonts.inter(color: AppColors.mutedText),
-              ),
-              trailing: isActionLoading
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Wrap(
-                      spacing: 8,
-                      children: [
-                        TextButton(
-                          onPressed: () => _updateRequestStatus(
-                            requestId: reqId,
-                            newStatus: 'rejected',
-                          ),
-                          child: const Text('Reddet'),
-                        ),
-                        ElevatedButton(
-                          onPressed: () => _updateRequestStatus(
-                            requestId: reqId,
-                            newStatus: 'accepted',
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryAccent,
-                            foregroundColor: AppColors.white,
-                          ),
-                          child: const Text('Kabul Et'),
-                        ),
-                      ],
-                    ),
-            ),
-          );
-        },
       ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _requests.isEmpty
+              ? Center(
+                  child: Text(
+                    'Bekleyen istek yok.',
+                    style: GoogleFonts.inter(color: theme.textTheme.bodySmall?.color),
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _requests.length,
+                  itemBuilder: (context, index) {
+                    final req = _requests[index];
+                    final profile = req['requester_profile'] as Map<String, dynamic>? ?? {};
+                    final username = profile['username'] ?? 'Bilinmeyen';
+                    final fullName = profile['full_name'] ?? '';
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundColor: theme.colorScheme.surfaceVariant,
+                            child: Text(
+                              username[0].toUpperCase(),
+                              style: const TextStyle(
+                                color: AppColors.primaryAccent,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '@$username',
+                                  style: GoogleFonts.inter(
+                                    fontWeight: FontWeight.w700,
+                                    color: theme.colorScheme.onSurface,
+                                  ),
+                                ),
+                                if (fullName.isNotEmpty)
+                                  Text(
+                                    fullName,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 13,
+                                      color: theme.textTheme.bodySmall?.color,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.check_circle, color: Colors.green),
+                            onPressed: () => _respondToRequest(req['id'], 'accepted'),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.cancel, color: Colors.redAccent),
+                            onPressed: () => _respondToRequest(req['id'], 'rejected'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
     );
   }
 }

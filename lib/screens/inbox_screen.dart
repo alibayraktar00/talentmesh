@@ -38,6 +38,7 @@ class _InboxScreenState extends State<InboxScreen> {
   @override
   Widget build(BuildContext context) {
     final myId = _myId;
+    final theme = Theme.of(context);
     if (myId == null) {
       return const Scaffold(
         body: Center(child: Text('Oturum bulunamadı.')),
@@ -45,19 +46,19 @@ class _InboxScreenState extends State<InboxScreen> {
     }
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           'Mesajlar',
           style: GoogleFonts.inter(
             fontSize: 18,
             fontWeight: FontWeight.w700,
-            color: AppColors.headingText,
+            color: theme.colorScheme.onSurface,
           ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        foregroundColor: AppColors.headingText,
+        foregroundColor: theme.colorScheme.onSurface,
       ),
       body: AnimatedBuilder(
         animation: _controller,
@@ -69,7 +70,7 @@ class _InboxScreenState extends State<InboxScreen> {
             return Center(
               child: Text(
                 'Inbox yüklenemedi.',
-                style: GoogleFonts.inter(color: AppColors.mutedText),
+                style: GoogleFonts.inter(color: theme.textTheme.bodySmall?.color),
               ),
             );
           }
@@ -78,7 +79,7 @@ class _InboxScreenState extends State<InboxScreen> {
             return Center(
               child: Text(
                 'Henüz sohbet yok.',
-                style: GoogleFonts.inter(color: AppColors.mutedText),
+                style: GoogleFonts.inter(color: theme.textTheme.bodySmall?.color),
               ),
             );
           }
@@ -109,7 +110,7 @@ class _InboxScreenState extends State<InboxScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppColors.white,
+                    color: theme.colorScheme.surface,
                     borderRadius: BorderRadius.circular(14),
                     boxShadow: [
                       BoxShadow(
@@ -122,7 +123,7 @@ class _InboxScreenState extends State<InboxScreen> {
                   child: Row(
                     children: [
                       CircleAvatar(
-                        backgroundColor: AppColors.chipBg,
+                        backgroundColor: theme.colorScheme.surfaceVariant,
                         child: Text(
                           title.isNotEmpty ? title[0].toUpperCase() : '?',
                           style: GoogleFonts.inter(
@@ -146,7 +147,7 @@ class _InboxScreenState extends State<InboxScreen> {
                                     style: GoogleFonts.inter(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w700,
-                                      color: AppColors.headingText,
+                                      color: theme.colorScheme.onSurface,
                                     ),
                                   ),
                                 ),
@@ -156,7 +157,7 @@ class _InboxScreenState extends State<InboxScreen> {
                                     ChatTimeFormat.inboxFlexible(time),
                                     style: GoogleFonts.inter(
                                       fontSize: 12,
-                                      color: AppColors.mutedText,
+                                      color: theme.textTheme.bodySmall?.color,
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
@@ -172,7 +173,7 @@ class _InboxScreenState extends State<InboxScreen> {
                                     overflow: TextOverflow.ellipsis,
                                     style: GoogleFonts.inter(
                                       fontSize: 13,
-                                      color: AppColors.mutedText,
+                                      color: theme.textTheme.bodySmall?.color,
                                     ),
                                   ),
                                 ),

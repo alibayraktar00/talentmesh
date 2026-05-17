@@ -451,6 +451,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return RefreshIndicator(
       onRefresh: _bootstrap,
       child: ListView(
@@ -465,7 +466,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
             style: GoogleFonts.inter(
               fontSize: 18,
               fontWeight: FontWeight.w700,
-              color: AppColors.headingText,
+              color: theme.colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 10),
@@ -476,6 +477,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
   }
 
   Widget _buildIncomingHeader() {
+    final theme = Theme.of(context);
     return Row(
       children: [
         Text(
@@ -483,7 +485,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
           style: GoogleFonts.inter(
             fontSize: 18,
             fontWeight: FontWeight.w700,
-            color: AppColors.headingText,
+            color: theme.colorScheme.onSurface,
           ),
         ),
         const SizedBox(width: 8),
@@ -537,6 +539,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
   }
 
   Widget _buildIncomingSection() {
+    final theme = Theme.of(context);
     if (_isIncomingLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -546,14 +549,14 @@ class _FriendsScreenState extends State<FriendsScreen> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(14),
         ),
         child: Center(
           child: Text(
             'Henüz gelen bir istek yok.',
             textAlign: TextAlign.center,
-            style: GoogleFonts.inter(fontSize: 14, color: AppColors.mutedText),
+            style: GoogleFonts.inter(fontSize: 14, color: theme.textTheme.bodySmall?.color),
           ),
         ),
       );
@@ -578,7 +581,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
           margin: const EdgeInsets.only(bottom: 10),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppColors.white,
+            color: theme.colorScheme.surface,
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
@@ -591,7 +594,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
           child: Row(
             children: [
               CircleAvatar(
-                backgroundColor: AppColors.chipBg,
+                backgroundColor: theme.colorScheme.surfaceVariant,
                 child: Text(
                   username.isNotEmpty ? username[0].toUpperCase() : '?',
                   style: GoogleFonts.inter(
@@ -610,14 +613,14 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.headingText,
+                        color: theme.colorScheme.onSurface,
                       ),
                     ),
                     Text(
                       fullName.isEmpty ? 'İsim bilgisi yok' : fullName,
                       style: GoogleFonts.inter(
                         fontSize: 12,
-                        color: AppColors.mutedText,
+                        color: theme.textTheme.bodySmall?.color,
                       ),
                     ),
                   ],
@@ -670,6 +673,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
   }
 
   Widget _buildFriendsSection() {
+    final theme = Theme.of(context);
     if (_isFriendsLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -691,7 +695,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
           margin: const EdgeInsets.only(bottom: 10),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppColors.white,
+            color: theme.colorScheme.surface,
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
@@ -704,7 +708,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
           child: Row(
             children: [
               CircleAvatar(
-                backgroundColor: AppColors.chipBg,
+                backgroundColor: theme.colorScheme.surfaceVariant,
                 child: Text(
                   username.isNotEmpty ? username[0].toUpperCase() : '?',
                   style: GoogleFonts.inter(
@@ -723,14 +727,14 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.headingText,
+                        color: theme.colorScheme.onSurface,
                       ),
                     ),
                     Text(
                       fullName.isEmpty ? 'İsim bilgisi yok' : fullName,
                       style: GoogleFonts.inter(
                         fontSize: 12,
-                        color: AppColors.mutedText,
+                        color: theme.textTheme.bodySmall?.color,
                       ),
                     ),
                   ],
@@ -804,7 +808,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 )
               else
                 PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, color: AppColors.mutedText),
+                  icon: Icon(Icons.more_vert, color: theme.textTheme.bodySmall?.color),
                   onSelected: (value) async {
                     if (value == 'profile') {
                       if (id.isNotEmpty) {
@@ -858,16 +862,17 @@ class _FriendsScreenState extends State<FriendsScreen> {
   }
 
   Widget _buildEmptyCard(String text) {
+    final theme = Theme.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Text(
         text,
-        style: GoogleFonts.inter(fontSize: 14, color: AppColors.mutedText),
+        style: GoogleFonts.inter(fontSize: 14, color: theme.textTheme.bodySmall?.color),
       ),
     );
   }

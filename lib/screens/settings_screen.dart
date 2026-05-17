@@ -7,9 +7,42 @@ import 'security_settings_screen.dart';
 import 'notification_settings_screen.dart';
 import 'help_center_screen.dart';
 import '../core/services/auth_service.dart';
+import '../core/services/profile_service.dart';
+import '../main.dart'; // themeProvider'a erişim için
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  final ProfileService _profileService = ProfileService();
+  Map<String, dynamic>? _profile;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchProfile();
+  }
+
+  Future<void> _fetchProfile() async {
+    try {
+      final profile = await _profileService.fetchProfile();
+      if (mounted) {
+        setState(() {
+          _profile = profile;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   Future<void> _handleLogout(BuildContext context) async {
     final authService = AuthService();
@@ -42,43 +75,70 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = themeProvider.isDarkMode;
+
     return Scaffold(
-      backgroundColor: AppColors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           'Ayarlar',
           style: GoogleFonts.inter(
-            color: AppColors.headingText,
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.w700,
             fontSize: 18,
           ),
         ),
-        backgroundColor: AppColors.white,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0.5,
         centerTitle: false,
         leading: IconButton(
-          icon: const Icon(Icons.close, color: AppColors.headingText, size: 24),
+          icon: Icon(Icons.close, color: Theme.of(context).colorScheme.onSurface, size: 24),
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: ListView(
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator(color: AppColors.primaryAccent))
+        : ListView(
         children: [
           // User Header Section
           _buildUserHeader(context),
           
-          const Divider(height: 1, thickness: 1, color: AppColors.inputBorder),
+          const Divider(height: 1, thickness: 1),
           
           // Settings Categories
+          _buildSectionHeader('Görünüm'),
+          _buildLinkedInStyleItem(
+            icon: isDark ? Icons.dark_mode : Icons.light_mode,
+            title: 'Tema',
+            description: isDark ? 'Karanlık Mod' : 'Aydınlık Mod',
+            trailing: Switch.adaptive(
+              value: isDark,
+              onChanged: (val) {
+                setState(() {
+                  themeProvider.toggleTheme(val);
+                });
+              },
+              activeTrackColor: AppColors.primaryAccent,
+            ),
+            onTap: () {
+              setState(() {
+                themeProvider.toggleTheme(!isDark);
+              });
+            },
+          ),
+
+          const SizedBox(height: 16),
           _buildSectionHeader('Hesap Tercihleri'),
           _buildLinkedInStyleItem(
             icon: Icons.person_outline,
             title: 'Kişisel Bilgiler',
             description: 'İsim, unvan ve konum bilgilerini yönet',
-            onTap: () {
-              Navigator.push(
+            onTap: () async {
+              await Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const ProfileScreen()),
               );
+              _fetchProfile(); // Profile dönüşünde bilgileri tazele
             },
           ),
           _buildLinkedInStyleItem(
@@ -186,14 +246,20 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Widget _buildUserHeader(BuildContext context) {
+    final fullName = _profile?['full_name'] ?? 'Kullanıcı';
+    final avatarUrl = _profile?['avatar_url'];
+
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Row(
         children: [
-          const CircleAvatar(
+          CircleAvatar(
             radius: 30,
             backgroundColor: AppColors.chipBg,
-            child: Icon(Icons.person, color: AppColors.primaryAccent, size: 35),
+            backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+            child: avatarUrl == null 
+              ? const Icon(Icons.person, color: AppColors.primaryAccent, size: 35)
+              : null,
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -201,31 +267,32 @@ class SettingsScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Kullanıcı Adı', // Buraya dinamik veri gelebilir
+                  fullName,
                   style: GoogleFonts.inter(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.headingText,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 Text(
                   'Profilinizi yönetin',
                   style: GoogleFonts.inter(
                     fontSize: 14,
-                    color: AppColors.mutedText,
+                    color: Theme.of(context).textTheme.bodySmall?.color,
                   ),
                 ),
               ],
             ),
           ),
           IconButton(
-            onPressed: () {
-              Navigator.push(
+            onPressed: () async {
+              await Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const ProfileScreen()),
               );
+              _fetchProfile();
             },
-            icon: const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.mutedText),
+            icon: Icon(Icons.arrow_forward_ios, size: 16, color: Theme.of(context).textTheme.bodySmall?.color),
           ),
         ],
       ),
@@ -240,7 +307,7 @@ class SettingsScreen extends StatelessWidget {
         style: GoogleFonts.inter(
           fontSize: 14,
           fontWeight: FontWeight.w700,
-          color: AppColors.headingText,
+          color: Theme.of(context).colorScheme.onSurface,
           letterSpacing: 0.5,
         ),
       ),
@@ -252,6 +319,7 @@ class SettingsScreen extends StatelessWidget {
     required String title,
     required String description,
     required VoidCallback onTap,
+    Widget? trailing,
   }) {
     return InkWell(
       onTap: onTap,
@@ -260,7 +328,7 @@ class SettingsScreen extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: AppColors.bodyText, size: 22),
+            Icon(icon, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7), size: 22),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
@@ -271,7 +339,7 @@ class SettingsScreen extends StatelessWidget {
                     style: GoogleFonts.inter(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      color: AppColors.headingText,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -279,12 +347,13 @@ class SettingsScreen extends StatelessWidget {
                     description,
                     style: GoogleFonts.inter(
                       fontSize: 13,
-                      color: AppColors.mutedText,
+                      color: Theme.of(context).textTheme.bodySmall?.color,
                     ),
                   ),
                 ],
               ),
             ),
+            if (trailing != null) trailing,
           ],
         ),
       ),

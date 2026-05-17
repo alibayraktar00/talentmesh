@@ -21,16 +21,17 @@ class MeetingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final isUpcoming = meeting.isUpcoming;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppColors.cardShadow.withValues(alpha: 0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -48,7 +49,7 @@ class MeetingCard extends StatelessWidget {
                   end: Alignment.bottomCenter,
                   colors: isUpcoming
                       ? [const Color(0xFF6E61FF), const Color(0xFF8F84FF)]
-                      : [AppColors.mutedText, AppColors.inputBorder],
+                      : [theme.textTheme.bodySmall?.color ?? Colors.grey, theme.dividerColor],
                 ),
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(16),
@@ -75,8 +76,8 @@ class MeetingCard extends StatelessWidget {
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
                               color: isUpcoming
-                                  ? AppColors.headingText
-                                  : AppColors.mutedText,
+                                  ? theme.colorScheme.onSurface
+                                  : theme.textTheme.bodySmall?.color,
                             ),
                           ),
                         ),
@@ -92,7 +93,7 @@ class MeetingCard extends StatelessWidget {
                       text: _formatDateTime(meeting.meetingDate),
                       color: isUpcoming
                           ? const Color(0xFF6E61FF)
-                          : AppColors.mutedText,
+                          : theme.textTheme.bodySmall?.color ?? Colors.grey,
                     ),
 
                     // Açıklama (varsa)
@@ -102,7 +103,7 @@ class MeetingCard extends StatelessWidget {
                       _buildInfoRow(
                         icon: Icons.notes_rounded,
                         text: meeting.description!,
-                        color: AppColors.bodyText,
+                        color: theme.textTheme.bodyMedium?.color ?? Colors.grey,
                         maxLines: 3,
                       ),
                     ],
@@ -117,7 +118,7 @@ class MeetingCard extends StatelessWidget {
                     // Oluşturan kişi
                     if (meeting.creatorProfile != null) ...[
                       const SizedBox(height: 12),
-                      _buildCreatorRow(),
+                      _buildCreatorRow(context),
                     ],
                   ],
                 ),
@@ -153,6 +154,7 @@ class MeetingCard extends StatelessWidget {
   }
 
   Widget _buildMeetingLinkRow(BuildContext context) {
+    final theme = Theme.of(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -232,14 +234,15 @@ class MeetingCard extends StatelessWidget {
             );
           },
           icon: const Icon(Icons.copy_rounded, size: 16),
-          color: AppColors.mutedText,
+          color: theme.textTheme.bodySmall?.color,
           tooltip: 'Linki Kopyala',
         ),
       ],
     );
   }
 
-  Widget _buildCreatorRow() {
+  Widget _buildCreatorRow(BuildContext context) {
+    final theme = Theme.of(context);
     final profile = meeting.creatorProfile!;
     final displayName = profile.fullName.isNotEmpty
         ? profile.fullName
@@ -249,7 +252,7 @@ class MeetingCard extends StatelessWidget {
       children: [
         CircleAvatar(
           radius: 12,
-          backgroundColor: AppColors.chipBg,
+          backgroundColor: theme.colorScheme.surfaceVariant,
           child: Text(
             displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U',
             style: GoogleFonts.inter(
@@ -265,7 +268,7 @@ class MeetingCard extends StatelessWidget {
             displayName,
             style: GoogleFonts.inter(
               fontSize: 12,
-              color: AppColors.mutedText,
+              color: theme.textTheme.bodySmall?.color,
               fontWeight: FontWeight.w500,
             ),
             maxLines: 1,
@@ -299,6 +302,7 @@ class MeetingCard extends StatelessWidget {
   }
 
   void _confirmDelete(BuildContext context) {
+    final theme = Theme.of(context);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -309,14 +313,14 @@ class MeetingCard extends StatelessWidget {
         ),
         content: Text(
           '"${meeting.title}" toplantısını silmek istediğinizden emin misiniz?',
-          style: GoogleFonts.inter(color: AppColors.bodyText),
+          style: GoogleFonts.inter(color: theme.textTheme.bodyMedium?.color),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
             child: Text(
               'İptal',
-              style: GoogleFonts.inter(color: AppColors.mutedText),
+              style: GoogleFonts.inter(color: theme.textTheme.bodySmall?.color),
             ),
           ),
           ElevatedButton(
@@ -326,7 +330,7 @@ class MeetingCard extends StatelessWidget {
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFE53E3E),
-              foregroundColor: AppColors.white,
+              foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),

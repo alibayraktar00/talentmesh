@@ -150,8 +150,9 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -184,7 +185,7 @@ class _LoginScreenState extends State<LoginScreen>
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         fontWeight: FontWeight.w400,
-                        color: AppColors.mutedText,
+                        color: theme.textTheme.bodySmall?.color,
                       ),
                     ),
 
@@ -195,14 +196,15 @@ class _LoginScreenState extends State<LoginScreen>
                       controller: _identifierController,
                       keyboardType: TextInputType.text,
                       enabled: !_isLoading,
-                      decoration: const InputDecoration(
+                      style: TextStyle(color: theme.colorScheme.onSurface),
+                      decoration: InputDecoration(
                         hintText: 'E-posta, Telefon veya Kullanıcı Adı',
                         prefixIcon: Icon(
                           Icons.person_outline,
-                          color: AppColors.mutedText,
+                          color: theme.textTheme.bodySmall?.color,
                           size: 20,
                         ),
-                        prefixIconConstraints: BoxConstraints(minWidth: 52),
+                        prefixIconConstraints: const BoxConstraints(minWidth: 52),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -212,11 +214,12 @@ class _LoginScreenState extends State<LoginScreen>
                       controller: _passwordController,
                       obscureText: _obscurePassword,
                       enabled: !_isLoading,
+                      style: TextStyle(color: theme.colorScheme.onSurface),
                       decoration: InputDecoration(
                         hintText: 'Password',
-                        prefixIcon: const Icon(
+                        prefixIcon: Icon(
                           Icons.lock_outline,
-                          color: AppColors.mutedText,
+                          color: theme.textTheme.bodySmall?.color,
                           size: 20,
                         ),
                         prefixIconConstraints: const BoxConstraints(
@@ -232,7 +235,7 @@ class _LoginScreenState extends State<LoginScreen>
                             _obscurePassword
                                 ? Icons.visibility_off_outlined
                                 : Icons.visibility_outlined,
-                            color: AppColors.mutedText,
+                            color: theme.textTheme.bodySmall?.color,
                             size: 20,
                           ),
                         ),
@@ -307,7 +310,7 @@ class _LoginScreenState extends State<LoginScreen>
                         style: GoogleFonts.inter(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
-                          color: AppColors.mutedText,
+                          color: theme.textTheme.bodySmall?.color,
                         ),
                       ),
                     ),
@@ -322,7 +325,7 @@ class _LoginScreenState extends State<LoginScreen>
                           "Don't have an account? ",
                           style: GoogleFonts.inter(
                             fontSize: 14,
-                            color: AppColors.bodyText,
+                            color: theme.colorScheme.onSurface,
                           ),
                         ),
                         GestureDetector(

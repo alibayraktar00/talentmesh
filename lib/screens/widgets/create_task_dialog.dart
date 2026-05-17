@@ -122,6 +122,7 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
   }
 
   Future<void> _pickDueDate() async {
+    final theme = Theme.of(context);
     final picked = await showDatePicker(
       context: context,
       initialDate: _dueDate ?? DateTime.now().add(const Duration(days: 1)),
@@ -129,11 +130,12 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
       lastDate: DateTime.now().add(const Duration(days: 365)),
       builder: (context, child) {
         return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
+          data: theme.copyWith(
+            colorScheme: theme.colorScheme.copyWith(
               primary: widget.teamColor,
               onPrimary: Colors.white,
-              onSurface: AppColors.headingText,
+              surface: theme.colorScheme.surface,
+              onSurface: theme.colorScheme.onSurface,
             ),
           ),
           child: child!,
@@ -162,13 +164,18 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final mutedColor = theme.textTheme.bodySmall?.color ?? AppColors.mutedText;
+    final bodyColor = theme.textTheme.bodyMedium?.color ?? AppColors.bodyText;
+    final headingColor = theme.colorScheme.onSurface;
+
     return Container(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
-      decoration: const BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: SingleChildScrollView(
         child: Padding(
@@ -183,7 +190,7 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: AppColors.chipBg,
+                    color: theme.colorScheme.surfaceVariant,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -214,7 +221,7 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
                         style: GoogleFonts.inter(
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
-                          color: AppColors.headingText,
+                          color: headingColor,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -222,7 +229,7 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
                         'Takım görev panosuna yeni bir görev ekle',
                         style: GoogleFonts.inter(
                           fontSize: 12,
-                          color: AppColors.mutedText,
+                          color: mutedColor,
                         ),
                       ),
                     ],
@@ -237,21 +244,22 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
                 style: GoogleFonts.inter(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.headingText,
+                  color: headingColor,
                 ),
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: _titleController,
                 textCapitalization: TextCapitalization.sentences,
+                style: TextStyle(color: headingColor),
                 decoration: InputDecoration(
                   hintText: 'Örn: Tasarım dosyasını güncelle',
                   hintStyle: GoogleFonts.inter(
-                    color: AppColors.mutedText.withValues(alpha: 0.5),
+                    color: mutedColor.withValues(alpha: 0.5),
                     fontSize: 14,
                   ),
                   filled: true,
-                  fillColor: AppColors.chipBg,
+                  fillColor: theme.colorScheme.surfaceVariant,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -274,7 +282,7 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
                 style: GoogleFonts.inter(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.headingText,
+                  color: headingColor,
                 ),
               ),
               const SizedBox(height: 8),
@@ -282,14 +290,15 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
                 controller: _descriptionController,
                 textCapitalization: TextCapitalization.sentences,
                 maxLines: 3,
+                style: TextStyle(color: headingColor),
                 decoration: InputDecoration(
                   hintText: 'Görev detaylarını yazın...',
                   hintStyle: GoogleFonts.inter(
-                    color: AppColors.mutedText.withValues(alpha: 0.5),
+                    color: mutedColor.withValues(alpha: 0.5),
                     fontSize: 14,
                   ),
                   filled: true,
-                  fillColor: AppColors.chipBg,
+                  fillColor: theme.colorScheme.surfaceVariant,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -312,7 +321,7 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
                 style: GoogleFonts.inter(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.headingText,
+                  color: headingColor,
                 ),
               ),
               const SizedBox(height: 8),
@@ -321,7 +330,7 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
-                    color: AppColors.chipBg,
+                    color: theme.colorScheme.surfaceVariant,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -334,14 +343,14 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
                             : '${_dueDate!.day}.${_dueDate!.month}.${_dueDate!.year}',
                         style: GoogleFonts.inter(
                           fontSize: 14,
-                          color: _dueDate == null ? AppColors.mutedText.withValues(alpha: 0.5) : AppColors.headingText,
+                          color: _dueDate == null ? mutedColor.withValues(alpha: 0.5) : headingColor,
                         ),
                       ),
                       if (_dueDate != null) ...[
                         const Spacer(),
                         GestureDetector(
                           onTap: () => setState(() => _dueDate = null),
-                          child: const Icon(Icons.close_rounded, size: 18, color: AppColors.mutedText),
+                          child: Icon(Icons.close_rounded, size: 18, color: mutedColor),
                         ),
                       ],
                     ],
@@ -359,7 +368,7 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
                     style: GoogleFonts.inter(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.headingText,
+                      color: headingColor,
                     ),
                   ),
                   TextButton.icon(
@@ -376,16 +385,17 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
                   padding: const EdgeInsets.only(bottom: 8.0),
                   child: Row(
                     children: [
-                      Icon(Icons.radio_button_unchecked_rounded, size: 16, color: AppColors.mutedText.withValues(alpha: 0.5)),
+                      Icon(Icons.radio_button_unchecked_rounded, size: 16, color: mutedColor.withValues(alpha: 0.5)),
                       const SizedBox(width: 8),
                       Expanded(
                         child: TextField(
                           controller: _subtaskControllers[index],
+                          style: TextStyle(color: headingColor),
                           decoration: InputDecoration(
                             hintText: '${index + 1}. madde',
-                            hintStyle: GoogleFonts.inter(color: AppColors.mutedText.withValues(alpha: 0.5), fontSize: 13),
+                            hintStyle: GoogleFonts.inter(color: mutedColor.withValues(alpha: 0.5), fontSize: 13),
                             filled: true,
-                            fillColor: AppColors.chipBg,
+                            fillColor: theme.colorScheme.surfaceVariant,
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                           ),
@@ -414,7 +424,7 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
                     style: GoogleFonts.inter(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.headingText,
+                      color: headingColor,
                     ),
                   ),
                   if (_selectedAssignees.isNotEmpty) ...[
@@ -446,7 +456,7 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
                     'Takımda henüz üye yok.',
                     style: GoogleFonts.inter(
                       fontSize: 13,
-                      color: AppColors.mutedText,
+                      color: mutedColor,
                     ),
                   ),
                 )
@@ -478,7 +488,7 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
                         decoration: BoxDecoration(
                           color: isSelected
                               ? widget.teamColor.withValues(alpha: 0.12)
-                              : AppColors.chipBg,
+                              : theme.colorScheme.surfaceVariant,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                             color: isSelected
@@ -518,7 +528,7 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
                                     : FontWeight.w400,
                                 color: isSelected
                                     ? widget.teamColor
-                                    : AppColors.bodyText,
+                                    : bodyColor,
                               ),
                             ),
                             if (isSelected) ...[

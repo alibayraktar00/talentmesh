@@ -122,13 +122,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppColors.white,
+        backgroundColor: theme.colorScheme.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.headingText),
+          icon: Icon(Icons.arrow_back, color: theme.colorScheme.onSurface),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -136,7 +137,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           style: GoogleFonts.inter(
             fontSize: 18,
             fontWeight: FontWeight.w600,
-            color: AppColors.headingText,
+            color: theme.colorScheme.onSurface,
           ),
         ),
         centerTitle: true,
@@ -153,10 +154,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   child: ListView.separated(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     itemCount: _notifications.length,
-                    separatorBuilder: (_, _) => const Divider(
+                    separatorBuilder: (_, _) => Divider(
                       height: 1,
                       indent: 72,
-                      color: AppColors.inputBorder,
+                      color: theme.colorScheme.surfaceVariant,
                     ),
                     itemBuilder: (context, index) {
                       final n = _notifications[index];
@@ -168,6 +169,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Widget _buildEmptyState() {
+    final theme = Theme.of(context);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -175,7 +177,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           Icon(
             Icons.notifications_none,
             size: 64,
-            color: AppColors.mutedText.withValues(alpha: 0.5),
+            color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(
@@ -183,7 +185,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             style: GoogleFonts.inter(
               fontSize: 16,
               fontWeight: FontWeight.w500,
-              color: AppColors.mutedText,
+              color: theme.textTheme.bodySmall?.color,
             ),
           ),
         ],
@@ -195,11 +197,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final typeIcon = _iconForType(n.type);
     final typeColor = _iconColorForType(n.type);
     final avatarUrl = n.actorAvatarUrl;
+    final theme = Theme.of(context);
 
     return Material(
       color: n.isRead
-          ? AppColors.white
-          : const Color(0xFFE8F4FC),
+          ? theme.colorScheme.surface
+          : theme.colorScheme.primary.withValues(alpha: 0.08),
       child: InkWell(
         onTap: () => _onNotificationTap(n),
         child: ListTile(
@@ -210,7 +213,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             children: [
               CircleAvatar(
                 radius: 24,
-                backgroundColor: AppColors.chipBg,
+                backgroundColor: theme.colorScheme.surfaceVariant,
                 backgroundImage:
                     avatarUrl != null ? NetworkImage(avatarUrl) : null,
                 child: avatarUrl == null
@@ -229,9 +232,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: AppColors.white,
+                    color: theme.colorScheme.surface,
                     shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.inputBorder),
+                    border: Border.all(color: theme.colorScheme.surfaceVariant),
                   ),
                   child: Icon(typeIcon, size: 14, color: typeColor),
                 ),
@@ -243,7 +246,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             style: GoogleFonts.inter(
               fontSize: 14,
               fontWeight: n.isRead ? FontWeight.w500 : FontWeight.w600,
-              color: AppColors.headingText,
+              color: theme.colorScheme.onSurface,
             ),
           ),
           subtitle: Column(
@@ -265,7 +268,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 n.content,
                 style: GoogleFonts.inter(
                   fontSize: 13,
-                  color: AppColors.bodyText,
+                  color: theme.textTheme.bodyMedium?.color,
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -275,7 +278,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 _formatTime(n.createdAt),
                 style: GoogleFonts.inter(
                   fontSize: 11,
-                  color: AppColors.mutedText,
+                  color: theme.textTheme.bodySmall?.color,
                 ),
               ),
             ],
