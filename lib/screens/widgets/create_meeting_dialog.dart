@@ -50,6 +50,7 @@ class _CreateMeetingDialogState extends State<_CreateMeetingDialog> {
 
   Future<void> _pickDate() async {
     final now = DateTime.now();
+    final theme = Theme.of(context);
     final picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate ?? now,
@@ -57,12 +58,12 @@ class _CreateMeetingDialogState extends State<_CreateMeetingDialog> {
       lastDate: now.add(const Duration(days: 365)),
       builder: (context, child) {
         return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
+          data: theme.copyWith(
+            colorScheme: theme.colorScheme.copyWith(
               primary: AppColors.primaryAccent,
-              onPrimary: AppColors.white,
-              surface: AppColors.white,
-              onSurface: AppColors.headingText,
+              onPrimary: Colors.white,
+              surface: theme.colorScheme.surface,
+              onSurface: theme.colorScheme.onSurface,
             ),
           ),
           child: child!,
@@ -76,17 +77,18 @@ class _CreateMeetingDialogState extends State<_CreateMeetingDialog> {
   }
 
   Future<void> _pickTime() async {
+    final theme = Theme.of(context);
     final picked = await showTimePicker(
       context: context,
       initialTime: _selectedTime ?? TimeOfDay.now(),
       builder: (context, child) {
         return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
+          data: theme.copyWith(
+            colorScheme: theme.colorScheme.copyWith(
               primary: AppColors.primaryAccent,
-              onPrimary: AppColors.white,
-              surface: AppColors.white,
-              onSurface: AppColors.headingText,
+              onPrimary: Colors.white,
+              surface: theme.colorScheme.surface,
+              onSurface: theme.colorScheme.onSurface,
             ),
           ),
           child: child!,
@@ -162,9 +164,10 @@ class _CreateMeetingDialogState extends State<_CreateMeetingDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      backgroundColor: AppColors.white,
+      backgroundColor: theme.colorScheme.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -194,7 +197,7 @@ class _CreateMeetingDialogState extends State<_CreateMeetingDialog> {
                     style: GoogleFonts.inter(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.headingText,
+                      color: theme.colorScheme.onSurface,
                     ),
                   ),
                 ),
@@ -204,7 +207,7 @@ class _CreateMeetingDialogState extends State<_CreateMeetingDialog> {
                       : () => Navigator.of(context).pop(),
                   icon: const Icon(Icons.close_rounded, size: 22),
                   style: IconButton.styleFrom(
-                    backgroundColor: AppColors.chipBg,
+                    backgroundColor: theme.colorScheme.surfaceVariant,
                     padding: const EdgeInsets.all(6),
                   ),
                 ),
@@ -213,39 +216,44 @@ class _CreateMeetingDialogState extends State<_CreateMeetingDialog> {
             const SizedBox(height: 24),
 
             // ─── Toplantı Başlığı ──────────────────────────
-            _buildLabel('Toplantı Başlığı', isRequired: true),
+            _buildLabel(theme, 'Toplantı Başlığı', isRequired: true),
             const SizedBox(height: 8),
             TextField(
               controller: _titleController,
               decoration: _inputDecoration(
+                theme,
                 hint: 'Örn: Sprint Planlama Toplantısı',
                 prefixIcon: Icons.title_rounded,
               ),
               textInputAction: TextInputAction.next,
+              style: TextStyle(color: theme.colorScheme.onSurface),
             ),
             const SizedBox(height: 20),
 
             // ─── Açıklama ──────────────────────────────────
-            _buildLabel('Açıklama / Gündem'),
+            _buildLabel(theme, 'Açıklama / Gündem'),
             const SizedBox(height: 8),
             TextField(
               controller: _descriptionController,
               decoration: _inputDecoration(
+                theme,
                 hint: 'Toplantı gündemi ve notları...',
                 prefixIcon: Icons.notes_rounded,
               ),
               maxLines: 3,
               textInputAction: TextInputAction.next,
+              style: TextStyle(color: theme.colorScheme.onSurface),
             ),
             const SizedBox(height: 20),
 
             // ─── Tarih & Saat ───────────────────────────────
-            _buildLabel('Tarih & Saat', isRequired: true),
+            _buildLabel(theme, 'Tarih & Saat', isRequired: true),
             const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
                   child: _buildPickerChip(
+                    theme,
                     icon: Icons.calendar_today_rounded,
                     label: _selectedDate != null
                         ? '${_selectedDate!.day.toString().padLeft(2, '0')}.${_selectedDate!.month.toString().padLeft(2, '0')}.${_selectedDate!.year}'
@@ -257,6 +265,7 @@ class _CreateMeetingDialogState extends State<_CreateMeetingDialog> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: _buildPickerChip(
+                    theme,
                     icon: Icons.access_time_rounded,
                     label: _selectedTime != null
                         ? '${_selectedTime!.hour.toString().padLeft(2, '0')}:${_selectedTime!.minute.toString().padLeft(2, '0')}'
@@ -273,7 +282,7 @@ class _CreateMeetingDialogState extends State<_CreateMeetingDialog> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildLabel('Toplantı Linki'),
+                _buildLabel(theme, 'Toplantı Linki'),
                 TextButton.icon(
                   onPressed: () async {
                     final Uri url = Uri.parse('https://meet.google.com/new');
@@ -303,6 +312,7 @@ class _CreateMeetingDialogState extends State<_CreateMeetingDialog> {
               controller: _linkController,
               decoration:
                   _inputDecoration(
+                    theme,
                     hint: 'https://meet.google.com/...',
                     prefixIcon: Icons.link_rounded,
                   ).copyWith(
@@ -310,11 +320,12 @@ class _CreateMeetingDialogState extends State<_CreateMeetingDialog> {
                         'Otomatik link oluşturmak için "Meet Oluştur"a tıklayın, açılan linki kopyalayıp buraya yapıştırın.',
                     helperMaxLines: 2,
                     helperStyle: GoogleFonts.inter(
-                      color: AppColors.mutedText.withValues(alpha: 0.8),
+                      color: (theme.textTheme.bodySmall?.color ?? AppColors.mutedText).withValues(alpha: 0.8),
                       fontSize: 11,
                     ),
                   ),
               keyboardType: TextInputType.url,
+              style: TextStyle(color: theme.colorScheme.onSurface),
             ),
             const SizedBox(height: 28),
 
@@ -327,7 +338,7 @@ class _CreateMeetingDialogState extends State<_CreateMeetingDialog> {
                         ? null
                         : () => Navigator.of(context).pop(),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.mutedText,
+                      foregroundColor: theme.textTheme.bodySmall?.color ?? AppColors.mutedText,
                       side: const BorderSide(color: AppColors.inputBorder),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
@@ -382,7 +393,7 @@ class _CreateMeetingDialogState extends State<_CreateMeetingDialog> {
 
   // ─── Yardımcı Widget'lar ─────────────────────────────────────
 
-  Widget _buildLabel(String text, {bool isRequired = false}) {
+  Widget _buildLabel(ThemeData theme, String text, {bool isRequired = false}) {
     return Row(
       children: [
         Text(
@@ -390,7 +401,7 @@ class _CreateMeetingDialogState extends State<_CreateMeetingDialog> {
           style: GoogleFonts.inter(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: AppColors.bodyText,
+            color: theme.textTheme.bodyMedium?.color ?? AppColors.bodyText,
           ),
         ),
         if (isRequired) ...[
@@ -404,19 +415,21 @@ class _CreateMeetingDialogState extends State<_CreateMeetingDialog> {
     );
   }
 
-  InputDecoration _inputDecoration({
+  InputDecoration _inputDecoration(
+    ThemeData theme, {
     required String hint,
     required IconData prefixIcon,
   }) {
+    final mutedColor = theme.textTheme.bodySmall?.color ?? AppColors.mutedText;
     return InputDecoration(
       hintText: hint,
       hintStyle: GoogleFonts.inter(
-        color: AppColors.mutedText.withValues(alpha: 0.7),
+        color: mutedColor.withValues(alpha: 0.7),
         fontSize: 14,
       ),
-      prefixIcon: Icon(prefixIcon, color: AppColors.mutedText, size: 20),
+      prefixIcon: Icon(prefixIcon, color: mutedColor, size: 20),
       filled: true,
-      fillColor: AppColors.chipBg.withValues(alpha: 0.5),
+      fillColor: theme.colorScheme.surfaceVariant.withValues(alpha: 0.5),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -432,12 +445,14 @@ class _CreateMeetingDialogState extends State<_CreateMeetingDialog> {
     );
   }
 
-  Widget _buildPickerChip({
+  Widget _buildPickerChip(
+    ThemeData theme, {
     required IconData icon,
     required String label,
     required bool isSelected,
     required VoidCallback onTap,
   }) {
+    final mutedColor = theme.textTheme.bodySmall?.color ?? AppColors.mutedText;
     return InkWell(
       onTap: _isSubmitting ? null : onTap,
       borderRadius: BorderRadius.circular(12),
@@ -447,7 +462,7 @@ class _CreateMeetingDialogState extends State<_CreateMeetingDialog> {
         decoration: BoxDecoration(
           color: isSelected
               ? AppColors.primaryAccent.withValues(alpha: 0.1)
-              : AppColors.chipBg.withValues(alpha: 0.5),
+              : theme.colorScheme.surfaceVariant.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? AppColors.primaryAccent : Colors.transparent,
@@ -460,7 +475,7 @@ class _CreateMeetingDialogState extends State<_CreateMeetingDialog> {
             Icon(
               icon,
               size: 18,
-              color: isSelected ? AppColors.primaryAccent : AppColors.mutedText,
+              color: isSelected ? AppColors.primaryAccent : mutedColor,
             ),
             const SizedBox(width: 8),
             Flexible(
@@ -471,7 +486,7 @@ class _CreateMeetingDialogState extends State<_CreateMeetingDialog> {
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                   color: isSelected
                       ? AppColors.primaryAccent
-                      : AppColors.mutedText,
+                      : mutedColor,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),

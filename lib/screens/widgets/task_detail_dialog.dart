@@ -117,19 +117,41 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
   Future<void> _deleteTask() async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Görevi Sil', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-        content: Text('"${_currentTask.title}" görevini silmek istiyor musunuz?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('İptal')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE53E3E)),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Sil', style: TextStyle(color: Colors.white)),
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          backgroundColor: theme.colorScheme.surface,
+          title: Text(
+            'Görevi Sil',
+            style: GoogleFonts.inter(
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.onSurface,
+            ),
           ),
-        ],
-      ),
+          content: Text(
+            '"${_currentTask.title}" görevini silmek istiyor musunuz?',
+            style: TextStyle(color: theme.colorScheme.onSurface),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(
+                'İptal',
+                style: TextStyle(color: theme.textTheme.bodySmall?.color),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE53E3E),
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Sil'),
+            ),
+          ],
+        );
+      },
     );
 
     if (confirm == true) {
@@ -147,6 +169,11 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final headingColor = theme.colorScheme.onSurface;
+    final bodyColor = theme.textTheme.bodyMedium?.color ?? AppColors.bodyText;
+    final mutedColor = theme.textTheme.bodySmall?.color ?? AppColors.mutedText;
+
     final canEdit = widget.isMember;
     final canDelete = widget.isAdmin || _currentTask.createdBy == widget.currentUserId;
 
@@ -160,9 +187,9 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
 
     return Container(
       constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
-      decoration: const BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
         children: [
@@ -180,12 +207,19 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
                         child: Container(
                           width: 40, height: 4,
                           margin: const EdgeInsets.only(bottom: 16),
-                          decoration: BoxDecoration(color: AppColors.chipBg, borderRadius: BorderRadius.circular(2)),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surfaceVariant,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
                         ),
                       ),
                       Text(
                         'Görev Detayı',
-                        style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.headingText),
+                        style: GoogleFonts.inter(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: headingColor,
+                        ),
                       ),
                     ],
                   ),
@@ -209,7 +243,11 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
                   // Title
                   Text(
                     _currentTask.title,
-                    style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.headingText),
+                    style: GoogleFonts.inter(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: headingColor,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   
@@ -217,7 +255,11 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
                   if (_currentTask.description != null && _currentTask.description!.isNotEmpty)
                     Text(
                       _currentTask.description!,
-                      style: GoogleFonts.inter(fontSize: 14, color: AppColors.bodyText, height: 1.5),
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        color: bodyColor,
+                        height: 1.5,
+                      ),
                     ),
                   
                   const SizedBox(height: 24),
@@ -256,19 +298,25 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
-                            color: isOverdue ? const Color(0xFFE53E3E).withValues(alpha: 0.1) : AppColors.chipBg,
+                            color: isOverdue
+                                ? const Color(0xFFE53E3E).withValues(alpha: 0.1)
+                                : theme.colorScheme.surfaceVariant,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.calendar_today_rounded, size: 14, color: isOverdue ? const Color(0xFFE53E3E) : AppColors.mutedText),
+                              Icon(
+                                Icons.calendar_today_rounded,
+                                size: 14,
+                                color: isOverdue ? const Color(0xFFE53E3E) : mutedColor,
+                              ),
                               const SizedBox(width: 6),
                               Text(
                                 '${_currentTask.dueDate!.day}.${_currentTask.dueDate!.month}.${_currentTask.dueDate!.year}',
                                 style: GoogleFonts.inter(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
-                                  color: isOverdue ? const Color(0xFFE53E3E) : AppColors.mutedText,
+                                  color: isOverdue ? const Color(0xFFE53E3E) : mutedColor,
                                 ),
                               ),
                             ],
@@ -281,7 +329,14 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
 
                   // Durum Değiştirme Menüsü
                   if (canEdit) ...[
-                    Text('Durumu Güncelle', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.headingText)),
+                    Text(
+                      'Durumu Güncelle',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: headingColor,
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     Row(
                       children: TaskStatus.values.map((status) {
@@ -295,7 +350,7 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
                               margin: const EdgeInsets.only(right: 8),
                               padding: const EdgeInsets.symmetric(vertical: 10),
                               decoration: BoxDecoration(
-                                color: isSelected ? widget.teamColor : AppColors.chipBg,
+                                color: isSelected ? widget.teamColor : theme.colorScheme.surfaceVariant,
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
                                   color: isSelected ? widget.teamColor : Colors.transparent,
@@ -307,7 +362,7 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
                                 style: GoogleFonts.inter(
                                   fontSize: 12,
                                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                  color: isSelected ? Colors.white : AppColors.bodyText,
+                                  color: isSelected ? Colors.white : bodyColor,
                                 ),
                               ),
                             ),
@@ -320,7 +375,14 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
 
                   // Assignees
                   if (_currentTask.assignees.isNotEmpty) ...[
-                    Text('Görevliler', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.headingText)),
+                    Text(
+                      'Görevliler',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: headingColor,
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     Wrap(
                       spacing: 8, runSpacing: 8,
@@ -339,10 +401,24 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
                               CircleAvatar(
                                 radius: 10,
                                 backgroundColor: widget.teamColor.withValues(alpha: 0.2),
-                                child: Text(username[0].toUpperCase(), style: TextStyle(color: widget.teamColor, fontSize: 10, fontWeight: FontWeight.bold)),
+                                child: Text(
+                                  username[0].toUpperCase(),
+                                  style: TextStyle(
+                                    color: widget.teamColor,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ),
                               const SizedBox(width: 8),
-                              Text(fullName.isNotEmpty ? fullName : '@$username', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: widget.teamColor)),
+                              Text(
+                                fullName.isNotEmpty ? fullName : '@$username',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: widget.teamColor,
+                                ),
+                              ),
                             ],
                           ),
                         );
@@ -356,8 +432,22 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Maddeler', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.headingText)),
-                        Text('$completedSubtasks / $totalSubtasks', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: widget.teamColor)),
+                        Text(
+                          'Maddeler',
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: headingColor,
+                          ),
+                        ),
+                        Text(
+                          '$completedSubtasks / $totalSubtasks',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: widget.teamColor,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -366,7 +456,7 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
                       child: LinearProgressIndicator(
                         value: progress,
                         minHeight: 6,
-                        backgroundColor: AppColors.chipBg,
+                        backgroundColor: theme.colorScheme.surfaceVariant,
                         valueColor: AlwaysStoppedAnimation<Color>(widget.teamColor),
                       ),
                     ),
@@ -382,17 +472,25 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
                           margin: const EdgeInsets.only(bottom: 8),
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: isCompleted ? AppColors.onlineGreen.withValues(alpha: 0.05) : AppColors.chipBg,
+                            color: isCompleted
+                                ? AppColors.onlineGreen.withValues(alpha: 0.05)
+                                : theme.colorScheme.surfaceVariant,
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                              color: isCompleted ? AppColors.onlineGreen.withValues(alpha: 0.3) : Colors.transparent,
+                              color: isCompleted
+                                  ? AppColors.onlineGreen.withValues(alpha: 0.3)
+                                  : Colors.transparent,
                             ),
                           ),
                           child: Row(
                             children: [
                               Icon(
-                                isCompleted ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-                                color: isCompleted ? AppColors.onlineGreen : AppColors.mutedText.withValues(alpha: 0.5),
+                                isCompleted
+                                    ? Icons.check_circle_rounded
+                                    : Icons.radio_button_unchecked_rounded,
+                                color: isCompleted
+                                    ? AppColors.onlineGreen
+                                    : mutedColor.withValues(alpha: 0.5),
                                 size: 20,
                               ),
                               const SizedBox(width: 12),
@@ -401,7 +499,7 @@ class _TaskDetailSheetState extends State<_TaskDetailSheet> {
                                   title,
                                   style: GoogleFonts.inter(
                                     fontSize: 14,
-                                    color: isCompleted ? AppColors.mutedText : AppColors.headingText,
+                                    color: isCompleted ? mutedColor : headingColor,
                                     decoration: isCompleted ? TextDecoration.lineThrough : null,
                                   ),
                                 ),

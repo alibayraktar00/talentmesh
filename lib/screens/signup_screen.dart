@@ -231,15 +231,16 @@ class _SignUpScreenState extends State<SignUpScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new,
-            color: AppColors.headingText,
+            color: theme.colorScheme.onSurface,
             size: 20,
           ),
           onPressed: () => Navigator.of(context).pop(),
@@ -264,7 +265,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                         style: GoogleFonts.inter(
                           fontSize: 28,
                           fontWeight: FontWeight.w800,
-                          color: AppColors.primaryDark,
+                          color: theme.colorScheme.primary,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -272,7 +273,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                         'Talent Mesh\'e katıl ve ekibini bul.',
                         style: GoogleFonts.inter(
                           fontSize: 14,
-                          color: AppColors.mutedText,
+                          color: theme.textTheme.bodySmall?.color,
                         ),
                       ),
                       const SizedBox(height: 28),
@@ -282,14 +283,15 @@ class _SignUpScreenState extends State<SignUpScreen>
                         controller: _fullNameController,
                         enabled: !_isLoading,
                         textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
+                        style: TextStyle(color: theme.colorScheme.onSurface),
+                        decoration: InputDecoration(
                           hintText: 'Tam Ad',
                           prefixIcon: Icon(
                             Icons.person_outline,
-                            color: AppColors.mutedText,
+                            color: theme.textTheme.bodySmall?.color,
                             size: 20,
                           ),
-                          prefixIconConstraints: BoxConstraints(minWidth: 52),
+                          prefixIconConstraints: const BoxConstraints(minWidth: 52),
                         ),
                         validator: (v) {
                           if ((v ?? '').trim().isEmpty) {
@@ -305,6 +307,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                         controller: _usernameController,
                         enabled: !_isLoading,
                         textInputAction: TextInputAction.next,
+                        style: TextStyle(color: theme.colorScheme.onSurface),
                         inputFormatters: [
                           // Türkçe yorum: kullanıcı adı sadece a-z 0-9 _ . ve boşluksuz olacak.
                           FilteringTextInputFormatter.allow(
@@ -322,14 +325,14 @@ class _SignUpScreenState extends State<SignUpScreen>
                             );
                           }),
                         ],
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           hintText: 'Kullanıcı Adı (küçük harf, boşluksuz)',
                           prefixIcon: Icon(
                             Icons.alternate_email,
-                            color: AppColors.mutedText,
+                            color: theme.textTheme.bodySmall?.color,
                             size: 20,
                           ),
-                          prefixIconConstraints: BoxConstraints(minWidth: 52),
+                          prefixIconConstraints: const BoxConstraints(minWidth: 52),
                         ),
                         validator: (v) {
                           final raw = (v ?? '').trim();
@@ -355,14 +358,15 @@ class _SignUpScreenState extends State<SignUpScreen>
                         keyboardType: TextInputType.emailAddress,
                         enabled: !_isLoading,
                         textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
+                        style: TextStyle(color: theme.colorScheme.onSurface),
+                        decoration: InputDecoration(
                           hintText: 'E-posta',
                           prefixIcon: Icon(
                             Icons.email_outlined,
-                            color: AppColors.mutedText,
+                            color: theme.textTheme.bodySmall?.color,
                             size: 20,
                           ),
-                          prefixIconConstraints: BoxConstraints(minWidth: 52),
+                          prefixIconConstraints: const BoxConstraints(minWidth: 52),
                         ),
                         validator: (v) {
                           final email = (v ?? '').trim();
@@ -381,18 +385,19 @@ class _SignUpScreenState extends State<SignUpScreen>
                         keyboardType: TextInputType.phone,
                         enabled: !_isLoading,
                         textInputAction: TextInputAction.next,
+                        style: TextStyle(color: theme.colorScheme.onSurface),
                         inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly,
                           LengthLimitingTextInputFormatter(15),
                         ],
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           hintText: 'Cep Telefonu',
                           prefixIcon: Icon(
                             Icons.phone_outlined,
-                            color: AppColors.mutedText,
+                            color: theme.textTheme.bodySmall?.color,
                             size: 20,
                           ),
-                          prefixIconConstraints: BoxConstraints(minWidth: 52),
+                          prefixIconConstraints: const BoxConstraints(minWidth: 52),
                         ),
                         validator: (v) {
                           final phone = (v ?? '').trim();
@@ -413,21 +418,22 @@ class _SignUpScreenState extends State<SignUpScreen>
                           ignoring: true,
                           child: TextFormField(
                             enabled: !_isLoading,
+                            style: TextStyle(color: theme.colorScheme.onSurface),
                             decoration: InputDecoration(
                               hintText: _dateOfBirth == null
                                   ? 'Doğum Günü'
                                   : _formatDate(_dateOfBirth!),
-                              prefixIcon: const Icon(
+                              prefixIcon: Icon(
                                 Icons.cake_outlined,
-                                color: AppColors.mutedText,
+                                color: theme.textTheme.bodySmall?.color,
                                 size: 20,
                               ),
                               prefixIconConstraints: const BoxConstraints(
                                 minWidth: 52,
                               ),
-                              suffixIcon: const Icon(
+                              suffixIcon: Icon(
                                 Icons.date_range_outlined,
-                                color: AppColors.mutedText,
+                                color: theme.textTheme.bodySmall?.color,
                                 size: 20,
                               ),
                             ),
@@ -452,11 +458,12 @@ class _SignUpScreenState extends State<SignUpScreen>
                         obscureText: _obscurePassword,
                         enabled: !_isLoading,
                         textInputAction: TextInputAction.done,
+                        style: TextStyle(color: theme.colorScheme.onSurface),
                         decoration: InputDecoration(
                           hintText: 'Şifre (en az 6 karakter)',
-                          prefixIcon: const Icon(
+                          prefixIcon: Icon(
                             Icons.lock_outline,
-                            color: AppColors.mutedText,
+                            color: theme.textTheme.bodySmall?.color,
                             size: 20,
                           ),
                           prefixIconConstraints: const BoxConstraints(
@@ -470,7 +477,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                               _obscurePassword
                                   ? Icons.visibility_off_outlined
                                   : Icons.visibility_outlined,
-                              color: AppColors.mutedText,
+                              color: theme.textTheme.bodySmall?.color,
                               size: 20,
                             ),
                           ),
@@ -546,7 +553,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                             'Zaten hesabın var mı? ',
                             style: GoogleFonts.inter(
                               fontSize: 14,
-                              color: AppColors.bodyText,
+                              color: theme.colorScheme.onSurface,
                             ),
                           ),
                           GestureDetector(

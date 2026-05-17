@@ -4,6 +4,9 @@ import 'core/supabase_config.dart';
 import 'core/theme/app_theme.dart';
 import 'core/services/meeting_reminder_service.dart';
 import 'screens/auth_gate.dart';
+import 'providers/theme_provider.dart';
+
+final themeProvider = ThemeProvider();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,11 +39,18 @@ class TalentMeshApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Talent Mesh',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      home: const AuthGate(),
+    return ListenableBuilder(
+      listenable: themeProvider,
+      builder: (context, _) {
+        return MaterialApp(
+          title: 'Talent Mesh',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: themeProvider.themeMode,
+          home: const AuthGate(),
+        );
+      },
     );
   }
 }

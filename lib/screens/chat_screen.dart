@@ -145,13 +145,14 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildDateHeader(DateTime utc) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Center(
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           decoration: BoxDecoration(
-            color: AppColors.white,
+            color: theme.colorScheme.surface,
             borderRadius: BorderRadius.circular(999),
             boxShadow: [
               BoxShadow(
@@ -166,7 +167,7 @@ class _ChatScreenState extends State<ChatScreen> {
             style: GoogleFonts.inter(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: AppColors.mutedText,
+              color: theme.textTheme.bodySmall?.color,
             ),
           ),
         ),
@@ -177,21 +178,22 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final myId = _myId;
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
           widget.receiverName,
           style: GoogleFonts.inter(
             fontSize: 18,
             fontWeight: FontWeight.w700,
-            color: AppColors.headingText,
+            color: theme.colorScheme.onSurface,
           ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        foregroundColor: AppColors.headingText,
+        foregroundColor: theme.colorScheme.onSurface,
       ),
       body: Column(
         children: [
@@ -202,7 +204,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     ? Center(
                         child: Text(
                           'Sohbet açılamadı.',
-                          style: GoogleFonts.inter(color: AppColors.mutedText),
+                          style: GoogleFonts.inter(color: theme.textTheme.bodySmall?.color),
                         ),
                       )
                     : AnimatedBuilder(
@@ -219,7 +221,7 @@ class _ChatScreenState extends State<ChatScreen> {
                               child: Text(
                                 'Henüz mesaj yok. İlk mesajı sen gönder.',
                                 style: GoogleFonts.inter(
-                                  color: AppColors.mutedText,
+                                  color: theme.textTheme.bodySmall?.color,
                                   fontSize: 14,
                                 ),
                               ),
@@ -286,7 +288,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                       decoration: BoxDecoration(
                                         color: isMe
                                             ? AppColors.primaryAccent
-                                            : AppColors.white,
+                                            : theme.colorScheme.surface,
                                         borderRadius: BorderRadius.only(
                                           topLeft: const Radius.circular(14),
                                           topRight: const Radius.circular(14),
@@ -315,7 +317,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                               fontSize: 14,
                                               color: isMe
                                                   ? AppColors.white
-                                                  : AppColors.headingText,
+                                                  : theme.colorScheme.onSurface,
                                             ),
                                           ),
                                           const SizedBox(height: 4),
@@ -330,7 +332,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                                       ? AppColors.white
                                                           .withValues(
                                                               alpha: 0.8)
-                                                      : AppColors.mutedText,
+                                                      : theme.textTheme.bodySmall?.color,
                                                 ),
                                               ),
                                               if (isMe) ...[
@@ -355,7 +357,7 @@ class _ChatScreenState extends State<ChatScreen> {
             child: Container(
               padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
               decoration: BoxDecoration(
-                color: AppColors.white,
+                color: theme.colorScheme.surface,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.04),
@@ -372,14 +374,15 @@ class _ChatScreenState extends State<ChatScreen> {
                       minLines: 1,
                       maxLines: 4,
                       textInputAction: TextInputAction.newline,
+                      style: TextStyle(color: theme.colorScheme.onSurface),
                       decoration: InputDecoration(
                         hintText: 'Mesaj yaz...',
                         hintStyle: GoogleFonts.inter(
-                          color: AppColors.mutedText,
+                          color: theme.textTheme.bodySmall?.color,
                           fontSize: 14,
                         ),
                         filled: true,
-                        fillColor: AppColors.chipBg,
+                        fillColor: theme.colorScheme.surfaceVariant,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
                           borderSide: BorderSide.none,

@@ -731,6 +731,7 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     final currentUserId = _myUserId;
+    final theme = Theme.of(context);
     if (currentUserId != _activeUserId) {
       _activeUserId = currentUserId;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -740,15 +741,15 @@ class _SearchScreenState extends State<SearchScreen> {
     }
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppColors.white,
+        backgroundColor: theme.colorScheme.surface,
         elevation: 0,
-        iconTheme: const IconThemeData(color: AppColors.headingText),
+        iconTheme: IconThemeData(color: theme.colorScheme.onSurface),
         title: Text(
           'Arama',
           style: GoogleFonts.inter(
-            color: AppColors.headingText,
+            color: theme.colorScheme.onSurface,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -761,7 +762,7 @@ class _SearchScreenState extends State<SearchScreen> {
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
           child: Container(
             decoration: BoxDecoration(
-              color: AppColors.chipBg,
+              color: theme.colorScheme.surfaceVariant,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -789,7 +790,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       child: Text(
                         'Kişiler',
                         style: GoogleFonts.inter(
-                          color: _searchMode == 0 ? Colors.white : AppColors.mutedText,
+                          color: _searchMode == 0 ? Colors.white : theme.textTheme.bodySmall?.color,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -819,7 +820,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       child: Text(
                         'Takımlar',
                         style: GoogleFonts.inter(
-                          color: _searchMode == 1 ? Colors.white : AppColors.mutedText,
+                          color: _searchMode == 1 ? Colors.white : theme.textTheme.bodySmall?.color,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -836,7 +837,7 @@ class _SearchScreenState extends State<SearchScreen> {
           padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
           child: Container(
             decoration: BoxDecoration(
-              color: AppColors.white,
+              color: theme.colorScheme.surface,
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
@@ -851,7 +852,7 @@ class _SearchScreenState extends State<SearchScreen> {
               decoration: InputDecoration(
                 hintText: 'İsim veya yetenek ara...',
                 hintStyle: GoogleFonts.inter(
-                  color: AppColors.mutedText,
+                  color: theme.textTheme.bodySmall?.color,
                   fontWeight: FontWeight.w400,
                   fontSize: 15,
                 ),
@@ -864,9 +865,9 @@ class _SearchScreenState extends State<SearchScreen> {
                   children: [
                     if (_searchController.text.isNotEmpty)
                       IconButton(
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.clear,
-                          color: AppColors.mutedText,
+                          color: theme.textTheme.bodySmall?.color,
                         ),
                         onPressed: () {
                           _searchController.clear();
@@ -886,7 +887,7 @@ class _SearchScreenState extends State<SearchScreen> {
                                 _filterTeamRoles.isNotEmpty ||
                                 _filterTeamSkills.isNotEmpty)
                             ? AppColors.primaryAccent
-                            : AppColors.mutedText,
+                            : theme.textTheme.bodySmall?.color,
                       ),
                       onPressed: _showFilterSheet,
                     ),
@@ -899,7 +900,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
               ),
               style: GoogleFonts.inter(
-                color: AppColors.headingText,
+                color: theme.colorScheme.onSurface,
                 fontSize: 15,
               ),
             ),
@@ -925,6 +926,7 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildEmptyState() {
+    final theme = Theme.of(context);
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -932,12 +934,12 @@ class _SearchScreenState extends State<SearchScreen> {
           Icon(
             Icons.search,
             size: 64,
-            color: AppColors.mutedText.withValues(alpha: 0.5),
+            color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.5),
           ),
           const SizedBox(height: 16),
           Text(
             _searchMode == 0 ? 'Kullanıcı adı ile arama yap' : 'Takım adı ile arama yap',
-            style: GoogleFonts.inter(fontSize: 16, color: AppColors.mutedText),
+            style: GoogleFonts.inter(fontSize: 16, color: theme.textTheme.bodySmall?.color),
           ),
         ],
       ),
@@ -994,10 +996,11 @@ class _SearchScreenState extends State<SearchScreen> {
       buttonColor = AppColors.primaryAccent;
     }
 
+    final theme = Theme.of(context);
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -1013,7 +1016,7 @@ class _SearchScreenState extends State<SearchScreen> {
           children: [
             CircleAvatar(
               radius: 24,
-              backgroundColor: AppColors.chipBg,
+              backgroundColor: theme.colorScheme.surfaceVariant,
               child: Text(
                 teamName.isNotEmpty ? teamName.substring(0, 1).toUpperCase() : '?',
                 style: GoogleFonts.inter(
@@ -1033,7 +1036,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     style: GoogleFonts.inter(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.headingText,
+                      color: theme.colorScheme.onSurface,
                     ),
                   ),
                   if (description.isNotEmpty) ...[
@@ -1045,7 +1048,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       style: GoogleFonts.inter(
                         fontSize: 13,
                         fontWeight: FontWeight.w400,
-                        color: AppColors.mutedText,
+                        color: theme.textTheme.bodySmall?.color,
                       ),
                     ),
                   ],
@@ -1101,6 +1104,7 @@ class _SearchScreenState extends State<SearchScreen> {
         final username = (item['username'] ?? '').toString();
         final fullName = (item['full_name'] ?? '').toString();
         final isSending = _sendingRequestIds.contains(userId);
+        final theme = Theme.of(context);
         final relation =
             _relationsByUserId[userId] ??
             const _RelationState(_RelationType.none);
@@ -1144,7 +1148,7 @@ class _SearchScreenState extends State<SearchScreen> {
           child: Container(
           margin: const EdgeInsets.only(bottom: 14),
           decoration: BoxDecoration(
-            color: AppColors.white,
+            color: theme.colorScheme.surface,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
@@ -1161,7 +1165,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 // Sol Avatar (username ilk harfi)
                 CircleAvatar(
                   radius: 24,
-                  backgroundColor: AppColors.chipBg,
+                  backgroundColor: theme.colorScheme.surfaceVariant,
                   child: Text(
                     username.isNotEmpty
                         ? username.substring(0, 1).toUpperCase()
@@ -1185,7 +1189,7 @@ class _SearchScreenState extends State<SearchScreen> {
                         style: GoogleFonts.inter(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.headingText,
+                          color: theme.colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -1194,7 +1198,7 @@ class _SearchScreenState extends State<SearchScreen> {
                         style: GoogleFonts.inter(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
-                          color: AppColors.mutedText,
+                          color: theme.textTheme.bodySmall?.color,
                         ),
                       ),
                     ],
@@ -1295,6 +1299,7 @@ class _SearchScreenState extends State<SearchScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheetState) {
+          final theme = Theme.of(ctx);
           final sC = TextEditingController(text: tempSchool);
           final dC = TextEditingController(text: tempDepartment);
           final yC = TextEditingController(text: tempYear);
@@ -1311,7 +1316,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 style: GoogleFonts.inter(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.headingText,
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
             );
@@ -1328,14 +1333,15 @@ class _SearchScreenState extends State<SearchScreen> {
                   if (hint == 'Yıl (Örn: 2024)') tempYear = v.trim();
                   if (hint == 'Derece (Örn: Lisans)') tempDegree = v.trim();
                 },
+                style: TextStyle(color: theme.colorScheme.onSurface),
                 decoration: InputDecoration(
                   hintText: hint,
                   hintStyle: GoogleFonts.inter(
                     fontSize: 13,
-                    color: AppColors.mutedText,
+                    color: theme.textTheme.bodySmall?.color,
                   ),
                   filled: true,
-                  fillColor: AppColors.chipBg,
+                  fillColor: theme.colorScheme.surfaceVariant,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 12,
@@ -1363,12 +1369,12 @@ class _SearchScreenState extends State<SearchScreen> {
                       fontWeight: isSelected
                           ? FontWeight.w600
                           : FontWeight.w400,
-                      color: isSelected ? AppColors.white : AppColors.bodyText,
+                      color: isSelected ? AppColors.white : theme.colorScheme.onSurface,
                     ),
                   ),
                   selected: isSelected,
                   selectedColor: AppColors.primaryAccent,
-                  backgroundColor: AppColors.chipBg,
+                  backgroundColor: theme.colorScheme.surfaceVariant,
                   checkmarkColor: AppColors.white,
                   showCheckmark: false,
                   shape: RoundedRectangleBorder(
@@ -1376,7 +1382,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     side: BorderSide(
                       color: isSelected
                           ? Colors.transparent
-                          : AppColors.inputBorder,
+                          : Colors.transparent,
                     ),
                   ),
                   onSelected: (val) {
@@ -1395,9 +1401,9 @@ class _SearchScreenState extends State<SearchScreen> {
           return Container(
             height: MediaQuery.of(ctx).size.height * 0.85,
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-            decoration: const BoxDecoration(
-              color: AppColors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1407,7 +1413,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: AppColors.inputBorder,
+                      color: theme.colorScheme.surfaceVariant,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -1421,7 +1427,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       style: GoogleFonts.inter(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.headingText,
+                        color: theme.colorScheme.onSurface,
                       ),
                     ),
                     TextButton(

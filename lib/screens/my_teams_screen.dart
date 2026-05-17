@@ -56,6 +56,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(color: AppColors.primaryAccent),
@@ -78,6 +79,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
 
   // ──────────────────────── EMPTY STATE ────────────────────────
   Widget _buildEmptyState(BuildContext context) {
+    final theme = Theme.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -119,7 +121,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
               style: GoogleFonts.inter(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
-                color: AppColors.headingText,
+                color: theme.colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: 8),
@@ -129,7 +131,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
               style: GoogleFonts.inter(
                 fontSize: 14,
                 fontWeight: FontWeight.w400,
-                color: AppColors.mutedText,
+                color: theme.textTheme.bodySmall?.color,
                 height: 1.5,
               ),
             ),
@@ -143,6 +145,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
 
   // ──────────────────────── TEAMS LIST ────────────────────────
   Widget _buildTeamsList(BuildContext context, List<Team> teams) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -156,7 +159,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.mutedText,
+                  color: theme.textTheme.bodySmall?.color,
                 ),
               ),
               const Spacer(),
@@ -215,6 +218,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
   Widget _buildTeamCard(Team team, int index) {
     final Color teamColor = team.color;
     final double fillRatio = team.currentMembers / team.maxMembers;
+    final theme = Theme.of(context);
 
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
@@ -245,7 +249,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           decoration: BoxDecoration(
-            color: AppColors.white,
+            color: theme.colorScheme.surface,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
@@ -287,7 +291,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
                                   style: GoogleFonts.inter(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w700,
-                                    color: AppColors.headingText,
+                                    color: theme.colorScheme.onSurface,
                                   ),
                                 ),
                               ),
@@ -348,7 +352,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
                                     vertical: 3,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: AppColors.chipBg,
+                                    color: theme.colorScheme.surfaceVariant,
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Row(
@@ -357,7 +361,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
                                       Icon(
                                         Icons.person_rounded,
                                         size: 12,
-                                        color: AppColors.mutedText,
+                                        color: theme.textTheme.bodySmall?.color,
                                       ),
                                       const SizedBox(width: 3),
                                       Text(
@@ -365,7 +369,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
                                         style: GoogleFonts.inter(
                                           fontSize: 10,
                                           fontWeight: FontWeight.w600,
-                                          color: AppColors.mutedText,
+                                          color: theme.textTheme.bodySmall?.color,
                                         ),
                                       ),
                                     ],
@@ -385,7 +389,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
                               fontSize: 12.5,
                               height: 1.4,
                               fontWeight: FontWeight.w400,
-                              color: AppColors.bodyText,
+                              color: theme.textTheme.bodyMedium?.color,
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -402,7 +406,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
                                     vertical: 4,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: AppColors.chipBg,
+                                    color: theme.colorScheme.surfaceVariant,
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
@@ -422,10 +426,10 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
                           // Üye sayısı progress
                           Row(
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.people_outline,
                                 size: 16,
-                                color: AppColors.mutedText,
+                                color: theme.textTheme.bodySmall?.color,
                               ),
                               const SizedBox(width: 6),
                               Text(
@@ -433,7 +437,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
                                 style: GoogleFonts.inter(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
-                                  color: AppColors.mutedText,
+                                  color: theme.textTheme.bodySmall?.color,
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -443,7 +447,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
                                   child: LinearProgressIndicator(
                                     value: fillRatio,
                                     minHeight: 5,
-                                    backgroundColor: AppColors.chipBg,
+                                    backgroundColor: theme.colorScheme.surfaceVariant,
                                     valueColor: AlwaysStoppedAnimation<Color>(
                                       teamColor,
                                     ),

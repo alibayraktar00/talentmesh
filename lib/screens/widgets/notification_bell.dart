@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_colors.dart';
 
 class NotificationBell extends StatelessWidget {
   final int unreadCount;
@@ -13,6 +12,7 @@ class NotificationBell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return IconButton(
       onPressed: onTap,
       tooltip: 'Bildirimler',
@@ -21,7 +21,7 @@ class NotificationBell extends StatelessWidget {
         children: [
           Icon(
             Icons.notifications_outlined,
-            color: AppColors.headingText.withValues(alpha: 0.7),
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
             size: 26,
           ),
           if (unreadCount > 0)
@@ -34,7 +34,7 @@ class NotificationBell extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.red,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.white, width: 1.5),
+                  border: Border.all(color: theme.colorScheme.surface, width: 1.5),
                 ),
                 child: Text(
                   unreadCount > 99 ? '99+' : unreadCount.toString(),

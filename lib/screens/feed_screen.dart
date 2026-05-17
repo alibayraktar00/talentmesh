@@ -111,8 +111,9 @@ class _FeedScreenState extends State<FeedScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -128,7 +129,7 @@ class _FeedScreenState extends State<FeedScreen> {
                     style: GoogleFonts.inter(
                       fontSize: 26,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.headingText,
+                      color: theme.colorScheme.onSurface,
                     ),
                   ),
                   if (_selectedNavIndex == 0)
@@ -152,6 +153,7 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   Widget _buildFeedList() {
+    final theme = Theme.of(context);
     return RefreshIndicator(
       onRefresh: () async {
         _refresh();
@@ -171,7 +173,7 @@ class _FeedScreenState extends State<FeedScreen> {
                 style: GoogleFonts.inter(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.headingText,
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
             ),
@@ -185,7 +187,7 @@ class _FeedScreenState extends State<FeedScreen> {
                 style: GoogleFonts.inter(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.headingText,
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
             ),
@@ -252,12 +254,13 @@ class _FeedScreenState extends State<FeedScreen> {
 
   Widget _buildMatchCard(Map<String, dynamic> teamMap) {
     final team = Team.fromMap(teamMap, _teamService.currentUserId ?? '');
+    final theme = Theme.of(context);
 
     return Container(
       width: 260,
       margin: const EdgeInsets.only(right: 12, top: 4, bottom: 8),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -289,7 +292,7 @@ class _FeedScreenState extends State<FeedScreen> {
                     style: GoogleFonts.inter(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.headingText,
+                      color: theme.colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -300,19 +303,19 @@ class _FeedScreenState extends State<FeedScreen> {
                     style: GoogleFonts.inter(
                       fontSize: 12,
                       height: 1.4,
-                      color: AppColors.bodyText,
+                      color: theme.textTheme.bodyMedium?.color,
                     ),
                   ),
                   const SizedBox(height: 14),
                   Row(
                     children: [
-                      const Icon(Icons.people_outline, size: 14, color: AppColors.mutedText),
+                      Icon(Icons.people_outline, size: 14, color: theme.textTheme.bodySmall?.color),
                       const SizedBox(width: 4),
                       Text(
                         '${team.maxMembers} Kişilik',
                         style: GoogleFonts.inter(
                           fontSize: 11,
-                          color: AppColors.mutedText,
+                          color: theme.textTheme.bodySmall?.color,
                         ),
                       ),
                       const Spacer(),
@@ -364,6 +367,7 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   Widget _buildProjectsFuture() {
+    final theme = Theme.of(context);
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: _projectsFuture,
       builder: (context, snapshot) {
@@ -388,7 +392,7 @@ class _FeedScreenState extends State<FeedScreen> {
                   const SizedBox(height: 12),
                   Text(
                     'Veri yüklenemedi.',
-                    style: GoogleFonts.inter(color: AppColors.mutedText),
+                    style: GoogleFonts.inter(color: theme.textTheme.bodySmall?.color),
                   ),
                 ],
               ),
@@ -406,14 +410,14 @@ class _FeedScreenState extends State<FeedScreen> {
                   Icon(
                     Icons.work_outline,
                     size: 48,
-                    color: AppColors.mutedText.withValues(alpha: 0.5),
+                    color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.5),
                   ),
                   const SizedBox(height: 16),
                   Text(
                     'Henüz ilan yok.',
                     style: GoogleFonts.inter(
                       fontSize: 15,
-                      color: AppColors.mutedText,
+                      color: theme.textTheme.bodySmall?.color,
                     ),
                   ),
                 ],
@@ -435,6 +439,7 @@ class _FeedScreenState extends State<FeedScreen> {
 
   // ──────────────────────── TOP BAR ────────────────────────
   Widget _buildTopBar() {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
       child: Row(
@@ -456,10 +461,10 @@ class _FeedScreenState extends State<FeedScreen> {
                       width: 2,
                     ),
                   ),
-                  child: const CircleAvatar(
+                  child: CircleAvatar(
                     radius: 20,
-                    backgroundColor: AppColors.chipBg,
-                    child: Icon(
+                    backgroundColor: theme.colorScheme.surfaceVariant,
+                    child: const Icon(
                       Icons.person,
                       color: AppColors.primaryAccent,
                       size: 22,
@@ -475,7 +480,7 @@ class _FeedScreenState extends State<FeedScreen> {
                     decoration: BoxDecoration(
                       color: AppColors.onlineGreen,
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.white, width: 2),
+                      border: Border.all(color: theme.colorScheme.surface, width: 2),
                     ),
                   ),
                 ),
@@ -492,7 +497,7 @@ class _FeedScreenState extends State<FeedScreen> {
             },
             icon: Icon(
               Icons.search,
-              color: AppColors.headingText.withValues(alpha: 0.7),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               size: 26,
             ),
             tooltip: 'Ara',
@@ -520,7 +525,7 @@ class _FeedScreenState extends State<FeedScreen> {
             },
             icon: Icon(
               Icons.settings,
-              color: AppColors.headingText.withValues(alpha: 0.7),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               size: 24,
             ),
             tooltip: 'Ayarlar',
@@ -530,7 +535,7 @@ class _FeedScreenState extends State<FeedScreen> {
             onPressed: _signOut,
             icon: Icon(
               Icons.logout,
-              color: AppColors.headingText.withValues(alpha: 0.5),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
               size: 22,
             ),
             tooltip: 'Çıkış Yap',
@@ -542,6 +547,7 @@ class _FeedScreenState extends State<FeedScreen> {
 
   // ──────────────────── PROJECT CARD ────────────────────────
   Widget _buildProjectCard(Map<String, dynamic> project, int index) {
+    final theme = Theme.of(context);
     final tags = (project['tags'] as List<dynamic>? ?? [])
         .map((e) => e.toString())
         .toList();
@@ -562,7 +568,7 @@ class _FeedScreenState extends State<FeedScreen> {
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
@@ -598,7 +604,7 @@ class _FeedScreenState extends State<FeedScreen> {
                           style: GoogleFonts.inter(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.headingText,
+                            color: theme.colorScheme.onSurface,
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -607,16 +613,16 @@ class _FeedScreenState extends State<FeedScreen> {
                           style: GoogleFonts.inter(
                             fontSize: 12,
                             fontWeight: FontWeight.w400,
-                            color: AppColors.mutedText,
+                            color: theme.textTheme.bodySmall?.color,
                           ),
                         ),
                         const SizedBox(height: 10),
                         Row(
                           children: [
-                            const CircleAvatar(
+                            CircleAvatar(
                               radius: 10,
-                              backgroundColor: AppColors.chipBg,
-                              child: Icon(
+                              backgroundColor: theme.colorScheme.surfaceVariant,
+                              child: const Icon(
                                 Icons.person_outline,
                                 size: 12,
                                 color: AppColors.primaryAccent,
@@ -627,7 +633,7 @@ class _FeedScreenState extends State<FeedScreen> {
                               'Project lead: ',
                               style: GoogleFonts.inter(
                                 fontSize: 11,
-                                color: AppColors.mutedText,
+                                color: theme.textTheme.bodySmall?.color,
                               ),
                             ),
                             Text(
@@ -635,7 +641,7 @@ class _FeedScreenState extends State<FeedScreen> {
                               style: GoogleFonts.inter(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
-                                color: AppColors.bodyText,
+                                color: theme.textTheme.bodyMedium?.color,
                               ),
                             ),
                           ],
@@ -648,7 +654,7 @@ class _FeedScreenState extends State<FeedScreen> {
                           style: GoogleFonts.inter(
                             fontSize: 12,
                             height: 1.45,
-                            color: AppColors.bodyText,
+                            color: theme.textTheme.bodyMedium?.color,
                           ),
                         ),
                         const SizedBox(height: 10),
@@ -662,7 +668,7 @@ class _FeedScreenState extends State<FeedScreen> {
                                 vertical: 5,
                               ),
                               decoration: BoxDecoration(
-                                color: AppColors.chipBg,
+                                color: theme.colorScheme.surfaceVariant,
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Text(
@@ -690,9 +696,10 @@ class _FeedScreenState extends State<FeedScreen> {
 
   // ──────────────────── BOTTOM NAV ──────────────────────────
   Widget _buildBottomNav() {
+    final theme = Theme.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: theme.colorScheme.surface,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.06),
@@ -783,6 +790,7 @@ class _FeedScreenState extends State<FeedScreen> {
     required int index,
   }) {
     final bool isActive = _selectedNavIndex == index;
+    final theme = Theme.of(context);
     return GestureDetector(
       onTap: () {
         setState(() => _selectedNavIndex = index);
@@ -793,7 +801,7 @@ class _FeedScreenState extends State<FeedScreen> {
         children: [
           Icon(
             isActive ? activeIcon : icon,
-            color: isActive ? AppColors.primaryAccent : AppColors.mutedText,
+            color: isActive ? AppColors.primaryAccent : theme.textTheme.bodySmall?.color,
             size: 26,
           ),
           const SizedBox(height: 4),
@@ -804,7 +812,7 @@ class _FeedScreenState extends State<FeedScreen> {
               fontSize: 11,
               height: 1.1,
               fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-              color: isActive ? AppColors.primaryAccent : AppColors.mutedText,
+              color: isActive ? AppColors.primaryAccent : theme.textTheme.bodySmall?.color,
             ),
           ),
         ],

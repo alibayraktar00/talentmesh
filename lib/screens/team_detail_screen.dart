@@ -245,8 +245,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   @override
   Widget build(BuildContext context) {
     final color = widget.team.color;
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: NestedScrollView(
         headerSliverBuilder: (context, _) => [
           SliverAppBar(
@@ -438,7 +439,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           ? Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.white,
+                color: theme.colorScheme.surface,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.05),
@@ -475,6 +476,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
     return ListenableBuilder(
       listenable: _taskProvider,
       builder: (context, _) {
+        final theme = Theme.of(context);
         if (_taskProvider.isLoading) {
           return const Center(
             child: CircularProgressIndicator(color: AppColors.primaryAccent),
@@ -487,9 +489,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
               children: [
                 Icon(Icons.lock_outline_rounded, size: 64, color: widget.team.color.withValues(alpha: 0.3)),
                 const SizedBox(height: 16),
-                Text('Görevler Gizlidir', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.headingText)),
+                Text('Görevler Gizlidir', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
                 const SizedBox(height: 8),
-                Text('Görev detaylarını görmek için\ntakıma katılmanız gerekiyor.', textAlign: TextAlign.center, style: GoogleFonts.inter(color: AppColors.mutedText)),
+                Text('Görev detaylarını görmek için\ntakıma katılmanız gerekiyor.', textAlign: TextAlign.center, style: GoogleFonts.inter(color: theme.textTheme.bodySmall?.color)),
               ],
             ),
           );
@@ -564,6 +566,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   }
 
   Widget _buildProgressCard(double progress, int percent, int total, int done) {
+    final theme = Theme.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -594,7 +597,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.headingText,
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
               const Spacer(),
@@ -631,7 +634,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                         Container(
                           height: 10,
                           decoration: BoxDecoration(
-                            color: AppColors.chipBg,
+                            color: theme.colorScheme.surfaceVariant,
                             borderRadius: BorderRadius.circular(5),
                           ),
                         ),
@@ -685,7 +688,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
             const SizedBox(height: 12),
             Text(
               'Henüz görev eklenmemiş. Görev eklemek için + butonuna dokun.',
-              style: GoogleFonts.inter(fontSize: 12, color: AppColors.mutedText),
+              style: GoogleFonts.inter(fontSize: 12, color: theme.textTheme.bodySmall?.color),
             ),
           ],
         ],
@@ -699,10 +702,11 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
     required IconData icon,
     required Color color,
   }) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -731,7 +735,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                 style: GoogleFonts.inter(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.headingText,
+                  color: theme.colorScheme.onSurface,
                 ),
               ),
               Text(
@@ -739,7 +743,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                 style: GoogleFonts.inter(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.mutedText,
+                  color: theme.textTheme.bodySmall?.color,
                 ),
               ),
             ],
@@ -756,10 +760,11 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
     required List<TeamTask> tasks,
     required String emptyMessage,
   }) {
+    final theme = Theme.of(context);
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -819,7 +824,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                   emptyMessage,
                   style: GoogleFonts.inter(
                     fontSize: 13,
-                    color: AppColors.mutedText.withValues(alpha: 0.6),
+                    color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
                   ),
                 ),
               ),
@@ -835,6 +840,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
     final isOverdue = task.status != TaskStatus.done &&
         task.dueDate != null &&
         task.dueDate!.isBefore(DateTime.now());
+    final theme = Theme.of(context);
 
     return Dismissible(
       key: Key(task.id),
@@ -905,10 +911,10 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: AppColors.background,
+            color: theme.scaffoldBackgroundColor,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isOverdue ? const Color(0xFFE53E3E).withValues(alpha: 0.3) : AppColors.chipBg,
+              color: isOverdue ? const Color(0xFFE53E3E).withValues(alpha: 0.3) : theme.colorScheme.surfaceVariant,
               width: 1,
             ),
           ),
@@ -924,11 +930,11 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                     style: GoogleFonts.inter(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.headingText,
+                      color: theme.colorScheme.onSurface,
                       decoration: task.status == TaskStatus.done
                           ? TextDecoration.lineThrough
                           : null,
-                      decorationColor: AppColors.mutedText,
+                      decorationColor: theme.textTheme.bodySmall?.color,
                     ),
                   ),
                 ),
@@ -967,7 +973,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.inter(
                   fontSize: 12,
-                  color: AppColors.mutedText,
+                  color: theme.textTheme.bodySmall?.color,
                   height: 1.4,
                 ),
               ),
@@ -1014,7 +1020,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                       style: GoogleFonts.inter(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
-                        color: AppColors.mutedText,
+                        color: theme.textTheme.bodySmall?.color,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1032,6 +1038,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   // ─── DETAILS TAB ──────────────────────────────────────────────
   Widget _buildDetailsTab() {
     final team = widget.team;
+    final theme = Theme.of(context);
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -1042,7 +1049,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
             title: 'Takım Açıklaması',
             trailing: _isAdmin
                 ? IconButton(
-                    icon: Icon(_isEditingDescription ? Icons.close_rounded : Icons.edit_rounded, size: 18, color: AppColors.mutedText),
+                    icon: Icon(_isEditingDescription ? Icons.close_rounded : Icons.edit_rounded, size: 18, color: theme.textTheme.bodySmall?.color),
                     onPressed: () => setState(() => _isEditingDescription = !_isEditingDescription),
                   )
                 : null,
@@ -1051,9 +1058,10 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                     TextField(
                       controller: _descController,
                       maxLines: 4,
+                      style: TextStyle(color: theme.colorScheme.onSurface),
                       decoration: InputDecoration(
                         filled: true,
-                        fillColor: AppColors.chipBg,
+                        fillColor: theme.colorScheme.surfaceVariant,
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
                       ),
                     ),
@@ -1064,7 +1072,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                       child: _isUpdatingDescription ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text('Kaydet'),
                     ),
                   ])
-                : Text(_currentDescription.isEmpty ? 'Açıklama eklenmemiş.' : _currentDescription, style: GoogleFonts.inter(fontSize: 14, color: AppColors.bodyText, height: 1.6)),
+                : Text(_currentDescription.isEmpty ? 'Açıklama eklenmemiş.' : _currentDescription, style: GoogleFonts.inter(fontSize: 14, color: theme.textTheme.bodyMedium?.color, height: 1.6)),
           ),
           const SizedBox(height: 16),
 
@@ -1075,7 +1083,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
               child: Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: team.roles.map((r) => _chip(r, AppColors.chipBg, AppColors.bodyText)).toList(),
+                children: team.roles.map((r) => _chip(r, theme.colorScheme.surfaceVariant, theme.textTheme.bodyMedium?.color ?? Colors.black)).toList(),
               ),
             ),
           const SizedBox(height: 16),
@@ -1097,9 +1105,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
             title: 'Kapasite',
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                const Icon(Icons.people_outline, size: 16, color: AppColors.mutedText),
+                Icon(Icons.people_outline, size: 16, color: theme.textTheme.bodySmall?.color),
                 const SizedBox(width: 8),
-                Text('${team.currentMembers} / ${team.maxMembers} Üye', style: GoogleFonts.inter(fontSize: 14, color: AppColors.bodyText)),
+                Text('${team.currentMembers} / ${team.maxMembers} Üye', style: GoogleFonts.inter(fontSize: 14, color: theme.textTheme.bodyMedium?.color)),
               ]),
               const SizedBox(height: 10),
               ClipRRect(
@@ -1107,7 +1115,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                 child: LinearProgressIndicator(
                   value: team.currentMembers / team.maxMembers,
                   minHeight: 6,
-                  backgroundColor: AppColors.chipBg,
+                  backgroundColor: theme.colorScheme.surfaceVariant,
                   valueColor: AlwaysStoppedAnimation<Color>(widget.team.color),
                 ),
               ),
@@ -1124,6 +1132,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
     
     // Build combined list: admin + members
     final List<Widget> items = [];
+    final theme = Theme.of(context);
     
     // Admin card
     final adminUsername = _adminProfile?['username']?.toString() ?? widget.team.adminId.substring(0, 6);
@@ -1147,7 +1156,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
         username: p['username']?.toString() ?? uid.substring(0, 6),
         fullName: p['full_name']?.toString() ?? '',
         badge: 'Üye',
-        badgeColor: AppColors.mutedText,
+        badgeColor: theme.textTheme.bodySmall?.color ?? AppColors.mutedText,
         membershipId: m['id'].toString(),
         isCurrentUser: uid == _currentUserId,
       ));
@@ -1169,11 +1178,12 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
     required String? membershipId,
     required bool isCurrentUser,
   }) {
+    final theme = Theme.of(context);
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 3))],
       ),
@@ -1185,8 +1195,8 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
         ),
         const SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('@$username', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.headingText)),
-          if (fullName.isNotEmpty) Text(fullName, style: GoogleFonts.inter(fontSize: 12, color: AppColors.mutedText)),
+          Text('@$username', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14, color: theme.colorScheme.onSurface)),
+          if (fullName.isNotEmpty) Text(fullName, style: GoogleFonts.inter(fontSize: 12, color: theme.textTheme.bodySmall?.color)),
         ])),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -1213,6 +1223,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
     return ListenableBuilder(
       listenable: _meetingProvider,
       builder: (context, _) {
+        final theme = Theme.of(context);
         if (_meetingProvider.isLoading) return const Center(child: CircularProgressIndicator(color: AppColors.primaryAccent));
         if (!_isMember) {
            return Center(
@@ -1221,9 +1232,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                children: [
                  Icon(Icons.lock_outline_rounded, size: 64, color: widget.team.color.withValues(alpha: 0.3)),
                  const SizedBox(height: 16),
-                 Text('Toplantılar Gizlidir', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.headingText)),
+                 Text('Toplantılar Gizlidir', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
                  const SizedBox(height: 8),
-                 Text('Toplantı detaylarını görmek için\ntakıma katılmanız gerekiyor.', textAlign: TextAlign.center, style: GoogleFonts.inter(color: AppColors.mutedText)),
+                 Text('Toplantı detaylarını görmek için\ntakıma katılmanız gerekiyor.', textAlign: TextAlign.center, style: GoogleFonts.inter(color: theme.textTheme.bodySmall?.color)),
                ],
              ),
            );
@@ -1232,10 +1243,10 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           length: 2,
           child: Column(children: [
             Container(
-              color: AppColors.white,
+              color: theme.colorScheme.surface,
               child: TabBar(
                 labelColor: widget.team.color,
-                unselectedLabelColor: AppColors.mutedText,
+                unselectedLabelColor: theme.textTheme.bodySmall?.color,
                 indicatorColor: widget.team.color,
                 labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
                 tabs: const [Tab(text: 'Yaklaşan'), Tab(text: 'Geçmiş')],
@@ -1252,13 +1263,14 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   }
 
   Widget _meetingList(List<dynamic> meetings, bool isUpcoming) {
+    final theme = Theme.of(context);
     if (meetings.isEmpty) {
       return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(isUpcoming ? Icons.event_available_rounded : Icons.history_rounded, size: 56, color: AppColors.mutedText.withValues(alpha: 0.4)),
+        Icon(isUpcoming ? Icons.event_available_rounded : Icons.history_rounded, size: 56, color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.4)),
         const SizedBox(height: 14),
-        Text(isUpcoming ? 'Yaklaşan toplantı yok' : 'Geçmiş toplantı yok', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.mutedText)),
+        Text(isUpcoming ? 'Yaklaşan toplantı yok' : 'Geçmiş toplantı yok', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: theme.textTheme.bodySmall?.color)),
         const SizedBox(height: 6),
-        if (isUpcoming && _isMember) Text('Toplantı planlamak için + butonuna dokun', style: GoogleFonts.inter(fontSize: 12, color: AppColors.mutedText.withValues(alpha: 0.6))),
+        if (isUpcoming && _isMember) Text('Toplantı planlamak için + butonuna dokun', style: GoogleFonts.inter(fontSize: 12, color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6))),
       ]));
     }
     return RefreshIndicator(
@@ -1289,12 +1301,13 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
 
   // ─── REQUESTS TAB ─────────────────────────────────────────────
   Widget _buildRequestsTab() {
+    final theme = Theme.of(context);
     if (_isLoadingRequests) return const Center(child: CircularProgressIndicator(color: AppColors.primaryAccent));
     if (_incomingRequests.isEmpty) {
       return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(Icons.inbox_rounded, size: 56, color: AppColors.mutedText.withValues(alpha: 0.4)),
+        Icon(Icons.inbox_rounded, size: 56, color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.4)),
         const SizedBox(height: 14),
-        Text('Bekleyen istek yok', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.mutedText)),
+        Text('Bekleyen istek yok', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: theme.textTheme.bodySmall?.color)),
       ]));
     }
     return RefreshIndicator(
@@ -1313,13 +1326,13 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           return Container(
             margin: const EdgeInsets.only(bottom: 10),
             padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(14), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 3))]),
+            decoration: BoxDecoration(color: theme.colorScheme.surface, borderRadius: BorderRadius.circular(14), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 3))]),
             child: Row(children: [
-              CircleAvatar(backgroundColor: AppColors.chipBg, child: Text(username.substring(0, 1).toUpperCase(), style: const TextStyle(color: AppColors.primaryAccent, fontWeight: FontWeight.bold))),
+              CircleAvatar(backgroundColor: theme.colorScheme.surfaceVariant, child: Text(username.substring(0, 1).toUpperCase(), style: const TextStyle(color: AppColors.primaryAccent, fontWeight: FontWeight.bold))),
               const SizedBox(width: 12),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('@$username', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-                if (fullName.isNotEmpty) Text(fullName, style: GoogleFonts.inter(fontSize: 12, color: AppColors.mutedText)),
+                Text('@$username', style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface)),
+                if (fullName.isNotEmpty) Text(fullName, style: GoogleFonts.inter(fontSize: 12, color: theme.textTheme.bodySmall?.color)),
               ])),
               IconButton(
                 icon: const Icon(Icons.check_circle_rounded, color: Colors.green, size: 28),
@@ -1372,13 +1385,14 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
   }
 
   Widget _sectionCard({required String title, required Widget child, Widget? trailing}) {
+    final theme = Theme.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))]),
+      decoration: BoxDecoration(color: theme.colorScheme.surface, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))]),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Text(title, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.headingText)),
+          Text(title, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface)),
           const Spacer(),
           if (trailing != null) trailing,
         ]),

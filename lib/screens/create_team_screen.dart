@@ -127,15 +127,16 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
   Widget build(BuildContext context) {
     // Bottom Sheet yüksekliği — ekranın %92'si
     final sheetHeight = MediaQuery.of(context).size.height * 0.92;
+    final theme = Theme.of(context);
 
     return AnimatedBuilder(
       animation: _scaleAnimation,
       builder: (context, child) => child!,
       child: Container(
         height: sheetHeight,
-        decoration: const BoxDecoration(
-          color: AppColors.background,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        decoration: BoxDecoration(
+          color: theme.scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(
           children: [
@@ -209,7 +210,7 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
                         style: GoogleFonts.inter(
                           fontSize: 12,
                           fontWeight: FontWeight.w400,
-                          color: AppColors.mutedText,
+                          color: theme.textTheme.bodySmall?.color,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -231,7 +232,7 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
                         style: GoogleFonts.inter(
                           fontSize: 12,
                           fontWeight: FontWeight.w400,
-                          color: AppColors.mutedText,
+                          color: theme.textTheme.bodySmall?.color,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -258,9 +259,10 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
 
   // ──────────────────────── SHEET HEADER ────────────────────────
   Widget _buildSheetHeader() {
+    final theme = Theme.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: theme.colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         boxShadow: [
           BoxShadow(
@@ -278,7 +280,7 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: AppColors.mutedText.withValues(alpha: 0.3),
+              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -310,7 +312,7 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
                         style: GoogleFonts.inter(
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
-                          color: AppColors.headingText,
+                          color: theme.colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -319,7 +321,7 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
                         style: GoogleFonts.inter(
                           fontSize: 12,
                           fontWeight: FontWeight.w400,
-                          color: AppColors.mutedText,
+                          color: theme.textTheme.bodySmall?.color,
                         ),
                       ),
                     ],
@@ -332,13 +334,13 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
-                      color: AppColors.chipBg,
+                      color: theme.colorScheme.surfaceVariant,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.close_rounded,
                       size: 20,
-                      color: AppColors.mutedText,
+                      color: theme.textTheme.bodySmall?.color,
                     ),
                   ),
                 ),
@@ -352,6 +354,7 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
 
   // ──────────────────────── SECTION LABEL ────────────────────────
   Widget _buildSectionLabel(String text, IconData icon) {
+    final theme = Theme.of(context);
     return Row(
       children: [
         Icon(icon, size: 18, color: AppColors.primaryAccent),
@@ -361,7 +364,7 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
           style: GoogleFonts.inter(
             fontSize: 15,
             fontWeight: FontWeight.w700,
-            color: AppColors.headingText,
+            color: theme.colorScheme.onSurface,
           ),
         ),
       ],
@@ -376,9 +379,10 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
     int maxLines = 1,
     String? Function(String?)? validator,
   }) {
+    final theme = Theme.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
@@ -395,14 +399,14 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
         style: GoogleFonts.inter(
           fontSize: 14,
           fontWeight: FontWeight.w400,
-          color: AppColors.headingText,
+          color: theme.colorScheme.onSurface,
         ),
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: GoogleFonts.inter(
             fontSize: 14,
             fontWeight: FontWeight.w400,
-            color: AppColors.mutedText.withValues(alpha: 0.6),
+            color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6),
           ),
           prefixIcon: maxLines == 1
               ? Padding(
@@ -421,12 +425,12 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
           ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: AppColors.inputBorder, width: 1),
+            borderSide: BorderSide(color: theme.dividerColor, width: 1),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
             borderSide: BorderSide(
-              color: AppColors.inputBorder.withValues(alpha: 0.5),
+              color: theme.dividerColor.withValues(alpha: 0.5),
               width: 1,
             ),
           ),
@@ -446,7 +450,7 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
             borderSide: const BorderSide(color: Color(0xFFE53E3E), width: 1.5),
           ),
           filled: true,
-          fillColor: AppColors.white,
+          fillColor: theme.colorScheme.surface,
         ),
       ),
     );
@@ -454,13 +458,14 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
 
   // ──────────────────────── MEMBER COUNTER ────────────────────────
   Widget _buildMemberCounter() {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
       decoration: BoxDecoration(
-        color: AppColors.white,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: AppColors.inputBorder.withValues(alpha: 0.5),
+          color: theme.dividerColor.withValues(alpha: 0.5),
           width: 1,
         ),
         boxShadow: [
@@ -496,7 +501,7 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
                   style: GoogleFonts.inter(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.headingText,
+                    color: theme.colorScheme.onSurface,
                   ),
                 ),
                 Text(
@@ -504,7 +509,7 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.w400,
-                    color: AppColors.mutedText,
+                    color: theme.textTheme.bodySmall?.color,
                   ),
                 ),
               ],
@@ -545,6 +550,7 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
     required VoidCallback onTap,
     required bool enabled,
   }) {
+    final theme = Theme.of(context);
     return GestureDetector(
       onTap: enabled ? onTap : null,
       child: AnimatedContainer(
@@ -554,12 +560,12 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
         decoration: BoxDecoration(
           color: enabled
               ? AppColors.primaryAccent.withValues(alpha: 0.1)
-              : AppColors.chipBg,
+              : theme.colorScheme.surfaceVariant,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: enabled
                 ? AppColors.primaryAccent.withValues(alpha: 0.3)
-                : AppColors.inputBorder.withValues(alpha: 0.3),
+                : theme.dividerColor.withValues(alpha: 0.3),
             width: 1,
           ),
         ),
@@ -568,7 +574,7 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
           size: 18,
           color: enabled
               ? AppColors.primaryAccent
-              : AppColors.mutedText.withValues(alpha: 0.4),
+              : theme.textTheme.bodySmall?.color?.withValues(alpha: 0.4),
         ),
       ),
     );
@@ -580,6 +586,7 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
     required Set<String> selected,
     required Color accentColor,
   }) {
+    final theme = Theme.of(context);
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -601,12 +608,12 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
             decoration: BoxDecoration(
               color: isSelected
                   ? accentColor.withValues(alpha: 0.12)
-                  : AppColors.white,
+                  : theme.colorScheme.surface,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: isSelected
                     ? accentColor.withValues(alpha: 0.5)
-                    : AppColors.inputBorder.withValues(alpha: 0.6),
+                    : theme.dividerColor.withValues(alpha: 0.6),
                 width: 1.2,
               ),
               boxShadow: isSelected
@@ -631,7 +638,7 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
                   style: GoogleFonts.inter(
                     fontSize: 12.5,
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                    color: isSelected ? accentColor : AppColors.bodyText,
+                    color: isSelected ? accentColor : theme.colorScheme.onSurface,
                   ),
                 ),
               ],
