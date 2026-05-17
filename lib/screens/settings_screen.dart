@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/theme/app_colors.dart';
+import '../core/services/profile_service.dart';
 import 'profile_screen.dart';
 import 'visibility_settings_screen.dart';
 import 'security_settings_screen.dart';
@@ -8,25 +9,63 @@ import 'notification_settings_screen.dart';
 import 'help_center_screen.dart';
 import '../core/services/auth_service.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  final ProfileService _profileService = ProfileService();
+
+  String _displayName = '';
+  String? _avatarUrl;
+  bool _headerLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserHeader();
+  }
+
+  Future<void> _loadUserHeader() async {
+    try {
+      final profile = await _profileService.fetchProfile();
+      if (profile != null && mounted) {
+        final fullName = (profile['full_name'] ?? '').toString().trim();
+        final username = (profile['username'] ?? '').toString().trim();
+        setState(() {
+          _displayName =
+              fullName.isNotEmpty ? fullName : (username.isNotEmpty ? username : 'Kullanıcı');
+          _avatarUrl = profile['avatar_url']?.toString();
+        });
+      }
+    } catch (_) {}
+    if (mounted) setState(() => _headerLoading = false);
+  }
 
   Future<void> _handleLogout(BuildContext context) async {
     final authService = AuthService();
-    
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Oturumu Kapat', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-        content: Text('Oturumu kapatmak istediğinize emin misiniz?', style: GoogleFonts.inter()),
+        title: Text('Oturumu Kapat',
+            style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+        content: Text('Oturumu kapatmak istediğinize emin misiniz?',
+            style: GoogleFonts.inter()),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('İptal', style: GoogleFonts.inter(color: AppColors.mutedText)),
+            child: Text('İptal',
+                style: GoogleFonts.inter(color: AppColors.mutedText)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text('Çıkış Yap', style: GoogleFonts.inter(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+            child: Text('Çıkış Yap',
+                style: GoogleFonts.inter(
+                    color: Colors.redAccent, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -65,9 +104,9 @@ class SettingsScreen extends StatelessWidget {
         children: [
           // User Header Section
           _buildUserHeader(context),
-          
+
           const Divider(height: 1, thickness: 1, color: AppColors.inputBorder),
-          
+
           // Settings Categories
           _buildSectionHeader('Hesap Tercihleri'),
           _buildLinkedInStyleItem(
@@ -94,7 +133,7 @@ class SettingsScreen extends StatelessWidget {
               );
             },
           ),
-          
+
           const SizedBox(height: 16),
           _buildSectionHeader('Güvenlik'),
           _buildLinkedInStyleItem(
@@ -110,7 +149,7 @@ class SettingsScreen extends StatelessWidget {
               );
             },
           ),
-          
+
           const SizedBox(height: 16),
           _buildSectionHeader('Bildirimler'),
           _buildLinkedInStyleItem(
@@ -126,7 +165,7 @@ class SettingsScreen extends StatelessWidget {
               );
             },
           ),
-          
+
           const SizedBox(height: 16),
           _buildSectionHeader('Destek'),
           _buildLinkedInStyleItem(
@@ -159,7 +198,7 @@ class SettingsScreen extends StatelessWidget {
               );
             },
           ),
-          
+
           const SizedBox(height: 32),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -190,24 +229,42 @@ class SettingsScreen extends StatelessWidget {
       padding: const EdgeInsets.all(16.0),
       child: Row(
         children: [
-          const CircleAvatar(
+          // Avatar
+          CircleAvatar(
             radius: 30,
             backgroundColor: AppColors.chipBg,
-            child: Icon(Icons.person, color: AppColors.primaryAccent, size: 35),
+            backgroundImage:
+                (_avatarUrl != null && _avatarUrl!.isNotEmpty)
+                    ? NetworkImage(_avatarUrl!)
+                    : null,
+            child: (_avatarUrl == null || _avatarUrl!.isEmpty)
+                ? const Icon(Icons.person,
+                    color: AppColors.primaryAccent, size: 35)
+                : null,
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Kullanıcı Adı', // Buraya dinamik veri gelebilir
-                  style: GoogleFonts.inter(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.headingText,
-                  ),
-                ),
+                _headerLoading
+                    ? Container(
+                        width: 120,
+                        height: 18,
+                        decoration: BoxDecoration(
+                          color: AppColors.chipBg,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      )
+                    : Text(
+                        _displayName,
+                        style: GoogleFonts.inter(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.headingText,
+                        ),
+                      ),
+                const SizedBox(height: 4),
                 Text(
                   'Profilinizi yönetin',
                   style: GoogleFonts.inter(
@@ -222,10 +279,12 @@ class SettingsScreen extends StatelessWidget {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                MaterialPageRoute(
+                    builder: (context) => const ProfileScreen()),
               );
             },
-            icon: const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.mutedText),
+            icon: const Icon(Icons.arrow_forward_ios,
+                size: 16, color: AppColors.mutedText),
           ),
         ],
       ),

@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/app_notification_model.dart';
+import 'profile_service.dart';
 
 class NotificationService {
   final _client = Supabase.instance.client;
@@ -90,6 +91,12 @@ class NotificationService {
     }
   }
 
+  /// Alıcının bildirim tercihini kontrol eder.
+  /// column: 'notif_messages' | 'notif_connections' | 'notif_team_updates'
+  Future<bool> _recipientAllows(String userId, String column) async {
+    return ProfileService().fetchUserPref(userId, column);
+  }
+
   Future<String> _myDisplayName() async {
     final userId = _userId;
     if (userId == null) return 'Bir kullanıcı';
@@ -109,6 +116,7 @@ class NotificationService {
   }
 
   Future<void> notifyFriendRequest({required String addresseeId}) async {
+    if (!await _recipientAllows(addresseeId, 'notif_connections')) return;
     final name = await _myDisplayName();
     await _insert(
       userId: addresseeId,
@@ -119,6 +127,7 @@ class NotificationService {
   }
 
   Future<void> notifyFriendAccepted({required String requesterId}) async {
+    if (!await _recipientAllows(requesterId, 'notif_connections')) return;
     final name = await _myDisplayName();
     await _insert(
       userId: requesterId,
@@ -132,6 +141,7 @@ class NotificationService {
     required String memberUserId,
     required String teamName,
   }) async {
+    if (!await _recipientAllows(memberUserId, 'notif_team_updates')) return;
     final name = await _myDisplayName();
     await _insert(
       userId: memberUserId,
@@ -145,6 +155,7 @@ class NotificationService {
     required String adminId,
     required String teamName,
   }) async {
+    if (!await _recipientAllows(adminId, 'notif_team_updates')) return;
     final name = await _myDisplayName();
     await _insert(
       userId: adminId,
@@ -158,6 +169,7 @@ class NotificationService {
     required String memberUserId,
     required String teamName,
   }) async {
+    if (!await _recipientAllows(memberUserId, 'notif_team_updates')) return;
     await _insert(
       userId: memberUserId,
       type: 'team_join_accepted',
@@ -173,6 +185,9 @@ class NotificationService {
     required String conversationId,
     required String messageId,
   }) async {
+    // Önce alıcının mesaj bildirimi tercihini kontrol et
+    if (!await _recipientAllows(receiverId, 'notif_messages')) return;
+
     try {
       final previous = await _client
           .from('messages')
@@ -216,6 +231,7 @@ class NotificationService {
   }) async {
     final name = await _myDisplayName();
     for (final assigneeId in assigneeIds) {
+      if (!await _recipientAllows(assigneeId, 'notif_team_updates')) continue;
       await _insert(
         userId: assigneeId,
         type: 'task_assigned',
@@ -238,6 +254,7 @@ class NotificationService {
     final dateStr =
         '${meetingDate.day.toString().padLeft(2, '0')}.${meetingDate.month.toString().padLeft(2, '0')}.${meetingDate.year} ${meetingDate.hour.toString().padLeft(2, '0')}:${meetingDate.minute.toString().padLeft(2, '0')}';
     for (final memberId in memberIds) {
+      if (!await _recipientAllows(memberId, 'notif_team_updates')) continue;
       await _insert(
         userId: memberId,
         type: 'meeting_created',

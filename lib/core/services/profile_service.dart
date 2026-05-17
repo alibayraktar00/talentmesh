@@ -441,4 +441,123 @@ class ProfileService {
       rethrow;
     }
   }
+
+  // ──────────────────────── Görünürlük Ayarları ────────────────────────
+
+  /// Kullanıcının görünürlük ayarlarını Supabase'den çeker.
+  Future<Map<String, bool>> fetchVisibilitySettings() async {
+    if (_userId == null) {
+      return {'is_profile_public': true, 'show_email': false};
+    }
+    try {
+      final data = await _client
+          .from('profiles')
+          .select('is_profile_public, show_email')
+          .eq('id', _userId!)
+          .maybeSingle();
+      if (data == null) return {'is_profile_public': true, 'show_email': false};
+      return {
+        'is_profile_public': (data['is_profile_public'] as bool?) ?? true,
+        'show_email': (data['show_email'] as bool?) ?? false,
+      };
+    } catch (e) {
+      print('Görünürlük ayarları çekilirken hata: $e');
+      return {'is_profile_public': true, 'show_email': false};
+    }
+  }
+
+  /// Görünürlük ayarlarını Supabase'e kaydeder.
+  Future<void> updateVisibilitySettings({
+    required bool isProfilePublic,
+    required bool showEmail,
+  }) async {
+    if (_userId == null) return;
+    try {
+      await _client.from('profiles').update({
+        'is_profile_public': isProfilePublic,
+        'show_email': showEmail,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', _userId!);
+    } catch (e) {
+      print('Görünürlük ayarları kaydedilirken hata: $e');
+      rethrow;
+    }
+  }
+
+  // ──────────────────────── Bildirim Ayarları ────────────────────────
+
+  /// Kullanıcının bildirim tercihlerini Supabase'den çeker.
+  Future<Map<String, bool>> fetchNotificationSettings() async {
+    if (_userId == null) {
+      return {
+        'notif_messages': true,
+        'notif_connections': true,
+        'notif_team_updates': true,
+      };
+    }
+    try {
+      final data = await _client
+          .from('profiles')
+          .select('notif_messages, notif_connections, notif_team_updates')
+          .eq('id', _userId!)
+          .maybeSingle();
+      if (data == null) {
+        return {
+          'notif_messages': true,
+          'notif_connections': true,
+          'notif_team_updates': true,
+        };
+      }
+      return {
+        'notif_messages': (data['notif_messages'] as bool?) ?? true,
+        'notif_connections': (data['notif_connections'] as bool?) ?? true,
+        'notif_team_updates': (data['notif_team_updates'] as bool?) ?? true,
+      };
+    } catch (e) {
+      print('Bildirim ayarları çekilirken hata: $e');
+      return {
+        'notif_messages': true,
+        'notif_connections': true,
+        'notif_team_updates': true,
+      };
+    }
+  }
+
+  /// Bildirim tercihlerini Supabase'e kaydeder.
+  Future<void> updateNotificationSettings({
+    required bool messages,
+    required bool connections,
+    required bool teamUpdates,
+  }) async {
+    if (_userId == null) return;
+    try {
+      await _client.from('profiles').update({
+        'notif_messages': messages,
+        'notif_connections': connections,
+        'notif_team_updates': teamUpdates,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', _userId!);
+    } catch (e) {
+      print('Bildirim ayarları kaydedilirken hata: $e');
+      rethrow;
+    }
+  }
+
+  // ──────────────────────── Kullanıcı Tercihi Kontrolü ────────────────────────
+
+  /// Belirli bir kullanıcının profiles tablosundaki boolean tercihini döner.
+  /// Bildirim servisi tarafından göndermeden önce alıcının tercihini kontrol etmek için kullanılır.
+  Future<bool> fetchUserPref(String userId, String column) async {
+    try {
+      final data = await _client
+          .from('profiles')
+          .select(column)
+          .eq('id', userId)
+          .maybeSingle();
+      if (data == null) return true;
+      return (data[column] as bool?) ?? true;
+    } catch (_) {
+      return true; // hata varsa bildirimi gönder
+    }
+  }
 }

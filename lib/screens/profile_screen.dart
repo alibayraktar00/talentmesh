@@ -28,6 +28,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _location = '';
   String _about = '';
   bool _openToWork = true;
+  bool _showEmail = true;       // show_email tercihi
+  bool _isProfilePublic = true; // is_profile_public tercihi
   List<Map<String, String>> _experiences = [];
   List<Map<String, String>> _languages = [];
   List<String> _skills = [];
@@ -79,6 +81,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _location = data['location'] ?? '';
         _about = data['bio'] ?? '';
         _openToWork = data['open_to_work'] ?? true;
+        _showEmail = data['show_email'] ?? true;
+        _isProfilePublic = data['is_profile_public'] ?? true;
         _experiences = _parseJsonList(data['experience']);
         _languages = _parseJsonList(data['languages']);
         _skills = List<String>.from(data['skills'] ?? []);
@@ -186,6 +190,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         backgroundColor: AppColors.background,
         body: const Center(child: CircularProgressIndicator()),
       );
+    }
+
+    // Gizli profil: kendi profilin değilse, arkadaş değilse ve profil gizliyse
+    if (!_isMyProfile && !_isFriend && !_isProfilePublic) {
+      return _buildPrivateProfileScreen();
     }
 
     return Scaffold(
@@ -377,11 +386,67 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // ──────────────────────── PRIVATE PROFILE ────────────────────────
+  Widget _buildPrivateProfileScreen() {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.white,
+        elevation: 0.5,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new,
+              size: 18, color: AppColors.headingText),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: AppColors.chipBg,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.lock_outline,
+                    size: 40, color: AppColors.primaryAccent),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Bu profil gizlidir',
+                style: GoogleFonts.inter(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.headingText,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Bu kullanıcının profilini görebilmek için arkadaş olmanız gerekiyor.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  color: AppColors.mutedText,
+                  height: 1.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildCircleButton({
     required IconData icon,
     required Color color,
     required VoidCallback onTap,
   }) {
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.white.withValues(alpha: 0.85),
@@ -412,11 +477,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildContactRow(
-                  Icons.email_outlined,
-                  _email.isNotEmpty ? _email : 'E-posta ekleyin',
-                ),
-                const SizedBox(height: 10),
+                // E-postayı sadece kendi profilinde veya show_email açıksa göster
+                if (_isMyProfile || _showEmail) ...[  
+                  _buildContactRow(
+                    Icons.email_outlined,
+                    _email.isNotEmpty ? _email : 'E-posta ekleyin',
+                  ),
+                  const SizedBox(height: 10),
+                ],
                 _buildContactRow(
                   Icons.phone_outlined,
                   _phone.isNotEmpty ? _phone : 'Telefon ekleyin',

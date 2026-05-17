@@ -1,100 +1,159 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/theme/app_colors.dart';
+import '../core/services/profile_service.dart';
 
 class VisibilitySettingsScreen extends StatefulWidget {
   const VisibilitySettingsScreen({super.key});
 
   @override
-  State<VisibilitySettingsScreen> createState() => _VisibilitySettingsScreenState();
+  State<VisibilitySettingsScreen> createState() =>
+      _VisibilitySettingsScreenState();
 }
 
 class _VisibilitySettingsScreenState extends State<VisibilitySettingsScreen> {
+  final ProfileService _profileService = ProfileService();
+
   bool _isProfilePublic = true;
-  bool _showActiveStatus = true;
   bool _showEmail = false;
+  bool _isLoading = true;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    setState(() => _isLoading = true);
+    try {
+      final settings = await _profileService.fetchVisibilitySettings();
+      if (mounted) {
+        setState(() {
+          _isProfilePublic = settings['is_profile_public'] ?? true;
+          _showEmail = settings['show_email'] ?? false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Ayarlar yüklenemedi.', style: GoogleFonts.inter()),
+          backgroundColor: Colors.redAccent,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _save() async {
+    setState(() => _isSaving = true);
+    try {
+      await _profileService.updateVisibilitySettings(
+        isProfilePublic: _isProfilePublic,
+        showEmail: _showEmail,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Kaydedildi.', style: GoogleFonts.inter()),
+          backgroundColor: AppColors.primaryAccent,
+          duration: const Duration(seconds: 2),
+        ));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Kaydedilemedi.', style: GoogleFonts.inter()),
+          backgroundColor: Colors.redAccent,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _toggle(String field, bool val) async {
+    setState(() {
+      if (field == 'is_profile_public') _isProfilePublic = val;
+      if (field == 'show_email') _showEmail = val;
+    });
+    await _save();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.white,
       appBar: AppBar(
-        title: Text(
-          'Görünürlük',
-          style: GoogleFonts.inter(
-            color: AppColors.headingText,
-            fontWeight: FontWeight.w700,
-            fontSize: 18,
-          ),
-        ),
+        title: Text('Görünürlük',
+            style: GoogleFonts.inter(
+                color: AppColors.headingText,
+                fontWeight: FontWeight.w700,
+                fontSize: 18)),
         backgroundColor: AppColors.white,
         elevation: 0.5,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.headingText),
           onPressed: () => Navigator.pop(context),
         ),
-      ),
-      body: ListView(
-        children: [
-          _buildSectionHeader('Profil Görünürlüğü'),
-          _buildSwitchItem(
-            title: 'Profilimi Herkese Aç',
-            description: 'Kapalıyken profilinizi sadece arkadaşlarınız görebilir.',
-            value: _isProfilePublic,
-            onChanged: (val) => setState(() => _isProfilePublic = val),
-          ),
-          const Divider(height: 1, color: AppColors.inputBorder),
-          
-          _buildSectionHeader('Durum Bilgisi'),
-          _buildSwitchItem(
-            title: 'Aktiflik Durumu',
-            description: 'Çevrimiçi olduğunuzda arkadaşlarınızın bunu görmesine izin verin.',
-            value: _showActiveStatus,
-            onChanged: (val) => setState(() => _showActiveStatus = val),
-          ),
-          const Divider(height: 1, color: AppColors.inputBorder),
-
-          _buildSectionHeader('İletişim Bilgileri'),
-          _buildSwitchItem(
-            title: 'E-posta Adresini Göster',
-            description: 'E-posta adresinizin profilinizde görünmesini sağlar.',
-            value: _showEmail,
-            onChanged: (val) => setState(() => _showEmail = val),
-          ),
-          
-          const SizedBox(height: 32),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Text(
-              'Bu ayarlar TalentMesh üzerindeki deneyiminizi nasıl yönettiğinizi belirler. Değişiklikler anında uygulanır.',
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                color: AppColors.mutedText,
-                height: 1.5,
+        actions: [
+          if (_isSaving)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Center(
+                child: SizedBox(
+                  width: 18, height: 18,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: AppColors.primaryAccent),
+                ),
               ),
             ),
-          ),
         ],
       ),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primaryAccent))
+          : ListView(children: [
+              _header('Profil Görünürlüğü'),
+              _switchItem(
+                title: 'Profilimi Herkese Aç',
+                description: 'Kapalıyken profilinizi sadece arkadaşlarınız görebilir.',
+                value: _isProfilePublic,
+                onChanged: (v) => _toggle('is_profile_public', v),
+              ),
+              const Divider(height: 1, color: AppColors.inputBorder),
+              _header('İletişim Bilgileri'),
+              _switchItem(
+                title: 'E-posta Adresini Göster',
+                description: 'E-posta adresinizin profilinizde görünmesini sağlar.',
+                value: _showEmail,
+                onChanged: (v) => _toggle('show_email', v),
+              ),
+              const SizedBox(height: 32),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  'Bu ayarlar TalentMesh üzerindeki deneyiminizi nasıl yönettiğinizi belirler. Değişiklikler anında uygulanır.',
+                  style: GoogleFonts.inter(
+                      fontSize: 13, color: AppColors.mutedText, height: 1.5),
+                ),
+              ),
+            ]),
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
-      child: Text(
-        title,
-        style: GoogleFonts.inter(
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
-          color: AppColors.primaryAccent,
-          letterSpacing: 0.5,
-        ),
-      ),
-    );
-  }
+  Widget _header(String title) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
+        child: Text(title,
+            style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primaryAccent,
+                letterSpacing: 0.5)),
+      );
 
-  Widget _buildSwitchItem({
+  Widget _switchItem({
     required String title,
     required String description,
     required bool value,
@@ -102,38 +161,26 @@ class _VisibilitySettingsScreenState extends State<VisibilitySettingsScreen> {
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.inter(
+      child: Row(children: [
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title,
+                style: GoogleFonts.inter(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
-                    color: AppColors.headingText,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    color: AppColors.mutedText,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Switch.adaptive(
-            value: value,
-            onChanged: onChanged,
-            activeTrackColor: AppColors.primaryAccent,
-          ),
-        ],
-      ),
+                    color: AppColors.headingText)),
+            const SizedBox(height: 4),
+            Text(description,
+                style: GoogleFonts.inter(
+                    fontSize: 13, color: AppColors.mutedText)),
+          ]),
+        ),
+        Switch.adaptive(
+          value: value,
+          onChanged: _isSaving ? null : onChanged,
+          activeTrackColor: AppColors.primaryAccent,
+        ),
+      ]),
     );
   }
 }
