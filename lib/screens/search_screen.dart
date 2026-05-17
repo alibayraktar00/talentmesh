@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../core/services/notification_service.dart';
 import '../core/services/team_service.dart';
 import '../core/theme/app_colors.dart';
@@ -126,7 +127,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
     final myId = _myUserId;
     if (myId == null) {
-      _showError('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      _showError('search.session_not_found'.tr());
       return;
     }
 
@@ -204,9 +205,9 @@ class _SearchScreenState extends State<SearchScreen> {
           ..addAll(relations);
       });
     } on PostgrestException catch (e) {
-      _showError('Takım araması sırasında hata oluştu: ${e.message}');
+      _showError('search.error_team_search'.tr(args: [e.message]));
     } catch (_) {
-      _showError('Takım araması yapılamadı. İnternet bağlantınızı kontrol edin.');
+      _showError('search.error_team_search_conn'.tr());
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -335,7 +336,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
     final myId = _myUserId;
     if (myId == null) {
-      _showError('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      _showError('search.session_not_found'.tr());
       return;
     }
 
@@ -375,9 +376,9 @@ class _SearchScreenState extends State<SearchScreen> {
           ..addAll(relations);
       });
     } on PostgrestException catch (e) {
-      _showError('Arama sırasında hata oluştu: ${e.message}');
+      _showError('search.error_search'.tr(args: [e.message]));
     } catch (_) {
-      _showError('Arama yapılamadı. İnternet bağlantınızı kontrol edin.');
+      _showError('search.error_search_conn'.tr());
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -390,7 +391,7 @@ class _SearchScreenState extends State<SearchScreen> {
     final addresseeId = profile['id']?.toString();
 
     if (myId == null || addresseeId == null || addresseeId.isEmpty) {
-      _showError('İstek gönderilemedi.');
+      _showError('search.failed_send_request'.tr());
       return;
     }
 
@@ -428,15 +429,15 @@ class _SearchScreenState extends State<SearchScreen> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Arkadaşlık isteği gönderildi.'),
+        SnackBar(
+          content: Text('search.friend_request_sent'.tr()),
           behavior: SnackBarBehavior.floating,
         ),
       );
     } on PostgrestException catch (e) {
-      _showError('İstek gönderilemedi: ${e.message}');
+      _showError('search.failed_send_request'.tr() + ': ${e.message}');
     } catch (_) {
-      _showError('İstek gönderilemedi. Lütfen tekrar deneyin.');
+      _showError('search.failed_send_request'.tr());
     } finally {
       if (mounted) {
         setState(() => _sendingRequestIds.remove(addresseeId));
@@ -462,13 +463,13 @@ class _SearchScreenState extends State<SearchScreen> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Katılma isteği gönderildi.'),
+        SnackBar(
+          content: Text('search.join_request_sent'.tr()),
           behavior: SnackBarBehavior.floating,
         ),
       );
     } catch (e) {
-      _showError('İstek gönderilemedi.');
+      _showError('search.failed_send_request'.tr());
     } finally {
       if (mounted) {
         setState(() => _sendingRequestIds.remove(teamId));
@@ -501,15 +502,15 @@ class _SearchScreenState extends State<SearchScreen> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Arkadaşlık isteği kabul edildi.'),
+        SnackBar(
+          content: Text('search.friend_request_accepted'.tr()),
           behavior: SnackBarBehavior.floating,
         ),
       );
     } on PostgrestException catch (e) {
-      _showError('İstek kabul edilemedi: ${e.message}');
+      _showError('search.failed_accept_request'.tr(args: [e.message]));
     } catch (_) {
-      _showError('İstek kabul edilemedi. Lütfen tekrar deneyin.');
+      _showError('search.failed_accept_generic'.tr());
     } finally {
       if (mounted) {
         setState(() => _sendingRequestIds.remove(otherUserId));
@@ -555,11 +556,11 @@ class _SearchScreenState extends State<SearchScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Padding(
+                    Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Row(
                       children: [
-                        Text('Takım Filtreleri',
+                        Text('search.team_filters'.tr(),
                           style: GoogleFonts.inter(
                             fontSize: 18, fontWeight: FontWeight.w700,
                             color: AppColors.headingText,
@@ -573,7 +574,7 @@ class _SearchScreenState extends State<SearchScreen> {
                               tempSkills.clear();
                             });
                           },
-                          child: Text('Temizle',
+                          child: Text('search.clear'.tr(),
                             style: GoogleFonts.inter(
                               color: Colors.redAccent,
                               fontWeight: FontWeight.w600,
@@ -594,7 +595,7 @@ class _SearchScreenState extends State<SearchScreen> {
                             children: [
                               const Icon(Icons.work_outline, size: 18, color: AppColors.primaryAccent),
                               const SizedBox(width: 8),
-                              Text('Aranan Roller',
+                              Text('search.roles_looking_for'.tr(),
                                 style: GoogleFonts.inter(
                                   fontSize: 15, fontWeight: FontWeight.w700,
                                   color: AppColors.headingText,
@@ -603,7 +604,7 @@ class _SearchScreenState extends State<SearchScreen> {
                             ],
                           ),
                           const SizedBox(height: 4),
-                          Text('Takımın aradığı pozisyonları seçin',
+                          Text('search.roles_looking_for_desc'.tr(),
                             style: GoogleFonts.inter(fontSize: 12, color: AppColors.mutedText),
                           ),
                           const SizedBox(height: 12),
@@ -640,7 +641,7 @@ class _SearchScreenState extends State<SearchScreen> {
                             children: [
                               const Icon(Icons.code, size: 18, color: AppColors.primaryAccent),
                               const SizedBox(width: 8),
-                              Text('Gerekli Yetenekler',
+                              Text('search.required_skills'.tr(),
                                 style: GoogleFonts.inter(
                                   fontSize: 15, fontWeight: FontWeight.w700,
                                   color: AppColors.headingText,
@@ -649,7 +650,7 @@ class _SearchScreenState extends State<SearchScreen> {
                             ],
                           ),
                           const SizedBox(height: 4),
-                          Text('Projeye uygun teknolojileri seçin',
+                          Text('search.required_skills_desc'.tr(),
                             style: GoogleFonts.inter(fontSize: 12, color: AppColors.mutedText),
                           ),
                           const SizedBox(height: 12),
@@ -710,7 +711,7 @@ class _SearchScreenState extends State<SearchScreen> {
                           ),
                           elevation: 0,
                         ),
-                        child: Text('Filtrele',
+                        child: Text('search.filter_button'.tr(),
                           style: GoogleFonts.inter(
                             fontSize: 16, fontWeight: FontWeight.w700,
                           ),
@@ -747,7 +748,7 @@ class _SearchScreenState extends State<SearchScreen> {
         elevation: 0,
         iconTheme: IconThemeData(color: theme.colorScheme.onSurface),
         title: Text(
-          'Arama',
+          'search.title'.tr(),
           style: GoogleFonts.inter(
             color: theme.colorScheme.onSurface,
             fontWeight: FontWeight.w700,
@@ -788,7 +789,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       ),
                       alignment: Alignment.center,
                       child: Text(
-                        'Kişiler',
+                        'search.people'.tr(),
                         style: GoogleFonts.inter(
                           color: _searchMode == 0 ? Colors.white : theme.textTheme.bodySmall?.color,
                           fontWeight: FontWeight.w600,
@@ -818,7 +819,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       ),
                       alignment: Alignment.center,
                       child: Text(
-                        'Takımlar',
+                        'search.teams'.tr(),
                         style: GoogleFonts.inter(
                           color: _searchMode == 1 ? Colors.white : theme.textTheme.bodySmall?.color,
                           fontWeight: FontWeight.w600,
@@ -850,7 +851,7 @@ class _SearchScreenState extends State<SearchScreen> {
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: 'İsim veya yetenek ara...',
+                hintText: 'search.search_hint'.tr(),
                 hintStyle: GoogleFonts.inter(
                   color: theme.textTheme.bodySmall?.color,
                   fontWeight: FontWeight.w400,
@@ -938,7 +939,7 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            _searchMode == 0 ? 'Kullanıcı adı ile arama yap' : 'Takım adı ile arama yap',
+            _searchMode == 0 ? 'search.search_empty_people'.tr() : 'search.search_empty_teams'.tr(),
             style: GoogleFonts.inter(fontSize: 16, color: theme.textTheme.bodySmall?.color),
           ),
         ],
@@ -950,7 +951,7 @@ class _SearchScreenState extends State<SearchScreen> {
     if (_results.isEmpty) {
       return Center(
         child: Text(
-          'Sonuç bulunamadı.',
+          'search.no_results'.tr(),
           style: GoogleFonts.inter(fontSize: 15, color: AppColors.mutedText),
         ),
       );
@@ -987,11 +988,11 @@ class _SearchScreenState extends State<SearchScreen> {
     Color buttonColor;
 
     if (relation.type == _RelationType.pendingOutgoing) {
-      buttonText = 'İstek Gönderildi';
+      buttonText = 'search.request_sent'.tr();
       buttonEnabled = false;
       buttonColor = Colors.orange;
     } else {
-      buttonText = 'Katıl İsteği Gönder';
+      buttonText = 'search.send_join_request'.tr();
       buttonEnabled = true;
       buttonColor = AppColors.primaryAccent;
     }
@@ -1115,22 +1116,22 @@ class _SearchScreenState extends State<SearchScreen> {
 
         switch (relation.type) {
           case _RelationType.accepted:
-            buttonText = 'Takımda/Arkadaş';
+            buttonText = 'search.in_team_or_friend'.tr();
             buttonEnabled = false;
             buttonColor = Colors.green;
             break;
           case _RelationType.pendingOutgoing:
-            buttonText = 'İstek Gönderildi';
+            buttonText = 'search.request_sent'.tr();
             buttonEnabled = false;
             buttonColor = Colors.orange;
             break;
           case _RelationType.pendingIncoming:
-            buttonText = 'Kabul Et';
+            buttonText = 'search.accept'.tr();
             buttonEnabled = true;
             buttonColor = AppColors.primaryAccent;
             break;
           case _RelationType.none:
-            buttonText = 'İstek At';
+            buttonText = 'search.send_request'.tr();
             buttonEnabled = true;
             buttonColor = AppColors.primaryAccent;
             break;
@@ -1194,7 +1195,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        fullName.isEmpty ? 'İsim bilgisi yok' : fullName,
+                        fullName.isEmpty ? 'search.no_name_info'.tr() : fullName,
                         style: GoogleFonts.inter(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
@@ -1328,10 +1329,10 @@ class _SearchScreenState extends State<SearchScreen> {
               child: TextField(
                 controller: ctrl,
                 onChanged: (v) {
-                  if (hint == 'Okul') tempSchool = v.trim();
-                  if (hint == 'Bölüm') tempDepartment = v.trim();
-                  if (hint == 'Yıl (Örn: 2024)') tempYear = v.trim();
-                  if (hint == 'Derece (Örn: Lisans)') tempDegree = v.trim();
+                  if (hint == 'search.school'.tr()) tempSchool = v.trim();
+                  if (hint == 'search.department'.tr()) tempDepartment = v.trim();
+                  if (hint == 'search.year_hint'.tr()) tempYear = v.trim();
+                  if (hint == 'search.degree_hint'.tr()) tempDegree = v.trim();
                 },
                 style: TextStyle(color: theme.colorScheme.onSurface),
                 decoration: InputDecoration(
@@ -1423,7 +1424,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Gelişmiş Filtreleme',
+                      'search.advanced_filtering'.tr(),
                       style: GoogleFonts.inter(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -1446,7 +1447,7 @@ class _SearchScreenState extends State<SearchScreen> {
                         });
                       },
                       child: Text(
-                        'Temizle',
+                        'search.clear'.tr(),
                         style: GoogleFonts.inter(
                           color: AppColors.primaryAccent,
                           fontWeight: FontWeight.w600,
@@ -1462,28 +1463,28 @@ class _SearchScreenState extends State<SearchScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        buildSectionTitle('Eğitim Bilgisi'),
-                        buildTextField(sC, 'Okul'),
-                        buildTextField(dC, 'Bölüm'),
+                        buildSectionTitle('search.education_info'.tr()),
+                        buildTextField(sC, 'search.school'.tr()),
+                        buildTextField(dC, 'search.department'.tr()),
                         Row(
                           children: [
                             Expanded(
-                              child: buildTextField(yC, 'Yıl (Örn: 2024)'),
+                              child: buildTextField(yC, 'search.year_hint'.tr()),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: buildTextField(
                                 deC,
-                                'Derece (Örn: Lisans)',
+                                'search.degree_hint'.tr(),
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 8),
-                        buildSectionTitle('Yetenekler'),
+                        buildSectionTitle('search.skills'.tr()),
                         buildChips(availableSkills, tempSkills),
                         const SizedBox(height: 16),
-                        buildSectionTitle('Aranan Roller'),
+                        buildSectionTitle('search.roles_looking_for'.tr()),
                         buildChips(availableRoles, tempRoles),
                         const SizedBox(height: 40),
                       ],
@@ -1514,7 +1515,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     elevation: 0,
                   ),
                   child: Text(
-                    'Filtreleri Uygula',
+                    'search.apply_filters'.tr(),
                     style: GoogleFonts.inter(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,

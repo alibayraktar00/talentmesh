@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../core/theme/app_colors.dart';
 import '../core/services/profile_service.dart';
 
@@ -38,7 +40,7 @@ class _VisibilitySettingsScreenState extends State<VisibilitySettingsScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Ayarlar yüklenemedi.', style: GoogleFonts.inter()),
+          content: Text('visibility_settings.error_load'.tr(), style: GoogleFonts.inter()),
           backgroundColor: Colors.redAccent,
         ));
       }
@@ -56,7 +58,7 @@ class _VisibilitySettingsScreenState extends State<VisibilitySettingsScreen> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Kaydedildi.', style: GoogleFonts.inter()),
+          content: Text('visibility_settings.success_save'.tr(), style: GoogleFonts.inter()),
           backgroundColor: AppColors.primaryAccent,
           duration: const Duration(seconds: 2),
         ));
@@ -64,7 +66,7 @@ class _VisibilitySettingsScreenState extends State<VisibilitySettingsScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Kaydedilemedi.', style: GoogleFonts.inter()),
+          content: Text('visibility_settings.error_save'.tr(), style: GoogleFonts.inter()),
           backgroundColor: Colors.redAccent,
         ));
       }
@@ -86,7 +88,7 @@ class _VisibilitySettingsScreenState extends State<VisibilitySettingsScreen> {
     return Scaffold(
       backgroundColor: AppColors.white,
       appBar: AppBar(
-        title: Text('Görünürlük',
+        title: Text('visibility_settings.title'.tr(),
             style: GoogleFonts.inter(
                 color: AppColors.headingText,
                 fontWeight: FontWeight.w700,
@@ -115,18 +117,18 @@ class _VisibilitySettingsScreenState extends State<VisibilitySettingsScreen> {
           ? const Center(
               child: CircularProgressIndicator(color: AppColors.primaryAccent))
           : ListView(children: [
-              _header('Profil Görünürlüğü'),
+              _header('visibility_settings.profile_visibility'.tr()),
               _switchItem(
-                title: 'Profilimi Herkese Aç',
-                description: 'Kapalıyken profilinizi sadece arkadaşlarınız görebilir.',
+                title: 'visibility_settings.make_public'.tr(),
+                description: 'visibility_settings.make_public_desc'.tr(),
                 value: _isProfilePublic,
                 onChanged: (v) => _toggle('is_profile_public', v),
               ),
               const Divider(height: 1, color: AppColors.inputBorder),
-              _header('İletişim Bilgileri'),
+              _header('visibility_settings.contact_info'.tr()),
               _switchItem(
-                title: 'E-posta Adresini Göster',
-                description: 'E-posta adresinizin profilinizde görünmesini sağlar.',
+                title: 'visibility_settings.show_email'.tr(),
+                description: 'visibility_settings.show_email_desc'.tr(),
                 value: _showEmail,
                 onChanged: (v) => _toggle('show_email', v),
               ),
@@ -134,7 +136,7 @@ class _VisibilitySettingsScreenState extends State<VisibilitySettingsScreen> {
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Text(
-                  'Bu ayarlar TalentMesh üzerindeki deneyiminizi nasıl yönettiğinizi belirler. Değişiklikler anında uygulanır.',
+                  'visibility_settings.footer_info'.tr(),
                   style: GoogleFonts.inter(
                       fontSize: 13, color: AppColors.mutedText, height: 1.5),
                 ),

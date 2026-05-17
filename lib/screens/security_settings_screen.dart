@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../core/theme/app_colors.dart';
 import '../core/services/auth_service.dart';
 
@@ -19,13 +20,13 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
   @override
   void initState() {
     super.initState();
-    _userEmail = _authService.currentUser?.email ?? 'Yükleniyor...';
+    _userEmail = _authService.currentUser?.email ?? 'security_settings.loading'.tr();
   }
 
   void _showUnderDevelopment(String feature) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$feature özelliği yakında eklenecek!'),
+        content: Text('security_settings.feature_soon'.tr(args: [feature])),
         behavior: SnackBarBehavior.floating,
         backgroundColor: AppColors.primaryAccent,
       ),
@@ -39,37 +40,37 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Şifreyi Değiştir', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+        title: Text('security_settings.change_password'.tr(), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: passwordController,
               obscureText: true,
-              decoration: const InputDecoration(labelText: 'Yeni Şifre'),
+              decoration: InputDecoration(labelText: 'security_settings.new_password'.tr()),
             ),
             TextField(
               controller: confirmController,
               obscureText: true,
-              decoration: const InputDecoration(labelText: 'Şifre Tekrar'),
+              decoration: InputDecoration(labelText: 'security_settings.confirm_password'.tr()),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('common.cancel'.tr())),
           TextButton(
             onPressed: () {
               if (passwordController.text.length < 6) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Şifre en az 6 karakter olmalıdır')));
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('security_settings.error_password_length'.tr())));
                 return;
               }
               if (passwordController.text != confirmController.text) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Şifreler eşleşmiyor')));
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('security_settings.error_password_match'.tr())));
                 return;
               }
               Navigator.pop(context, true);
             },
-            child: const Text('Güncelle'),
+            child: Text('common.update'.tr()),
           ),
         ],
       ),
@@ -79,11 +80,11 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
       try {
         await _client.auth.updateUser(UserAttributes(password: passwordController.text));
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Şifreniz başarıyla güncellendi')));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('security_settings.success_password_update'.tr())));
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('security_settings.error_prefix'.tr(args: [e.toString()]))));
         }
       }
     }
@@ -95,16 +96,16 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('E-posta Güncelle', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+        title: Text('security_settings.update_email'.tr(), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
         content: TextField(
           controller: emailController,
-          decoration: const InputDecoration(labelText: 'Yeni E-posta'),
+          decoration: InputDecoration(labelText: 'security_settings.new_email'.tr()),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('common.cancel'.tr())),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Güncelle'),
+            child: Text('common.update'.tr()),
           ),
         ],
       ),
@@ -115,12 +116,12 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
         await _client.auth.updateUser(UserAttributes(email: emailController.text));
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Doğrulama e-postası gönderildi. Lütfen yeni adresinizi onaylayın.')),
+            SnackBar(content: Text('security_settings.success_email_update'.tr())),
           );
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('security_settings.error_prefix'.tr(args: [e.toString()]))));
         }
       }
     }
@@ -133,7 +134,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
-          'Oturum Açma ve Güvenlik',
+          'security_settings.title'.tr(),
           style: GoogleFonts.inter(
             color: theme.colorScheme.onSurface,
             fontWeight: FontWeight.w700,
@@ -149,25 +150,25 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
       ),
       body: ListView(
         children: [
-          _buildSectionHeader(context, 'Hesap Erişimi'),
+          _buildSectionHeader(context, 'security_settings.account_access'.tr()),
           _buildSecurityItem(
             context,
-            title: 'E-posta Adresi',
+            title: 'security_settings.email_address'.tr(),
             value: _userEmail,
             onTap: _handleUpdateEmail,
           ),
           Divider(height: 1, color: theme.dividerColor),
           _buildSecurityItem(
             context,
-            title: 'Telefon Numarası',
-            value: 'Eklenmedi',
-            onTap: () => _showUnderDevelopment('Telefon Ekleme'),
+            title: 'security_settings.phone_number'.tr(),
+            value: 'security_settings.not_added'.tr(),
+            onTap: () => _showUnderDevelopment('security_settings.add_phone'.tr()),
           ),
           Divider(height: 1, color: theme.dividerColor),
           _buildSecurityItem(
             context,
-            title: 'Şifreyi Değiştir',
-            value: 'Şifrenizi buradan güncelleyebilirsiniz',
+            title: 'security_settings.change_password'.tr(),
+            value: 'security_settings.update_password_desc'.tr(),
             onTap: _handleChangePassword,
           ),
 
@@ -245,7 +246,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Hesap Yönetimi',
+            'security_settings.account_management'.tr(),
             style: GoogleFonts.inter(
               fontSize: 14,
               fontWeight: FontWeight.w700,
@@ -259,26 +260,26 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen> {
               final confirm = await showDialog<bool>(
                 context: context,
                 builder: (context) => AlertDialog(
-                  title: const Text('Hesabı Kapat'),
-                  content: const Text('Hesabınızı kapatmak istediğinize emin misiniz? Bu işlem geri alınamaz.'),
+                  title: Text('security_settings.close_account'.tr()),
+                  content: Text('security_settings.close_account_confirm'.tr()),
                   actions: [
-                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
+                    TextButton(onPressed: () => Navigator.pop(context, false), child: Text('common.cancel'.tr())),
                     TextButton(
                       onPressed: () => Navigator.pop(context, true),
-                      child: const Text('Hesabı Kapat', style: TextStyle(color: Colors.red)),
+                      child: Text('security_settings.close_account'.tr(), style: const TextStyle(color: Colors.red)),
                     ),
                   ],
                 ),
               );
 
               if (confirm == true) {
-                _showUnderDevelopment('Hesap Kapatma (Gerçek Silme)');
+                _showUnderDevelopment('security_settings.close_account_real'.tr());
               }
             },
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: Text(
-                'Hesabı Kapat',
+                'security_settings.close_account'.tr(),
                 style: GoogleFonts.inter(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,

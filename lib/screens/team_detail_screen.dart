@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../core/theme/app_colors.dart';
 import '../models/team_model.dart';
 import '../models/task_model.dart';
@@ -171,14 +172,14 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           _isSendingRequest = false;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Katılma isteği gönderildi.'), backgroundColor: AppColors.onlineGreen),
+          SnackBar(content: Text('team_detail.join_sent'.tr()), backgroundColor: AppColors.onlineGreen),
         );
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isSendingRequest = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: $e'), backgroundColor: const Color(0xFFE53E3E)),
+          SnackBar(content: Text('team_detail.error'.tr(args: [e.toString()])), backgroundColor: const Color(0xFFE53E3E)),
         );
       }
     }
@@ -204,10 +205,10 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
       await _teamService.updateTeamDescription(widget.team.id, _descController.text.trim());
       if (mounted) {
         setState(() { _currentDescription = _descController.text.trim(); _isEditingDescription = false; });
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Açıklama güncellendi.'), backgroundColor: AppColors.onlineGreen));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('team_detail.desc_updated'.tr()), backgroundColor: AppColors.onlineGreen));
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e'), backgroundColor: const Color(0xFFE53E3E)));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('team_detail.error'.tr(args: [e.toString()])), backgroundColor: const Color(0xFFE53E3E)));
     } finally {
       if (mounted) setState(() => _isUpdatingDescription = false);
     }
@@ -218,14 +219,14 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Üyeyi Çıkar', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-        content: Text('$memberName isimli üyeyi takımdan çıkarmak istiyor musunuz?'),
+        title: Text('team_detail.remove_member_title'.tr(), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+        content: Text('team_detail.remove_member_confirm'.tr(args: [memberName])),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('İptal')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text('team_detail.cancel'.tr())),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE53E3E), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Çıkar', style: TextStyle(color: Colors.white)),
+            child: Text('team_detail.remove'.tr(), style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -235,10 +236,10 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
       await _teamService.removeTeamMember(membershipId);
       if (mounted) {
         setState(() => _members.removeWhere((m) => m['id'].toString() == membershipId));
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Üye çıkarıldı.'), backgroundColor: AppColors.onlineGreen));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('team_detail.member_removed'.tr()), backgroundColor: AppColors.onlineGreen));
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('team_detail.error'.tr(args: [e.toString()]))));
     }
   }
 
@@ -282,7 +283,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                         const SizedBox(width: 8),
                         _headerBadge(
                           icon: Icons.star_rounded,
-                          label: 'Yönetici',
+                          label: 'team_detail.admin'.tr(),
                           iconColor: Colors.amber,
                         ),
                       ],
@@ -367,11 +368,11 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                     fontSize: 13,
                   ),
                   tabs: [
-                    const Tab(text: 'Toplantılar'),
-                    const Tab(text: 'Görevler'),
-                    const Tab(text: 'Üyeler'),
-                    const Tab(text: 'Detaylar'),
-                    if (_isAdmin) const Tab(text: 'İstekler'),
+                    Tab(text: 'team_detail.tab_meetings'.tr()),
+                    Tab(text: 'team_detail.tab_tasks'.tr()),
+                    Tab(text: 'team_detail.tab_members'.tr()),
+                    Tab(text: 'team_detail.tab_details'.tr()),
+                    if (_isAdmin) Tab(text: 'team_detail.tab_requests'.tr()),
                   ],
                 ),
               ),
@@ -400,7 +401,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
               backgroundColor: color,
               foregroundColor: Colors.white,
               icon: const Icon(Icons.add_rounded),
-              label: Text('Toplantı Planla', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+              label: Text('team_detail.schedule_meeting'.tr(), style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
             );
           }
           // Görevler sekmesi
@@ -429,7 +430,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
               backgroundColor: color,
               foregroundColor: Colors.white,
               icon: const Icon(Icons.add_task_rounded),
-              label: Text('Görev Ekle', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+              label: Text('team_detail.add_task'.tr(), style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
             );
           }
           return const SizedBox.shrink();
@@ -461,7 +462,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                   child: _isSendingRequest
                       ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                       : Text(
-                          _hasPendingRequest ? 'İstek Gönderildi' : 'Takıma Katılma İsteği Gönder',
+                          _hasPendingRequest ? 'team_detail.request_sent'.tr() : 'team_detail.send_join_request'.tr(),
                           style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold),
                         ),
                 ),
@@ -489,9 +490,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
               children: [
                 Icon(Icons.lock_outline_rounded, size: 64, color: widget.team.color.withValues(alpha: 0.3)),
                 const SizedBox(height: 16),
-                Text('Görevler Gizlidir', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
+                Text('team_detail.tasks_hidden'.tr(), style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
                 const SizedBox(height: 8),
-                Text('Görev detaylarını görmek için\ntakıma katılmanız gerekiyor.', textAlign: TextAlign.center, style: GoogleFonts.inter(color: theme.textTheme.bodySmall?.color)),
+                Text('team_detail.tasks_hidden_desc'.tr(), textAlign: TextAlign.center, style: GoogleFonts.inter(color: theme.textTheme.bodySmall?.color)),
               ],
             ),
           );
@@ -518,7 +519,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                   children: [
                     Expanded(
                       child: _buildSummaryCard(
-                        title: 'Aktif',
+                        title: 'team_detail.active'.tr(),
                         count: activeTasks.length,
                         icon: Icons.play_circle_fill_rounded,
                         color: const Color(0xFF4299E1),
@@ -527,7 +528,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                     const SizedBox(width: 12),
                     Expanded(
                       child: _buildSummaryCard(
-                        title: 'Geciken',
+                        title: 'team_detail.overdue'.tr(),
                         count: overdueTasks.length,
                         icon: Icons.warning_rounded,
                         color: const Color(0xFFE53E3E),
@@ -543,19 +544,19 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
 
                 // ─── Görev Listeleri ─────────────────────
                 _buildTaskList(
-                  title: 'Aktif Görevler',
+                  title: 'team_detail.active_tasks'.tr(),
                   icon: Icons.list_alt_rounded,
                   color: widget.team.color,
                   tasks: activeTasks,
-                  emptyMessage: 'Aktif görev bulunmuyor',
+                  emptyMessage: 'team_detail.no_active_tasks'.tr(),
                 ),
                 const SizedBox(height: 16),
                 _buildTaskList(
-                  title: 'Tamamlananlar',
+                  title: 'team_detail.completed'.tr(),
                   icon: Icons.check_circle_rounded,
                   color: AppColors.onlineGreen,
                   tasks: doneTasks,
-                  emptyMessage: 'Tamamlanan görev yok',
+                  emptyMessage: 'team_detail.no_completed_tasks'.tr(),
                 ),
               ],
             ),
@@ -593,7 +594,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
               Icon(Icons.trending_up_rounded, size: 20, color: widget.team.color),
               const SizedBox(width: 8),
               Text(
-                'Takım İlerlemesi',
+                'team_detail.team_progress'.tr(),
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -687,7 +688,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           if (total == 0) ...[
             const SizedBox(height: 12),
             Text(
-              'Henüz görev eklenmemiş. Görev eklemek için + butonuna dokun.',
+              'team_detail.no_tasks_hint'.tr(),
               style: GoogleFonts.inter(fontSize: 12, color: theme.textTheme.bodySmall?.color),
             ),
           ],
@@ -862,12 +863,12 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           context: context,
           builder: (ctx) => AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: Text('Görevi Sil', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-            content: Text('"${task.title}" görevini silmek istiyor musunuz?'),
+            title: Text('team_detail.delete_task'.tr(), style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+            content: Text('team_detail.delete_task_confirm'.tr(args: [task.title])),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('İptal'),
+                child: Text('team_detail.cancel'.tr()),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -875,7 +876,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
                 onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('Sil', style: TextStyle(color: Colors.white)),
+                child: Text('team_detail.delete'.tr(), style: const TextStyle(color: Colors.white)),
               ),
             ],
           ),
@@ -886,13 +887,13 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           await _taskProvider.deleteTask(taskId: task.id, teamId: widget.team.id);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Görev silindi.'), backgroundColor: AppColors.onlineGreen),
+              SnackBar(content: Text('team_detail.task_deleted'.tr()), backgroundColor: AppColors.onlineGreen),
             );
           }
         } catch (e) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Hata: $e')),
+              SnackBar(content: Text('team_detail.error'.tr(args: [e.toString()]))),
             );
           }
         }
@@ -1016,7 +1017,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                     child: Text(
                       task.assignees.length == 1
                           ? '@${task.assignees.first.username ?? ''}'
-                          : '${task.assignees.length} kişi atandı',
+                          : 'team_detail.assigned_count'.tr(args: [task.assignees.length.toString()]),
                       style: GoogleFonts.inter(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
@@ -1046,7 +1047,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
         children: [
           // Description
           _sectionCard(
-            title: 'Takım Açıklaması',
+            title: 'team_detail.team_description'.tr(),
             trailing: _isAdmin
                 ? IconButton(
                     icon: Icon(_isEditingDescription ? Icons.close_rounded : Icons.edit_rounded, size: 18, color: theme.textTheme.bodySmall?.color),
@@ -1069,17 +1070,17 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                     ElevatedButton(
                       onPressed: _isUpdatingDescription ? null : _updateDescription,
                       style: ElevatedButton.styleFrom(backgroundColor: widget.team.color, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                      child: _isUpdatingDescription ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text('Kaydet'),
+                      child: _isUpdatingDescription ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : Text('team_detail.save'.tr()),
                     ),
                   ])
-                : Text(_currentDescription.isEmpty ? 'Açıklama eklenmemiş.' : _currentDescription, style: GoogleFonts.inter(fontSize: 14, color: theme.textTheme.bodyMedium?.color, height: 1.6)),
+                : Text(_currentDescription.isEmpty ? 'team_detail.no_description'.tr() : _currentDescription, style: GoogleFonts.inter(fontSize: 14, color: theme.textTheme.bodyMedium?.color, height: 1.6)),
           ),
           const SizedBox(height: 16),
 
           // Roles
           if (team.roles.isNotEmpty)
             _sectionCard(
-              title: 'Aranan Roller',
+              title: 'team_detail.required_roles'.tr(),
               child: Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -1091,7 +1092,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
           // Skills
           if (team.skills.isNotEmpty)
             _sectionCard(
-              title: 'Gerekli Yetenekler',
+              title: 'team_detail.required_skills'.tr(),
               child: Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -1102,12 +1103,12 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
 
           // Capacity
           _sectionCard(
-            title: 'Kapasite',
+            title: 'team_detail.capacity'.tr(),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 Icon(Icons.people_outline, size: 16, color: theme.textTheme.bodySmall?.color),
                 const SizedBox(width: 8),
-                Text('${team.currentMembers} / ${team.maxMembers} Üye', style: GoogleFonts.inter(fontSize: 14, color: theme.textTheme.bodyMedium?.color)),
+                Text('team_detail.member_count'.tr(args: [team.currentMembers.toString(), team.maxMembers.toString()]), style: GoogleFonts.inter(fontSize: 14, color: theme.textTheme.bodyMedium?.color)),
               ]),
               const SizedBox(height: 10),
               ClipRRect(
@@ -1141,7 +1142,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
       userId: widget.team.adminId,
       username: adminUsername,
       fullName: adminFullName,
-      badge: 'Kurucu',
+      badge: 'team_detail.founder'.tr(),
       badgeColor: widget.team.color,
       membershipId: null,
       isCurrentUser: widget.team.adminId == _currentUserId,
@@ -1155,7 +1156,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
         userId: uid,
         username: p['username']?.toString() ?? uid.substring(0, 6),
         fullName: p['full_name']?.toString() ?? '',
-        badge: 'Üye',
+        badge: 'team_detail.member'.tr(),
         badgeColor: theme.textTheme.bodySmall?.color ?? AppColors.mutedText,
         membershipId: m['id'].toString(),
         isCurrentUser: uid == _currentUserId,
@@ -1232,9 +1233,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                children: [
                  Icon(Icons.lock_outline_rounded, size: 64, color: widget.team.color.withValues(alpha: 0.3)),
                  const SizedBox(height: 16),
-                 Text('Toplantılar Gizlidir', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
+                 Text('team_detail.meetings_hidden'.tr(), style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
                  const SizedBox(height: 8),
-                 Text('Toplantı detaylarını görmek için\ntakıma katılmanız gerekiyor.', textAlign: TextAlign.center, style: GoogleFonts.inter(color: theme.textTheme.bodySmall?.color)),
+                 Text('team_detail.meetings_hidden_desc'.tr(), textAlign: TextAlign.center, style: GoogleFonts.inter(color: theme.textTheme.bodySmall?.color)),
                ],
              ),
            );
@@ -1249,7 +1250,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                 unselectedLabelColor: theme.textTheme.bodySmall?.color,
                 indicatorColor: widget.team.color,
                 labelStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
-                tabs: const [Tab(text: 'Yaklaşan'), Tab(text: 'Geçmiş')],
+                tabs: [Tab(text: 'team_detail.upcoming'.tr()), Tab(text: 'team_detail.past'.tr())],
               ),
             ),
             Expanded(child: TabBarView(children: [
@@ -1268,9 +1269,9 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
       return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         Icon(isUpcoming ? Icons.event_available_rounded : Icons.history_rounded, size: 56, color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.4)),
         const SizedBox(height: 14),
-        Text(isUpcoming ? 'Yaklaşan toplantı yok' : 'Geçmiş toplantı yok', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: theme.textTheme.bodySmall?.color)),
+        Text(isUpcoming ? 'team_detail.no_upcoming_meetings'.tr() : 'team_detail.no_past_meetings'.tr(), style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: theme.textTheme.bodySmall?.color)),
         const SizedBox(height: 6),
-        if (isUpcoming && _isMember) Text('Toplantı planlamak için + butonuna dokun', style: GoogleFonts.inter(fontSize: 12, color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6))),
+        if (isUpcoming && _isMember) Text('team_detail.add_meeting_hint'.tr(), style: GoogleFonts.inter(fontSize: 12, color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6))),
       ]));
     }
     return RefreshIndicator(
@@ -1288,7 +1289,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
             onDelete: () async {
               try {
                 await _meetingProvider.deleteMeeting(m.id, widget.team.id);
-                if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Toplantı silindi.'), backgroundColor: AppColors.onlineGreen));
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('team_detail.meeting_deleted'.tr()), backgroundColor: AppColors.onlineGreen));
               } catch (e) {
                 if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
               }
@@ -1307,7 +1308,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
       return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         Icon(Icons.inbox_rounded, size: 56, color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.4)),
         const SizedBox(height: 14),
-        Text('Bekleyen istek yok', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: theme.textTheme.bodySmall?.color)),
+        Text('team_detail.no_pending_requests'.tr(), style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: theme.textTheme.bodySmall?.color)),
       ]));
     }
     return RefreshIndicator(
@@ -1319,7 +1320,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
         itemBuilder: (_, i) {
           final req = _incomingRequests[i];
           final profile = req['profiles'] as Map<String, dynamic>? ?? {};
-          final username = profile['username']?.toString() ?? 'Bilinmeyen';
+          final username = profile['username']?.toString() ?? 'team_detail.unknown'.tr();
           final fullName = profile['full_name']?.toString() ?? '';
           final reqId = req['id'].toString();
           final userId = req['user_id'].toString();
@@ -1339,7 +1340,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                 onPressed: () async {
                   try {
                     await _teamService.acceptJoinRequest(reqId, widget.team.id, userId, widget.team.maxMembers);
-                    if (mounted) { setState(() => widget.team.currentMembers++); await _fetchIncomingRequests(); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('İstek onaylandı.'), backgroundColor: AppColors.onlineGreen)); }
+                    if (mounted) { setState(() => widget.team.currentMembers++); await _fetchIncomingRequests(); ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('team_detail.request_approved'.tr()), backgroundColor: AppColors.onlineGreen)); }
                   } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); }
                 },
               ),
@@ -1348,7 +1349,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen>
                 onPressed: () async {
                   try {
                     await _teamService.rejectJoinRequest(reqId);
-                    if (mounted) { await _fetchIncomingRequests(); ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('İstek reddedildi.'))); }
+                    if (mounted) { await _fetchIncomingRequests(); ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('team_detail.request_rejected'.tr()))); }
                   } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()))); }
                 },
               ),

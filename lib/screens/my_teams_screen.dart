@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../core/theme/app_colors.dart';
 import '../models/team_model.dart';
 import '../providers/team_provider.dart';
@@ -66,7 +67,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
     if (_error != null) {
       return Center(
         child: Text(
-          'Bir hata oluştu: $_error',
+          'my_teams.error_occurred'.tr(args: [_error!]),
           style: GoogleFonts.inter(color: Colors.red),
         ),
       );
@@ -117,7 +118,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
             ),
             const SizedBox(height: 24),
             Text(
-              'Henüz takımın yok',
+              'my_teams.no_teams'.tr(),
               style: GoogleFonts.inter(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
@@ -126,7 +127,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Yeni bir takım oluşturarak\nprojelerine başla!',
+              'my_teams.create_and_start'.tr(),
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(
                 fontSize: 14,
@@ -155,7 +156,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
           child: Row(
             children: [
               Text(
-                '${teams.length} aktif takım',
+                'my_teams.active_teams'.tr(args: [teams.length.toString()]),
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -185,7 +186,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        'Yeni Takım',
+                        'my_teams.new_team'.tr(),
                         style: GoogleFonts.inter(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -315,7 +316,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
                                       ),
                                       const SizedBox(width: 3),
                                       Text(
-                                        'Kurucu',
+                                        'my_teams.founder'.tr(),
                                         style: GoogleFonts.inter(
                                           fontSize: 10,
                                           fontWeight: FontWeight.w600,
@@ -365,7 +366,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
                                       ),
                                       const SizedBox(width: 3),
                                       Text(
-                                        'Üye',
+                                        'my_teams.member'.tr(),
                                         style: GoogleFonts.inter(
                                           fontSize: 10,
                                           fontWeight: FontWeight.w600,
@@ -433,7 +434,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
                               ),
                               const SizedBox(width: 6),
                               Text(
-                                '${team.currentMembers} / ${team.maxMembers} Üye',
+                                'my_teams.member_count'.tr(args: [team.currentMembers.toString(), team.maxMembers.toString()]),
                                 style: GoogleFonts.inter(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
@@ -520,7 +521,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
         onPressed: () => _openCreateSheet(context),
         icon: const Icon(Icons.add_rounded, size: 20),
         label: Text(
-          'Takım Oluştur',
+          'my_teams.create_team'.tr(),
           style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600),
         ),
         style: ElevatedButton.styleFrom(
@@ -546,18 +547,18 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
-          'Takımı Sil',
+          'my_teams.delete_team'.tr(),
           style: GoogleFonts.inter(fontWeight: FontWeight.w700),
         ),
         content: Text(
-          '"${team.name}" takımını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.',
+          'my_teams.delete_confirm'.tr(args: [team.name]),
           style: GoogleFonts.inter(),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
             child: Text(
-              'İptal',
+              'my_teams.cancel'.tr(),
               style: GoogleFonts.inter(color: AppColors.mutedText),
             ),
           ),
@@ -569,7 +570,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Takım başarıyla silindi.'),
+                      content: Text('my_teams.delete_success'.tr()),
                       backgroundColor: AppColors.onlineGreen,
                     ),
                   );
@@ -578,7 +579,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Hata oluştu: $e'),
+                      content: Text('my_teams.delete_error'.tr(args: [e.toString()])),
                       backgroundColor: const Color(0xFFE53E3E),
                     ),
                   );
@@ -592,7 +593,7 @@ class _MyTeamsScreenState extends State<MyTeamsScreen> {
               ),
             ),
             child: Text(
-              'Sil',
+              'my_teams.delete'.tr(),
               style: GoogleFonts.inter(
                 color: Colors.white,
                 fontWeight: FontWeight.w600,

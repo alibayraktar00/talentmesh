@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../core/theme/app_colors.dart';
 import '../models/team_model.dart';
 import '../providers/team_provider.dart';
@@ -155,18 +156,18 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
                       const SizedBox(height: 8),
 
                       // ── Takım Adı ──
-                      _buildSectionLabel('Takım Adı', Icons.group_outlined),
+                      _buildSectionLabel('create_team.team_name'.tr(), Icons.group_outlined),
                       const SizedBox(height: 8),
                       _buildTextField(
                         controller: _teamNameController,
-                        hint: 'Takımınıza bir isim verin',
+                        hint: 'create_team.team_name_hint'.tr(),
                         icon: Icons.edit_outlined,
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Takım adı boş bırakılamaz';
+                            return 'create_team.name_empty'.tr();
                           }
                           if (value.trim().length < 2) {
-                            return 'Takım adı en az 2 karakter olmalı';
+                            return 'create_team.name_short'.tr();
                           }
                           return null;
                         },
@@ -175,18 +176,18 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
 
                       // ── Takım Açıklaması ──
                       _buildSectionLabel(
-                        'Takım Açıklaması',
+                        'create_team.description'.tr(),
                         Icons.description_outlined,
                       ),
                       const SizedBox(height: 8),
                       _buildTextField(
                         controller: _descriptionController,
-                        hint: 'Takımınızın amacını ve projenizi açıklayın...',
+                        hint: 'create_team.description_hint'.tr(),
                         icon: Icons.notes_outlined,
                         maxLines: 4,
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Açıklama boş bırakılamaz';
+                            return 'create_team.description_empty'.tr();
                           }
                           return null;
                         },
@@ -195,7 +196,7 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
 
                       // ── Maksimum Üye Sayısı ──
                       _buildSectionLabel(
-                        'Maksimum Üye Sayısı',
+                        'create_team.max_members'.tr(),
                         Icons.people_outline,
                       ),
                       const SizedBox(height: 12),
@@ -203,10 +204,10 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
                       const SizedBox(height: 24),
 
                       // ── Aranan Roller ──
-                      _buildSectionLabel('Aranan Roller', Icons.work_outline),
+                      _buildSectionLabel('create_team.required_roles'.tr(), Icons.work_outline),
                       const SizedBox(height: 4),
                       Text(
-                        'Takımınız için gereken pozisyonları seçin',
+                        'create_team.roles_hint'.tr(),
                         style: GoogleFonts.inter(
                           fontSize: 12,
                           fontWeight: FontWeight.w400,
@@ -223,12 +224,12 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
 
                       // ── Gerekli Yetenekler ──
                       _buildSectionLabel(
-                        'Gerekli Yetenekler',
+                        'create_team.required_skills'.tr(),
                         Icons.code_outlined,
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Projede kullanılacak teknolojileri seçin',
+                        'create_team.skills_hint'.tr(),
                         style: GoogleFonts.inter(
                           fontSize: 12,
                           fontWeight: FontWeight.w400,
@@ -308,7 +309,7 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Yeni Takım Oluştur',
+                        'create_team.title'.tr(),
                         style: GoogleFonts.inter(
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
@@ -317,7 +318,7 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Ekip arkadaşlarını bul ve projeye başla',
+                        'create_team.subtitle'.tr(),
                         style: GoogleFonts.inter(
                           fontSize: 12,
                           fontWeight: FontWeight.w400,
@@ -497,7 +498,7 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '$_maxMembers Kişi',
+                  'create_team.people'.tr(args: [_maxMembers.toString()]),
                   style: GoogleFonts.inter(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -505,7 +506,7 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
                   ),
                 ),
                 Text(
-                  'Takım kapasitesi',
+                  'create_team.capacity'.tr(),
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.w400,
@@ -694,7 +695,7 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
                     const Icon(Icons.rocket_launch_outlined, size: 20),
                     const SizedBox(width: 10),
                     Text(
-                      'Takımı Oluştur',
+                      'create_team.submit'.tr(),
                       style: GoogleFonts.inter(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -716,7 +717,7 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Lütfen en az bir rol seçin',
+            'create_team.select_role_error'.tr(),
             style: GoogleFonts.inter(fontSize: 13),
           ),
           backgroundColor: const Color(0xFFE53E3E),
@@ -776,7 +777,7 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  '"${newTeam.name}" takımı başarıyla oluşturuldu! 🎉',
+                  'create_team.success'.tr(args: [newTeam.name]),
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
@@ -801,7 +802,7 @@ class _CreateTeamSheetState extends State<_CreateTeamSheet>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Takım oluşturulurken hata oluştu: $e'),
+            content: Text('create_team.error'.tr(args: [e.toString()])),
             backgroundColor: const Color(0xFFE53E3E),
           ),
         );

@@ -7,6 +7,7 @@ import 'visibility_settings_screen.dart';
 import 'security_settings_screen.dart';
 import 'notification_settings_screen.dart';
 import 'help_center_screen.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../core/services/auth_service.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -51,19 +52,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Oturumu Kapat',
+        title: Text('settings.logout'.tr(),
             style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-        content: Text('Oturumu kapatmak istediğinize emin misiniz?',
+        content: Text('settings.logout_confirm_msg'.tr(),
             style: GoogleFonts.inter()),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text('İptal',
+            child: Text('settings.cancel'.tr(),
                 style: GoogleFonts.inter(color: AppColors.mutedText)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text('Çıkış Yap',
+            child: Text('settings.logout_button'.tr(),
                 style: GoogleFonts.inter(
                     color: Colors.redAccent, fontWeight: FontWeight.bold)),
           ),
@@ -79,13 +80,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  void _showLanguageDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('settings.language'.tr(),
+            style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: Text('settings.turkish'.tr()),
+              trailing: context.locale.languageCode == 'tr'
+                  ? const Icon(Icons.check, color: AppColors.primaryAccent)
+                  : null,
+              onTap: () {
+                context.setLocale(const Locale('tr'));
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              title: Text('settings.english'.tr()),
+              trailing: context.locale.languageCode == 'en'
+                  ? const Icon(Icons.check, color: AppColors.primaryAccent)
+                  : null,
+              onTap: () {
+                context.setLocale(const Locale('en'));
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.white,
       appBar: AppBar(
         title: Text(
-          'Ayarlar',
+          'settings.title'.tr(),
           style: GoogleFonts.inter(
             color: AppColors.headingText,
             fontWeight: FontWeight.w700,
@@ -108,11 +144,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const Divider(height: 1, thickness: 1, color: AppColors.inputBorder),
 
           // Settings Categories
-          _buildSectionHeader('Hesap Tercihleri'),
+          _buildSectionHeader('settings.account_preferences'.tr()),
           _buildLinkedInStyleItem(
             icon: Icons.person_outline,
-            title: 'Kişisel Bilgiler',
-            description: 'İsim, unvan ve konum bilgilerini yönet',
+            title: 'settings.personal_info'.tr(),
+            description: 'settings.personal_info_desc'.tr(),
             onTap: () {
               Navigator.push(
                 context,
@@ -122,8 +158,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           _buildLinkedInStyleItem(
             icon: Icons.visibility_outlined,
-            title: 'Görünürlük',
-            description: 'Profilinin kimler tarafından görülebileceğini seç',
+            title: 'settings.visibility'.tr(),
+            description: 'settings.visibility_desc'.tr(),
             onTap: () {
               Navigator.push(
                 context,
@@ -135,11 +171,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
 
           const SizedBox(height: 16),
-          _buildSectionHeader('Güvenlik'),
+          _buildSectionHeader('settings.language'.tr()),
+          _buildLinkedInStyleItem(
+            icon: Icons.language,
+            title: 'settings.language'.tr(),
+            description: context.locale.languageCode == 'tr' ? 'settings.turkish'.tr() : 'settings.english'.tr(),
+            onTap: _showLanguageDialog,
+          ),
+
+          const SizedBox(height: 16),
+          _buildSectionHeader('settings.security'.tr()),
           _buildLinkedInStyleItem(
             icon: Icons.lock_outline,
-            title: 'Oturum Açma ve Güvenlik',
-            description: 'E-posta, telefon ve şifre ayarları',
+            title: 'settings.signin_security'.tr(),
+            description: 'settings.signin_security_desc'.tr(),
             onTap: () {
               Navigator.push(
                 context,
@@ -151,11 +196,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
 
           const SizedBox(height: 16),
-          _buildSectionHeader('Bildirimler'),
+          _buildSectionHeader('settings.notifications'.tr()),
           _buildLinkedInStyleItem(
             icon: Icons.notifications_none,
-            title: 'Bildirim Ayarları',
-            description: 'E-posta ve uygulama içi bildirimler',
+            title: 'settings.notification_settings'.tr(),
+            description: 'settings.notification_settings_desc'.tr(),
             onTap: () {
               Navigator.push(
                 context,
@@ -167,11 +212,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
 
           const SizedBox(height: 16),
-          _buildSectionHeader('Destek'),
+          _buildSectionHeader('settings.support'.tr()),
           _buildLinkedInStyleItem(
             icon: Icons.help_outline,
-            title: 'Yardım Merkezi',
-            description: 'Sıkça sorulan sorular ve destek hattı',
+            title: 'settings.help_center'.tr(),
+            description: 'settings.help_center_desc'.tr(),
             onTap: () {
               Navigator.push(
                 context,
@@ -183,8 +228,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           _buildLinkedInStyleItem(
             icon: Icons.info_outline,
-            title: 'Hakkında',
-            description: 'Kullanım koşulları ve yasal bilgiler',
+            title: 'settings.about'.tr(),
+            description: 'settings.about_desc'.tr(),
             onTap: () {
               showAboutDialog(
                 context: context,
@@ -209,7 +254,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: EdgeInsets.zero,
               ),
               child: Text(
-                'Oturumu Kapat',
+                'settings.logout'.tr(),
                 style: GoogleFonts.inter(
                   color: AppColors.primaryAccent,
                   fontWeight: FontWeight.w600,
@@ -266,7 +311,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                 const SizedBox(height: 4),
                 Text(
-                  'Profilinizi yönetin',
+                  'settings.manage_profile'.tr(),
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     color: AppColors.mutedText,

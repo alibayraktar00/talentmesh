@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/theme/app_colors.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class HelpCenterScreen extends StatelessWidget {
@@ -31,7 +32,7 @@ class HelpCenterScreen extends StatelessWidget {
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
-          'Yardım Merkezi',
+          'help_center.title'.tr(),
           style: GoogleFonts.inter(
             color: theme.colorScheme.onSurface,
             fontWeight: FontWeight.w700,
@@ -50,42 +51,42 @@ class HelpCenterScreen extends StatelessWidget {
         children: [
           _buildSearchBox(context),
           const SizedBox(height: 24),
-          _buildSectionHeader(context, 'Sıkça Sorulan Sorular'),
+          _buildSectionHeader(context, 'help_center.faq'.tr()),
           _buildFaqItem(
             context,
-            'Nasıl takım kurabilirim?',
-            'Ana sayfadaki "+" butonuna basarak yeni bir takım oluşturabilir, takımınızın hedeflerini ve aradığınız rolleri belirleyebilirsiniz.',
+            'help_center.faq_1_q'.tr(),
+            'help_center.faq_1_a'.tr(),
           ),
           _buildFaqItem(
             context,
-            'Takım arkadaşlarımı nasıl bulurum?',
-            'Arama kısmından yeteneklere veya isimlere göre arama yapabilir, uygun bulduğunuz kişilere bağlantı isteği gönderebilirsiniz.',
+            'help_center.faq_2_q'.tr(),
+            'help_center.faq_2_a'.tr(),
           ),
           _buildFaqItem(
             context,
-            'Profilimi nasıl güncellerim?',
-            'Ayarlar > Kişisel Bilgiler sayfasından veya profil sayfanızdaki kalem ikonuna dokunarak bilgilerinizi güncelleyebilirsiniz.',
+            'help_center.faq_3_q'.tr(),
+            'help_center.faq_3_a'.tr(),
           ),
           const SizedBox(height: 24),
-          _buildSectionHeader(context, 'Bize Ulaşın'),
+          _buildSectionHeader(context, 'help_center.contact_us'.tr()),
           _buildContactItem(
             context,
             icon: Icons.email_outlined,
-            title: 'E-posta Gönder',
+            title: 'help_center.send_email'.tr(),
             subtitle: 'destek@talentmesh.com',
             onTap: () => _launchEmail('destek@talentmesh.com'),
           ),
           _buildContactItem(
             context,
             icon: Icons.language,
-            title: 'Web Sitemiz',
+            title: 'help_center.our_website'.tr(),
             subtitle: 'www.talentmesh.com',
             onTap: () => _launchUrl('https://www.talentmesh.com'),
           ),
           const SizedBox(height: 40),
           Center(
             child: Text(
-              'Versiyon 1.0.0',
+              'help_center.version'.tr(),
               style: GoogleFonts.inter(
                 fontSize: 12,
                 color: theme.textTheme.bodySmall?.color,
@@ -114,7 +115,7 @@ class HelpCenterScreen extends StatelessWidget {
       child: TextField(
         style: TextStyle(color: theme.colorScheme.onSurface),
         decoration: InputDecoration(
-          hintText: 'Nasıl yardımcı olabiliriz?',
+          hintText: 'help_center.search_hint'.tr(),
           hintStyle: GoogleFonts.inter(color: theme.textTheme.bodySmall?.color),
           prefixIcon: const Icon(Icons.search, color: AppColors.primaryAccent),
           border: InputBorder.none,

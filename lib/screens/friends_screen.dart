@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../core/theme/app_colors.dart';
 import '../core/services/notification_service.dart';
 import '../core/services/profile_service.dart';
@@ -148,9 +149,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
       // Türkçe yorum: Kullanıcı listeyi gördüğünde okunmamış istekleri okundu yapıyoruz.
       await _markIncomingAsRead();
     } on PostgrestException catch (e) {
-      _showError('Gelen istekler alınamadı: ${e.message}');
+      _showError('friends.error_incoming'.tr(args: [e.message]));
     } catch (_) {
-      _showError('Gelen istekler alınamadı.');
+      _showError('friends.error_incoming_generic'.tr());
     } finally {
       if (mounted) setState(() => _isIncomingLoading = false);
     }
@@ -233,9 +234,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
         _sortFriendsByPriority();
       });
     } on PostgrestException catch (e) {
-      _showError('Arkadaş listesi alınamadı: ${e.message}');
+      _showError('friends.error_friends'.tr(args: [e.message]));
     } catch (_) {
-      _showError('Arkadaş listesi alınamadı.');
+      _showError('friends.error_friends_generic'.tr());
     } finally {
       if (mounted) setState(() => _isFriendsLoading = false);
     }
@@ -275,9 +276,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
       });
       await _loadFriends();
     } on PostgrestException catch (e) {
-      _showError('İstek güncellenemedi: ${e.message}');
+      _showError('friends.error_update_request'.tr(args: [e.message]));
     } catch (_) {
-      _showError('İstek güncellenemedi.');
+      _showError('friends.error_update_request_generic'.tr());
     } finally {
       if (mounted) {
         setState(() => _actionLoadingIds.remove(requestId));
@@ -293,7 +294,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
       final removed = await _profileService.removeFriend(friendId);
       if (!removed) {
         _showError(
-          'Arkadaşlık kaydı bulunamadı veya kaldırılamadı. Lütfen sayfayı yenileyip tekrar deneyin.',
+          'friends.error_remove_not_found'.tr(),
         );
         return;
       }
@@ -303,15 +304,15 @@ class _FriendsScreenState extends State<FriendsScreen> {
         _friends.removeWhere((f) => f['id'].toString() == friendId);
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Arkadaşlıktan çıkarıldı.'),
+        SnackBar(
+          content: Text('friends.success_removed'.tr()),
           behavior: SnackBarBehavior.floating,
         ),
       );
     } on PostgrestException catch (e) {
-      _showError('Arkadaşlıktan çıkarma başarısız: ${e.message}');
+      _showError('friends.error_remove'.tr(args: [e.message]));
     } catch (e) {
-      _showError('Arkadaşlıktan çıkarma başarısız oldu.');
+      _showError('friends.error_remove_generic'.tr());
     } finally {
       if (mounted) setState(() => _actionLoadingIds.remove(friendId));
     }
@@ -462,7 +463,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
           _buildIncomingSection(),
           const SizedBox(height: 20),
           Text(
-            'Arkadaşlarım',
+            'friends.my_friends'.tr(),
             style: GoogleFonts.inter(
               fontSize: 18,
               fontWeight: FontWeight.w700,
@@ -481,7 +482,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
     return Row(
       children: [
         Text(
-          'Gelen İstekler',
+          'friends.incoming_requests'.tr(),
           style: GoogleFonts.inter(
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -525,7 +526,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
         ),
         const Spacer(),
         IconButton(
-          tooltip: 'Mesajlar',
+          tooltip: 'friends.messages'.tr(),
           onPressed: () {
             Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const InboxScreen()),
@@ -554,7 +555,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
         ),
         child: Center(
           child: Text(
-            'Henüz gelen bir istek yok.',
+            'friends.no_incoming'.tr(),
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(fontSize: 14, color: theme.textTheme.bodySmall?.color),
           ),
@@ -617,7 +618,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       ),
                     ),
                     Text(
-                      fullName.isEmpty ? 'İsim bilgisi yok' : fullName,
+                      fullName.isEmpty ? 'friends.no_name_info'.tr() : fullName,
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         color: theme.textTheme.bodySmall?.color,
@@ -647,7 +648,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         padding: const EdgeInsets.symmetric(horizontal: 10),
                       ),
-                      child: const Text('Reddet'),
+                      child: Text('friends.reject'.tr()),
                     ),
                     ElevatedButton(
                       onPressed: () => _setRequestStatus(
@@ -661,7 +662,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         padding: const EdgeInsets.symmetric(horizontal: 10),
                       ),
-                      child: const Text('Kabul Et'),
+                      child: Text('friends.accept'.tr()),
                     ),
                   ],
                 ),
@@ -679,7 +680,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
     }
 
     if (_friends.isEmpty) {
-      return _buildEmptyCard('Henüz arkadaşın yok.');
+      return _buildEmptyCard('friends.no_friends'.tr());
     }
 
     return Column(
@@ -731,7 +732,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       ),
                     ),
                     Text(
-                      fullName.isEmpty ? 'İsim bilgisi yok' : fullName,
+                      fullName.isEmpty ? 'friends.no_name_info'.tr() : fullName,
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         color: theme.textTheme.bodySmall?.color,
@@ -795,7 +796,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                 ),
-                child: const Text('Mesaj Gönder'),
+                child: Text('friends.send_message'.tr()),
               ),
               if (_actionLoadingIds.contains(friendId))
                 const Padding(
@@ -823,17 +824,17 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       final confirm = await showDialog<bool>(
                         context: context,
                         builder: (ctx) => AlertDialog(
-                          title: const Text('Arkadaşlıktan Çıkar'),
-                          content: Text('@$username kişisini arkadaşlıktan çıkarmak istediğinize emin misiniz?'),
+                          title: Text('friends.remove_confirm_title'.tr()),
+                          content: Text('friends.remove_confirm_desc'.tr(args: [username])),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(ctx, false),
-                              child: const Text('İptal'),
+                              child: Text('friends.cancel'.tr()),
                             ),
                             TextButton(
                               onPressed: () => Navigator.pop(ctx, true),
                               style: TextButton.styleFrom(foregroundColor: Colors.red),
-                              child: const Text('Evet, Çıkar'),
+                              child: Text('friends.yes_remove'.tr()),
                             ),
                           ],
                         ),
@@ -844,13 +845,13 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     }
                   },
                   itemBuilder: (context) => [
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'profile',
-                      child: Text('Profili Gör'),
+                      child: Text('friends.view_profile'.tr()),
                     ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'remove',
-                      child: Text('Arkadaşlıktan Çıkar', style: TextStyle(color: Colors.red)),
+                      child: Text('friends.remove_friend'.tr(), style: const TextStyle(color: Colors.red)),
                     ),
                   ],
                 ),

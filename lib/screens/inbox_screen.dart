@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 import '../core/chat/controllers/inbox_controller.dart';
 import '../core/chat/supabase_chat_repository.dart';
@@ -40,8 +41,8 @@ class _InboxScreenState extends State<InboxScreen> {
     final myId = _myId;
     final theme = Theme.of(context);
     if (myId == null) {
-      return const Scaffold(
-        body: Center(child: Text('Oturum bulunamadı.')),
+      return Scaffold(
+        body: Center(child: Text('inbox.session_not_found'.tr())),
       );
     }
 
@@ -49,7 +50,7 @@ class _InboxScreenState extends State<InboxScreen> {
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
-          'Mesajlar',
+          'inbox.title'.tr(),
           style: GoogleFonts.inter(
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -69,7 +70,7 @@ class _InboxScreenState extends State<InboxScreen> {
           if (_controller.error != null) {
             return Center(
               child: Text(
-                'Inbox yüklenemedi.',
+                'inbox.failed_to_load'.tr(),
                 style: GoogleFonts.inter(color: theme.textTheme.bodySmall?.color),
               ),
             );
@@ -78,7 +79,7 @@ class _InboxScreenState extends State<InboxScreen> {
           if (items.isEmpty) {
             return Center(
               child: Text(
-                'Henüz sohbet yok.',
+                'inbox.no_chats'.tr(),
                 style: GoogleFonts.inter(color: theme.textTheme.bodySmall?.color),
               ),
             );

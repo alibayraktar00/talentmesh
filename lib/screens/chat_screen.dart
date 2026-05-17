@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../core/chat/controllers/chat_controller.dart';
 import '../core/chat/supabase_chat_repository.dart';
 import '../core/chat/utils/chat_time_format.dart';
@@ -111,15 +112,15 @@ class _ChatScreenState extends State<ChatScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Mesaj gönderilemedi: ${e.message}'),
+          content: Text('chat.send_error'.tr(args: [e.message])),
           behavior: SnackBarBehavior.floating,
         ),
       );
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Mesaj gönderilemedi.'),
+        SnackBar(
+          content: Text('chat.send_error_generic'.tr()),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -203,7 +204,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 : (_controller == null
                     ? Center(
                         child: Text(
-                          'Sohbet açılamadı.',
+                          'chat.open_error'.tr(),
                           style: GoogleFonts.inter(color: theme.textTheme.bodySmall?.color),
                         ),
                       )
@@ -219,7 +220,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           if (messages.isEmpty) {
                             return Center(
                               child: Text(
-                                'Henüz mesaj yok. İlk mesajı sen gönder.',
+                                'chat.no_messages'.tr(),
                                 style: GoogleFonts.inter(
                                   color: theme.textTheme.bodySmall?.color,
                                   fontSize: 14,
@@ -376,7 +377,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       textInputAction: TextInputAction.newline,
                       style: TextStyle(color: theme.colorScheme.onSurface),
                       decoration: InputDecoration(
-                        hintText: 'Mesaj yaz...',
+                        hintText: 'chat.type_message'.tr(),
                         hintStyle: GoogleFonts.inter(
                           color: theme.textTheme.bodySmall?.color,
                           fontSize: 14,

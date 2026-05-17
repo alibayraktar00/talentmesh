@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../core/theme/app_colors.dart';
 import '../core/services/auth_service.dart';
 
@@ -75,24 +76,24 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
     final email = _emailController.text.trim();
 
     if (email.isEmpty) {
-      _showError('Lütfen email adresinizi girin.');
+      _showError('auth.forgot_password.error_email_req'.tr());
       return;
     }
     if (!email.contains('@')) {
-      _showError('Lütfen geçerli bir email adresi girin.');
+      _showError('auth.forgot_password.error_email_invalid'.tr());
       return;
     }
 
     setState(() => _isLoading = true);
     try {
       await _authService.resetPassword(email: email);
-      _showSuccess('Şifre sıfırlama linki emailinize gönderildi.');
+      _showSuccess('auth.forgot_password.success_sent'.tr());
       await Future.delayed(const Duration(seconds: 2));
       if (mounted) Navigator.of(context).pop();
     } on AuthException catch (e) {
       _showError(e.message);
     } catch (_) {
-      _showError('İşlem başarısız oldu. Lütfen tekrar deneyin.');
+      _showError('auth.forgot_password.error_generic'.tr());
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -141,7 +142,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'Şifremi Unuttum',
+                      'auth.forgot_password.title'.tr(),
                       style: GoogleFonts.inter(
                         fontSize: 28,
                         fontWeight: FontWeight.w800,
@@ -150,7 +151,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      'Hesabınıza bağlı email adresini girin, size şifre sıfırlama linki gönderelim.',
+                      'auth.forgot_password.subtitle'.tr(),
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         color: AppColors.mutedText,
@@ -164,9 +165,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       enabled: !_isLoading,
-                      decoration: const InputDecoration(
-                        hintText: 'Email Adresi',
-                        prefixIcon: Icon(
+                      decoration: InputDecoration(
+                        hintText: 'auth.forgot_password.email_hint'.tr(),
+                        prefixIcon: const Icon(
                           Icons.email_outlined,
                           color: AppColors.mutedText,
                           size: 20,
@@ -216,7 +217,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                                 ),
                               )
                             : Text(
-                                'Sıfırlama Linki Gönder',
+                                'auth.forgot_password.send_button'.tr(),
                                 style: GoogleFonts.inter(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,

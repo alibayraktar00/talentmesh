@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../core/theme/app_colors.dart';
 import '../core/services/profile_service.dart';
 
@@ -41,7 +43,7 @@ class _NotificationSettingsScreenState
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Ayarlar yüklenemedi.', style: GoogleFonts.inter()),
+          content: Text('common.error_load'.tr(), style: GoogleFonts.inter()),
           backgroundColor: Colors.redAccent,
         ));
       }
@@ -60,7 +62,7 @@ class _NotificationSettingsScreenState
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Kaydedildi.', style: GoogleFonts.inter()),
+          content: Text('common.saved'.tr(), style: GoogleFonts.inter()),
           backgroundColor: AppColors.primaryAccent,
           duration: const Duration(seconds: 2),
         ));
@@ -68,7 +70,7 @@ class _NotificationSettingsScreenState
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Kaydedilemedi.', style: GoogleFonts.inter()),
+          content: Text('common.error_save'.tr(), style: GoogleFonts.inter()),
           backgroundColor: Colors.redAccent,
         ));
       }
@@ -91,7 +93,7 @@ class _NotificationSettingsScreenState
     return Scaffold(
       backgroundColor: AppColors.white,
       appBar: AppBar(
-        title: Text('Bildirim Ayarları',
+        title: Text('notification_settings.title'.tr(),
             style: GoogleFonts.inter(
                 color: AppColors.headingText,
                 fontWeight: FontWeight.w700,
@@ -120,24 +122,24 @@ class _NotificationSettingsScreenState
           ? const Center(
               child: CircularProgressIndicator(color: AppColors.primaryAccent))
           : ListView(children: [
-              _header('Aktivite Bildirimleri'),
+              _header('notification_settings.activity_notifications'.tr()),
               _switchItem(
-                title: 'Mesajlar',
-                description: 'Yeni bir mesaj aldığında bildirim al.',
+                title: 'notification_settings.messages'.tr(),
+                description: 'notification_settings.messages_desc'.tr(),
                 value: _messageAlerts,
                 onChanged: (v) => _toggle('messages', v),
               ),
               const Divider(height: 1, color: AppColors.inputBorder),
               _switchItem(
-                title: 'Bağlantı İstekleri',
-                description: 'Biri seni arkadaş olarak eklediğinde bildirim al.',
+                title: 'notification_settings.connection_requests'.tr(),
+                description: 'notification_settings.connection_requests_desc'.tr(),
                 value: _connectionRequests,
                 onChanged: (v) => _toggle('connections', v),
               ),
               const Divider(height: 1, color: AppColors.inputBorder),
               _switchItem(
-                title: 'Takım Güncellemeleri',
-                description: 'Takımınla ilgili duyurulardan haberdar ol.',
+                title: 'notification_settings.team_updates'.tr(),
+                description: 'notification_settings.team_updates_desc'.tr(),
                 value: _teamUpdates,
                 onChanged: (v) => _toggle('team', v),
               ),
@@ -145,7 +147,7 @@ class _NotificationSettingsScreenState
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Text(
-                  'Bu bildirimler uygulama içi olarak çalışır. Kapatılan bildirimler sana gönderilmez.',
+                  'notification_settings.footer_info'.tr(),
                   style: GoogleFonts.inter(
                       fontSize: 13, color: AppColors.mutedText, height: 1.5),
                 ),

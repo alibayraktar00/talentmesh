@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/theme/app_colors.dart';
 import '../core/services/auth_service.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'signup_screen.dart';
 import 'forgot_password_screen.dart';
 
@@ -71,31 +72,30 @@ class _LoginScreenState extends State<LoginScreen>
   // Türkçe yorum: Sadece rakam ya da + ile başlayıp rakamlarla devam eden telefon kontrolü.
   bool _isPhone(String input) => RegExp(r'^\+?\d+$').hasMatch(input);
 
-  // Türkçe yorum: Supabase'den gelen yaygın İngilizce hataları Türkçeleştiriyoruz.
   String _translateAuthError(String message) {
     final lower = message.toLowerCase();
 
     if (lower.contains('invalid login credentials') ||
         lower.contains('invalid credentials')) {
-      return 'Kullanıcı bilgileri hatalı. Lütfen tekrar deneyin.';
+      return 'auth.login.error_invalid_credentials'.tr();
     }
     if (lower.contains('email not confirmed')) {
-      return 'E-posta doğrulaması yapılmamış. Lütfen e-posta kutunuzu kontrol edin.';
+      return 'auth.login.error_email_not_confirmed'.tr();
     }
     if (lower.contains('too many requests')) {
-      return 'Çok fazla deneme yapıldı. Lütfen biraz sonra tekrar deneyin.';
+      return 'auth.login.error_too_many_requests'.tr();
     }
     if (lower.contains('network') || lower.contains('connection')) {
-      return 'İnternet bağlantısı sorunu. Lütfen bağlantınızı kontrol edin.';
+      return 'auth.login.error_network'.tr();
     }
     if (lower.contains('user not found')) {
-      return 'Böyle bir kullanıcı bulunamadı.';
+      return 'auth.login.error_user_not_found'.tr();
     }
     if (lower.contains('database error')) {
-      return 'Sunucu tarafında bir veritabanı hatası oluştu.';
+      return 'auth.login.error_database'.tr();
     }
 
-    return 'Giriş yapılamadı. Lütfen bilgilerinizi kontrol edip tekrar deneyin.';
+    return 'auth.login.error_generic'.tr();
   }
 
   Future<void> _signIn() async {
@@ -103,7 +103,7 @@ class _LoginScreenState extends State<LoginScreen>
     final password = _passwordController.text;
 
     if (identifier.isEmpty || password.isEmpty) {
-      _showError('Lütfen tüm alanları doldurun.');
+      _showError('auth.login.error_fill_fields'.tr());
       return;
     }
 
@@ -127,7 +127,7 @@ class _LoginScreenState extends State<LoginScreen>
 
         final emailFromUsername = (response ?? '').toString().trim();
         if (emailFromUsername.isEmpty) {
-          _showError('Böyle bir kullanıcı bulunamadı.');
+          _showError('auth.login.error_user_not_found'.tr());
           return;
         }
 
@@ -142,7 +142,7 @@ class _LoginScreenState extends State<LoginScreen>
     } on PostgrestException catch (e) {
       _showError(_translateAuthError(e.message));
     } catch (_) {
-      _showError('Giriş yapılamadı. Tekrar deneyin.');
+      _showError('auth.login.error_generic'.tr());
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -181,7 +181,7 @@ class _LoginScreenState extends State<LoginScreen>
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Build your dream team',
+                      'auth.login.subtitle'.tr(),
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         fontWeight: FontWeight.w400,
@@ -198,7 +198,7 @@ class _LoginScreenState extends State<LoginScreen>
                       enabled: !_isLoading,
                       style: TextStyle(color: theme.colorScheme.onSurface),
                       decoration: InputDecoration(
-                        hintText: 'E-posta, Telefon veya Kullanıcı Adı',
+                        hintText: 'auth.login.identifier_hint'.tr(),
                         prefixIcon: Icon(
                           Icons.person_outline,
                           color: theme.textTheme.bodySmall?.color,
@@ -216,7 +216,7 @@ class _LoginScreenState extends State<LoginScreen>
                       enabled: !_isLoading,
                       style: TextStyle(color: theme.colorScheme.onSurface),
                       decoration: InputDecoration(
-                        hintText: 'Password',
+                        hintText: 'auth.login.password_hint'.tr(),
                         prefixIcon: Icon(
                           Icons.lock_outline,
                           color: theme.textTheme.bodySmall?.color,
@@ -283,7 +283,7 @@ class _LoginScreenState extends State<LoginScreen>
                                 ),
                               )
                             : Text(
-                                'Giriş Yap',
+                                'auth.login.sign_in_button'.tr(),
                                 style: GoogleFonts.inter(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
@@ -306,7 +306,7 @@ class _LoginScreenState extends State<LoginScreen>
                               );
                             },
                       child: Text(
-                        'Forgot Password?',
+                        'auth.login.forgot_password'.tr(),
                         style: GoogleFonts.inter(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
@@ -322,7 +322,7 @@ class _LoginScreenState extends State<LoginScreen>
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          "Don't have an account? ",
+                          'auth.login.no_account'.tr(),
                           style: GoogleFonts.inter(
                             fontSize: 14,
                             color: theme.colorScheme.onSurface,
@@ -339,7 +339,7 @@ class _LoginScreenState extends State<LoginScreen>
                                   );
                                 },
                           child: Text(
-                            'Sign Up',
+                            'auth.login.sign_up'.tr(),
                             style: GoogleFonts.inter(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,

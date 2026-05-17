@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../core/theme/app_colors.dart';
 import '../core/services/profile_service.dart';
 import '../core/constants/app_constants.dart';
@@ -361,7 +362,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                _fullName.isNotEmpty ? _fullName : 'İsminizi girin',
+                _fullName.isNotEmpty ? _fullName : 'profile.enter_name'.tr(),
                 style: GoogleFonts.inter(
                   fontSize: 24,
                   fontWeight: FontWeight.w700,
@@ -372,7 +373,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 2),
               Text(
-                _title.isNotEmpty ? _title : 'Ünvanınızı girin',
+                _title.isNotEmpty ? _title : 'profile.enter_title'.tr(),
                 style: GoogleFonts.inter(
                   fontSize: 15,
                   fontWeight: FontWeight.w400,
@@ -417,7 +418,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 20),
               Text(
-                'Bu profil gizlidir',
+                'profile.private_profile'.tr(),
                 style: GoogleFonts.inter(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
@@ -426,7 +427,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 10),
               Text(
-                'Bu kullanıcının profilini görebilmek için arkadaş olmanız gerekiyor.',
+                'profile.private_profile_desc'.tr(),
                 textAlign: TextAlign.center,
                 style: GoogleFonts.inter(
                   fontSize: 14,
@@ -481,18 +482,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 if (_isMyProfile || _showEmail) ...[  
                   _buildContactRow(
                     Icons.email_outlined,
-                    _email.isNotEmpty ? _email : 'E-posta ekleyin',
+                    _email.isNotEmpty ? _email : 'profile.add_email'.tr(),
                   ),
                   const SizedBox(height: 10),
                 ],
                 _buildContactRow(
                   Icons.phone_outlined,
-                  _phone.isNotEmpty ? _phone : 'Telefon ekleyin',
+                  _phone.isNotEmpty ? _phone : 'profile.add_phone'.tr(),
                 ),
                 const SizedBox(height: 10),
                 _buildContactRow(
                   Icons.location_on_outlined,
-                  _location.isNotEmpty ? _location : 'Konum ekleyin',
+                  _location.isNotEmpty ? _location : 'profile.add_location'.tr(),
                 ),
               ],
             ),
@@ -582,7 +583,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _openToWork ? 'OPEN TO WORK' : 'NOT LOOKING',
+                    _openToWork ? 'profile.open_to_work'.tr() : 'profile.not_looking'.tr(),
                     style: GoogleFonts.inter(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
@@ -594,8 +595,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   if (_isMyProfile)
                     Text(
                       _openToWork
-                          ? 'Looking for opportunities'
-                          : 'Tap to change',
+                          ? 'profile.looking_for_opportunities'.tr()
+                          : 'profile.tap_to_change'.tr(),
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         color: AppColors.mutedText,
@@ -632,17 +633,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('İstatistikler', style: _sectionTitleStyle()),
+          Text('profile.stats'.tr(), style: _sectionTitleStyle()),
           const SizedBox(height: 14),
           Row(
             children: [
               _buildStatCard(
                 Icons.assignment_turned_in,
                 '$_completedProjects',
-                'Tamamlanan\nProje',
+                'profile.completed_projects'.tr(),
               ),
               const SizedBox(width: 12),
-              _buildStatCard(Icons.groups, '$_teamsJoined', 'Katıldığı\nTakım'),
+              _buildStatCard(Icons.groups, '$_teamsJoined', 'profile.teams_joined'.tr()),
               const SizedBox(width: 12),
               _buildStatCard(
                 Icons.star,
@@ -653,7 +654,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               _reviews.length)
                           .toStringAsFixed(1)
                     : '0',
-                'Ortalama\nPuan',
+                'profile.avg_rating'.tr(),
               ),
             ],
           ),
@@ -747,7 +748,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Başarı Rozetleri', style: _sectionTitleStyle()),
+          Text('profile.badges'.tr(), style: _sectionTitleStyle()),
           const SizedBox(height: 14),
           Wrap(
             spacing: 10,
@@ -795,10 +796,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ──────────────────────── PROFILE ABOUT ────────────────────────
   Widget _buildProfileSection() {
     return _buildSection(
-      title: 'Profil',
+      title: 'profile.profile_section'.tr(),
       onEdit: _showEditAboutDialog,
       child: Text(
-        _about.isNotEmpty ? _about : 'Kendinizi tanıtın...',
+        _about.isNotEmpty ? _about : 'profile.introduce_yourself'.tr(),
         style: GoogleFonts.inter(
           fontSize: 13.5,
           height: 1.55,
@@ -811,13 +812,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ──────────────────────── 7. AVAILABILITY ────────────────────────
   Widget _buildAvailabilitySection() {
     return _buildSection(
-      title: 'Müsaitlik Durumu',
+      title: 'profile.availability'.tr(),
       onEdit: _showEditAvailabilityDialog,
       child: _availability.isEmpty
           ? Text(
               _isMyProfile
-                  ? 'Müsaitlik bilgisi ekleyin...'
-                  : 'Müsaitlik bilgisi eklenmemiş.',
+                  ? 'profile.add_availability'.tr()
+                  : 'profile.no_availability'.tr(),
               style: GoogleFonts.inter(
                 fontSize: 13.5,
                 color: AppColors.mutedText,
@@ -829,7 +830,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 if (_availability['hours_per_week']?.isNotEmpty == true)
                   _buildInfoRow(
                     Icons.schedule,
-                    '${_availability['hours_per_week']} saat/hafta',
+                    '${_availability['hours_per_week']} ${'profile.hours_per_week'.tr()}',
                   ),
                 if (_availability['timezone']?.isNotEmpty == true) ...[
                   const SizedBox(height: 8),
@@ -847,13 +848,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ──────────────────────── 8. ROLE PREFERENCES ────────────────────────
   Widget _buildRolePreferencesSection() {
     return _buildSection(
-      title: 'Aranan Roller',
+      title: 'profile.role_preferences'.tr(),
       onEdit: _showAddRoleDialog,
       child: _rolePreferences.isEmpty
           ? Text(
               _isMyProfile
-                  ? 'Rol tercihi ekleyin...'
-                  : 'Rol tercihi eklenmemiş.',
+                  ? 'profile.add_role'.tr()
+                  : 'profile.no_role'.tr(),
               style: GoogleFonts.inter(
                 fontSize: 13.5,
                 color: AppColors.mutedText,
@@ -882,11 +883,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ──────────────────────── EXPERIENCE ────────────────────────
   Widget _buildExperienceSection() {
     return _buildSection(
-      title: 'Deneyimler',
+      title: 'profile.experience'.tr(),
       onEdit: () => _showExperienceDialog(-1),
       child: _experiences.isEmpty
           ? Text(
-              _isMyProfile ? 'Deneyim ekleyin...' : 'Deneyim eklenmemiş.',
+              _isMyProfile ? 'profile.add_experience'.tr() : 'profile.no_experience'.tr(),
               style: GoogleFonts.inter(
                 fontSize: 13.5,
                 color: AppColors.mutedText,
@@ -932,13 +933,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ──────────────────────── 1. EDUCATION ────────────────────────
   Widget _buildEducationSection() {
     return _buildSection(
-      title: 'Eğitim',
+      title: 'profile.education'.tr(),
       onEdit: () => _showEducationDialog(-1),
       child: _education.isEmpty
           ? Text(
               _isMyProfile
-                  ? 'Eğitim bilgisi ekleyin...'
-                  : 'Eğitim bilgisi eklenmemiş.',
+                  ? 'profile.add_education'.tr()
+                  : 'profile.no_education'.tr(),
               style: GoogleFonts.inter(
                 fontSize: 13.5,
                 color: AppColors.mutedText,
@@ -981,11 +982,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ──────────────────────── 2. CERTIFICATES ────────────────────────
   Widget _buildCertificatesSection() {
     return _buildSection(
-      title: 'Sertifikalar',
+      title: 'profile.certificates'.tr(),
       onEdit: () => _showCertificateDialog(-1),
       child: _certificates.isEmpty
           ? Text(
-              _isMyProfile ? 'Sertifika ekleyin...' : 'Sertifika eklenmemiş.',
+              _isMyProfile ? 'profile.add_certificate'.tr() : 'profile.no_certificate'.tr(),
               style: GoogleFonts.inter(
                 fontSize: 13.5,
                 color: AppColors.mutedText,
@@ -1031,11 +1032,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ──────────────────────── 3. PROJECTS / PORTFOLIO ────────────────────────
   Widget _buildProjectsSection() {
     return _buildSection(
-      title: 'Projeler / Portfolyo',
+      title: 'profile.projects'.tr(),
       onEdit: () => _showProjectDialog(-1),
       child: _projects.isEmpty
           ? Text(
-              _isMyProfile ? 'Proje ekleyin...' : 'Proje eklenmemiş.',
+              _isMyProfile ? 'profile.add_project'.tr() : 'profile.no_project'.tr(),
               style: GoogleFonts.inter(
                 fontSize: 13.5,
                 color: AppColors.mutedText,
@@ -1081,11 +1082,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ──────────────────────── SKILLS ────────────────────────
   Widget _buildSkillsSection() {
     return _buildSection(
-      title: 'Yetenekler',
+      title: 'profile.skills'.tr(),
       onEdit: _showAddSkillDialog,
       child: _skills.isEmpty
           ? Text(
-              _isMyProfile ? 'Yetenek ekleyin...' : 'Yetenek eklenmemiş.',
+              _isMyProfile ? 'profile.add_skill'.tr() : 'profile.no_skill'.tr(),
               style: GoogleFonts.inter(
                 fontSize: 13.5,
                 color: AppColors.mutedText,
@@ -1104,11 +1105,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ──────────────────────── LANGUAGES ────────────────────────
   Widget _buildLanguagesSection() {
     return _buildSection(
-      title: 'Diller',
+      title: 'profile.languages'.tr(),
       onEdit: _showAddLanguageDialog,
       child: _languages.isEmpty
           ? Text(
-              _isMyProfile ? 'Dil ekleyin...' : 'Dil eklenmemiş.',
+              _isMyProfile ? 'profile.add_language'.tr() : 'profile.no_language'.tr(),
               style: GoogleFonts.inter(
                 fontSize: 13.5,
                 color: AppColors.mutedText,
@@ -1167,13 +1168,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ──────────────────────── 4. SOCIAL LINKS ────────────────────────
   Widget _buildSocialLinksSection() {
     return _buildSection(
-      title: 'Sosyal Medya',
+      title: 'profile.social_media'.tr(),
       onEdit: _showEditSocialLinksDialog,
       child: _socialLinks.isEmpty || _socialLinks.values.every((v) => v.isEmpty)
           ? Text(
               _isMyProfile
-                  ? 'Sosyal medya linkleri ekleyin...'
-                  : 'Sosyal medya hesabı eklenmemiş.',
+                  ? 'profile.add_social'.tr()
+                  : 'profile.no_social'.tr(),
               style: GoogleFonts.inter(
                 fontSize: 13.5,
                 color: AppColors.mutedText,
@@ -1253,11 +1254,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Değerlendirmeler', style: _sectionTitleStyle()),
+          Text('profile.reviews'.tr(), style: _sectionTitleStyle()),
           const SizedBox(height: 14),
           _reviews.isEmpty
               ? Text(
-                  'Henüz değerlendirme yok.',
+                  'profile.no_reviews'.tr(),
                   style: GoogleFonts.inter(
                     fontSize: 13.5,
                     color: AppColors.mutedText,
@@ -1321,7 +1322,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       decoration: _cardDecoration(),
       child: Column(
         children: [
-          Text('Profili Paylaş', style: _sectionTitleStyle()),
+          Text('profile.share_profile'.tr(), style: _sectionTitleStyle()),
           const SizedBox(height: 14),
           Container(
             padding: const EdgeInsets.all(16),
@@ -1346,7 +1347,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 10),
           Text(
-            'Bu QR kodu paylaşarak profilinize erişim sağlayın',
+            'profile.qr_desc'.tr(),
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(fontSize: 12, color: AppColors.mutedText),
           ),

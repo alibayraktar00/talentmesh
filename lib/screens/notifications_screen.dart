@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../core/services/notification_service.dart';
 import '../core/theme/app_colors.dart';
 import '../models/app_notification_model.dart';
@@ -113,10 +114,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   String _formatTime(DateTime dt) {
     final now = DateTime.now();
     final diff = now.difference(dt);
-    if (diff.inMinutes < 1) return 'Az önce';
-    if (diff.inHours < 1) return '${diff.inMinutes} dk önce';
-    if (diff.inDays < 1) return '${diff.inHours} sa önce';
-    if (diff.inDays < 7) return '${diff.inDays} gün önce';
+    if (diff.inMinutes < 1) return 'notifications.just_now'.tr();
+    if (diff.inHours < 1) return 'notifications.minutes_ago'.tr(args: [diff.inMinutes.toString()]);
+    if (diff.inDays < 1) return 'notifications.hours_ago'.tr(args: [diff.inHours.toString()]);
+    if (diff.inDays < 7) return 'notifications.days_ago'.tr(args: [diff.inDays.toString()]);
     return '${dt.day}.${dt.month}.${dt.year}';
   }
 
@@ -133,7 +134,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Bildirimler',
+          'notifications.title'.tr(),
           style: GoogleFonts.inter(
             fontSize: 18,
             fontWeight: FontWeight.w600,
@@ -181,7 +182,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Henüz bildirimin yok',
+            'notifications.empty_state'.tr(),
             style: GoogleFonts.inter(
               fontSize: 16,
               fontWeight: FontWeight.w500,

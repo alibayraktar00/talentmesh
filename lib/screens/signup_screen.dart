@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../core/theme/app_colors.dart';
 import '../core/services/auth_service.dart';
 
@@ -112,9 +113,9 @@ class _SignUpScreenState extends State<SignUpScreen>
       initialDate: initial.isAfter(now) ? now : initial,
       firstDate: DateTime(1900, 1, 1),
       lastDate: DateTime(now.year, now.month, now.day), // ileri tarih engeli
-      helpText: 'Doğum Tarihi Seç',
-      cancelText: 'İptal',
-      confirmText: 'Seç',
+      helpText: 'auth.signup.date_picker_help'.tr(),
+      cancelText: 'auth.signup.date_picker_cancel'.tr(),
+      confirmText: 'auth.signup.date_picker_confirm'.tr(),
     );
 
     if (picked == null) return;
@@ -158,19 +159,19 @@ class _SignUpScreenState extends State<SignUpScreen>
         phone.isEmpty ||
         password.isEmpty ||
         dob == null) {
-      _showError('Lütfen tüm alanları doldurun.');
+      _showError('auth.signup.error_fill_fields'.tr());
       return;
     }
     if (!_isValidEmail(email)) {
-      _showError('Geçerli bir e-posta adresi girin.');
+      _showError('auth.signup.error_invalid_email'.tr());
       return;
     }
     if (password.length < 6) {
-      _showError('Şifre en az 6 karakter olmalı.');
+      _showError('auth.signup.error_password_length'.tr());
       return;
     }
     if (username.length < 3) {
-      _showError('Kullanıcı adı en az 3 karakter olmalı.');
+      _showError('auth.signup.error_username_length'.tr());
       return;
     }
 
@@ -183,7 +184,7 @@ class _SignUpScreenState extends State<SignUpScreen>
       // Türkçe yorum: Önce username müsait mi kontrol ediyoruz (arkadaş arama için kritik).
       final taken = await _isUsernameTaken(username);
       if (taken) {
-        _showError('Bu kullanıcı adı zaten kullanılıyor.');
+        _showError('auth.signup.error_username_taken'.tr());
         return;
       }
 
@@ -200,19 +201,17 @@ class _SignUpScreenState extends State<SignUpScreen>
         },
       );
       if (res.user == null) {
-        _showError('Kayıt başarısız. Lütfen tekrar deneyin.');
+        _showError('auth.signup.error_signup_failed'.tr());
         return;
       }
 
       // Türkçe yorum: Profiles insert işlemini trigger yönettiği için burada manuel insert yapılmıyor.
       if (res.session == null) {
-        _showError(
-          'Kayıt tamamlandı ancak oturum açılamadı. Lütfen e-postanızı doğrulayın.',
-        );
+        _showError('auth.signup.error_login_failed'.tr());
         return;
       }
 
-      _showSuccess('Kayıt başarılı! Ana sayfaya yönlendiriliyorsunuz.');
+      _showSuccess('auth.signup.success_signup'.tr());
       await Future.delayed(const Duration(milliseconds: 600));
       if (mounted) {
         Navigator.of(context).popUntil((route) => route.isFirst);
@@ -223,7 +222,7 @@ class _SignUpScreenState extends State<SignUpScreen>
       // Türkçe yorum: DB insert veya username kontrol hataları burada yakalanır.
       _showError(e.message);
     } catch (_) {
-      _showError('Kayıt olunamadı. Tekrar deneyin.');
+      _showError('auth.signup.error_generic'.tr());
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -261,7 +260,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Hesap Oluştur',
+                        'auth.signup.title'.tr(),
                         style: GoogleFonts.inter(
                           fontSize: 28,
                           fontWeight: FontWeight.w800,
@@ -270,7 +269,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Talent Mesh\'e katıl ve ekibini bul.',
+                        'auth.signup.subtitle'.tr(),
                         style: GoogleFonts.inter(
                           fontSize: 14,
                           color: theme.textTheme.bodySmall?.color,
@@ -285,7 +284,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                         textInputAction: TextInputAction.next,
                         style: TextStyle(color: theme.colorScheme.onSurface),
                         decoration: InputDecoration(
-                          hintText: 'Tam Ad',
+                          hintText: 'auth.signup.full_name_hint'.tr(),
                           prefixIcon: Icon(
                             Icons.person_outline,
                             color: theme.textTheme.bodySmall?.color,
@@ -295,7 +294,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                         ),
                         validator: (v) {
                           if ((v ?? '').trim().isEmpty) {
-                            return 'Tam ad zorunludur.';
+                            return 'auth.signup.val_full_name'.tr();
                           }
                           return null;
                         },
@@ -326,7 +325,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                           }),
                         ],
                         decoration: InputDecoration(
-                          hintText: 'Kullanıcı Adı (küçük harf, boşluksuz)',
+                          hintText: 'auth.signup.username_hint'.tr(),
                           prefixIcon: Icon(
                             Icons.alternate_email,
                             color: theme.textTheme.bodySmall?.color,
@@ -338,14 +337,14 @@ class _SignUpScreenState extends State<SignUpScreen>
                           final raw = (v ?? '').trim();
                           final normalized = _normalizeUsername(raw);
                           if (normalized.isEmpty) {
-                            return 'Kullanıcı adı zorunludur.';
+                            return 'auth.signup.val_username_req'.tr();
                           }
                           if (normalized.length < 3) {
-                            return 'Kullanıcı adı en az 3 karakter olmalı.';
+                            return 'auth.signup.error_username_length'.tr();
                           }
                           if (normalized !=
                               raw.toLowerCase().replaceAll(' ', '')) {
-                            return 'Kullanıcı adı küçük harf ve boşluksuz olmalı.';
+                            return 'auth.signup.val_username_format'.tr();
                           }
                           return null;
                         },
@@ -360,7 +359,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                         textInputAction: TextInputAction.next,
                         style: TextStyle(color: theme.colorScheme.onSurface),
                         decoration: InputDecoration(
-                          hintText: 'E-posta',
+                          hintText: 'auth.signup.email_hint'.tr(),
                           prefixIcon: Icon(
                             Icons.email_outlined,
                             color: theme.textTheme.bodySmall?.color,
@@ -370,9 +369,9 @@ class _SignUpScreenState extends State<SignUpScreen>
                         ),
                         validator: (v) {
                           final email = (v ?? '').trim();
-                          if (email.isEmpty) return 'E-posta zorunludur.';
+                          if (email.isEmpty) return 'auth.signup.val_email_req'.tr();
                           if (!_isValidEmail(email)) {
-                            return 'Geçerli bir e-posta girin.';
+                            return 'auth.signup.error_invalid_email'.tr();
                           }
                           return null;
                         },
@@ -391,7 +390,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                           LengthLimitingTextInputFormatter(15),
                         ],
                         decoration: InputDecoration(
-                          hintText: 'Cep Telefonu',
+                          hintText: 'auth.signup.phone_hint'.tr(),
                           prefixIcon: Icon(
                             Icons.phone_outlined,
                             color: theme.textTheme.bodySmall?.color,
@@ -401,9 +400,9 @@ class _SignUpScreenState extends State<SignUpScreen>
                         ),
                         validator: (v) {
                           final phone = (v ?? '').trim();
-                          if (phone.isEmpty) return 'Telefon zorunludur.';
+                          if (phone.isEmpty) return 'auth.signup.val_phone_req'.tr();
                           if (phone.length < 10) {
-                            return 'Telefon numarası eksik görünüyor.';
+                            return 'auth.signup.val_phone_format'.tr();
                           }
                           return null;
                         },
@@ -421,7 +420,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                             style: TextStyle(color: theme.colorScheme.onSurface),
                             decoration: InputDecoration(
                               hintText: _dateOfBirth == null
-                                  ? 'Doğum Günü'
+                                  ? 'auth.signup.dob_hint'.tr()
                                   : _formatDate(_dateOfBirth!),
                               prefixIcon: Icon(
                                 Icons.cake_outlined,
@@ -439,11 +438,11 @@ class _SignUpScreenState extends State<SignUpScreen>
                             ),
                             validator: (_) {
                               if (_dateOfBirth == null) {
-                                return 'Doğum tarihi zorunludur.';
+                                return 'auth.signup.val_dob_req'.tr();
                               }
                               final now = DateTime.now();
                               if (_dateOfBirth!.isAfter(now)) {
-                                return 'İleri tarih seçilemez.';
+                                return 'auth.signup.val_dob_future'.tr();
                               }
                               return null;
                             },
@@ -460,7 +459,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                         textInputAction: TextInputAction.done,
                         style: TextStyle(color: theme.colorScheme.onSurface),
                         decoration: InputDecoration(
-                          hintText: 'Şifre (en az 6 karakter)',
+                          hintText: 'auth.signup.password_hint'.tr(),
                           prefixIcon: Icon(
                             Icons.lock_outline,
                             color: theme.textTheme.bodySmall?.color,
@@ -484,9 +483,9 @@ class _SignUpScreenState extends State<SignUpScreen>
                         ),
                         validator: (v) {
                           final p = v ?? '';
-                          if (p.isEmpty) return 'Şifre zorunludur.';
+                          if (p.isEmpty) return 'auth.signup.val_password_req'.tr();
                           if (p.length < 6) {
-                            return 'Şifre en az 6 karakter olmalı.';
+                            return 'auth.signup.error_password_length'.tr();
                           }
                           return null;
                         },
@@ -534,7 +533,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                                   ),
                                 )
                               : Text(
-                                  'Kayıt Ol',
+                                  'auth.signup.sign_up_button'.tr(),
                                   style: GoogleFonts.inter(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
@@ -550,7 +549,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            'Zaten hesabın var mı? ',
+                            'auth.signup.have_account'.tr(),
                             style: GoogleFonts.inter(
                               fontSize: 14,
                               color: theme.colorScheme.onSurface,
@@ -559,7 +558,7 @@ class _SignUpScreenState extends State<SignUpScreen>
                           GestureDetector(
                             onTap: () => Navigator.of(context).pop(),
                             child: Text(
-                              'Giriş Yap',
+                              'auth.signup.sign_in'.tr(),
                               style: GoogleFonts.inter(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,

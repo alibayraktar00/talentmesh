@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../core/theme/app_colors.dart';
 import '../core/services/project_service.dart';
 import '../core/services/auth_service.dart';
@@ -86,13 +87,13 @@ class _FeedScreenState extends State<FeedScreen> {
   String _getPageTitle() {
     switch (_selectedNavIndex) {
       case 0:
-        return 'Takımlarım';
+        return 'feed.my_teams'.tr();
       case 1:
-        return 'Ana Sayfa';
+        return 'feed.home'.tr();
       case 2:
-        return 'Arkadaşlar';
+        return 'feed.friends'.tr();
       default:
-        return 'Ana Sayfa';
+        return 'feed.home'.tr();
     }
   }
 
@@ -139,7 +140,7 @@ class _FeedScreenState extends State<FeedScreen> {
                         Icons.refresh,
                         color: AppColors.primaryAccent,
                       ),
-                      tooltip: 'Yenile',
+                      tooltip: 'feed.refresh'.tr(),
                     ),
                 ],
               ),
@@ -169,7 +170,7 @@ class _FeedScreenState extends State<FeedScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
               child: Text(
-                'Sana Uygun Takımlar 🔥',
+                'feed.smart_matches'.tr(),
                 style: GoogleFonts.inter(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
@@ -183,7 +184,7 @@ class _FeedScreenState extends State<FeedScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
               child: Text(
-                'Keşfet',
+                'feed.discover'.tr(),
                 style: GoogleFonts.inter(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
@@ -211,9 +212,9 @@ class _FeedScreenState extends State<FeedScreen> {
           );
         }
         if (snapshot.hasError) {
-          return const SizedBox(
+          return SizedBox(
             height: 180,
-            child: Center(child: Text('Bir hata oluştu.')),
+            child: Center(child: Text('feed.error_occurred'.tr())),
           );
         }
 
@@ -224,7 +225,7 @@ class _FeedScreenState extends State<FeedScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 32),
             alignment: Alignment.center,
             child: Text(
-              'Şu an profiline uygun takım bulunamadı. Yeteneklerini güncellemeyi deneyin.',
+              'feed.no_matches'.tr(),
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(
                 fontSize: 14,
@@ -312,7 +313,7 @@ class _FeedScreenState extends State<FeedScreen> {
                       Icon(Icons.people_outline, size: 14, color: theme.textTheme.bodySmall?.color),
                       const SizedBox(width: 4),
                       Text(
-                        '${team.maxMembers} Kişilik',
+                        '${team.maxMembers} ${'feed.members_count'.tr()}',
                         style: GoogleFonts.inter(
                           fontSize: 11,
                           color: theme.textTheme.bodySmall?.color,
@@ -347,7 +348,7 @@ class _FeedScreenState extends State<FeedScreen> {
                             ),
                           ),
                           child: Text(
-                            _pendingTeamIds.contains(team.id) ? 'Bekliyor' : 'İncele',
+                            _pendingTeamIds.contains(team.id) ? 'feed.pending'.tr() : 'feed.review'.tr(),
                             style: GoogleFonts.inter(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -391,7 +392,7 @@ class _FeedScreenState extends State<FeedScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Veri yüklenemedi.',
+                    'feed.data_failed'.tr(),
                     style: GoogleFonts.inter(color: theme.textTheme.bodySmall?.color),
                   ),
                 ],
@@ -414,7 +415,7 @@ class _FeedScreenState extends State<FeedScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Henüz ilan yok.',
+                    'feed.no_ads'.tr(),
                     style: GoogleFonts.inter(
                       fontSize: 15,
                       color: theme.textTheme.bodySmall?.color,
@@ -500,7 +501,7 @@ class _FeedScreenState extends State<FeedScreen> {
               color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               size: 26,
             ),
-            tooltip: 'Ara',
+            tooltip: 'feed.search_tooltip'.tr(),
           ),
           ListenableBuilder(
             listenable: _notificationProvider,
@@ -528,7 +529,7 @@ class _FeedScreenState extends State<FeedScreen> {
               color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               size: 24,
             ),
-            tooltip: 'Ayarlar',
+            tooltip: 'feed.settings_tooltip'.tr(),
           ),
           // Çıkış butonu
           IconButton(
@@ -538,7 +539,7 @@ class _FeedScreenState extends State<FeedScreen> {
               color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
               size: 22,
             ),
-            tooltip: 'Çıkış Yap',
+            tooltip: 'feed.logout_tooltip'.tr(),
           ),
         ],
       ),
@@ -630,7 +631,7 @@ class _FeedScreenState extends State<FeedScreen> {
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              'Project lead: ',
+                              'feed.project_lead'.tr(),
                               style: GoogleFonts.inter(
                                 fontSize: 11,
                                 color: theme.textTheme.bodySmall?.color,
@@ -718,7 +719,7 @@ class _FeedScreenState extends State<FeedScreen> {
                 child: _buildNavItem(
                   icon: Icons.groups_3_outlined,
                   activeIcon: Icons.groups_3,
-                  label: 'Takımlarım',
+                  label: 'feed.my_teams'.tr(),
                   index: 0,
                 ),
               ),
@@ -757,7 +758,7 @@ class _FeedScreenState extends State<FeedScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Ana Sayfa',
+                        'feed.home'.tr(),
                         style: GoogleFonts.inter(
                           fontSize: 10,
                           fontWeight: FontWeight.w500,
@@ -772,7 +773,7 @@ class _FeedScreenState extends State<FeedScreen> {
                 child: _buildNavItem(
                   icon: Icons.people_outline,
                   activeIcon: Icons.people,
-                  label: 'Arkadaşlar',
+                  label: 'feed.friends'.tr(),
                   index: 2,
                 ),
               ),
