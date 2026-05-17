@@ -1143,7 +1143,10 @@ class _SearchScreenState extends State<SearchScreen> {
               MaterialPageRoute(
                 builder: (_) => ProfileScreen(userId: userId),
               ),
-            );
+            ).then((_) {
+              // Profilden geri dönünce ilişki durumlarını yenile
+              _refreshRelationsForCurrentResults();
+            });
           },
           borderRadius: BorderRadius.circular(16),
           child: Container(

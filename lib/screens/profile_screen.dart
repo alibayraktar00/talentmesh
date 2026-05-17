@@ -7,6 +7,7 @@ import 'package:easy_localization/easy_localization.dart';
 import '../core/theme/app_colors.dart';
 import '../core/services/profile_service.dart';
 import '../core/constants/app_constants.dart';
+import 'friends_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String? userId;
@@ -49,6 +50,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   List<Map<String, dynamic>> _skillEndorsements = [];
   bool _isFriend = false;
 
+  // ── Arkadaşlık durumu ──
+  int _friendCount = 0;
+  bool _pendingRequestSent = false; // ben istek attım ama bekliyor
+  bool _isSendingRequest = false;
+
   bool get _isMyProfile {
     final currentUserId = _profileService.userId;
     if (widget.userId == null) return true;
@@ -67,9 +73,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final endorsements = await _profileService.fetchSkillEndorsements(widget.userId);
     
     bool isFriend = false;
+    int friendCount = 0;
+    bool pendingRequestSent = false;
     final currentUserId = _profileService.userId;
+    final targetId = widget.userId ?? currentUserId;
+
+    if (targetId != null) {
+      friendCount = await _profileService.fetchFriendCount(targetId);
+    }
+
     if (widget.userId != null && currentUserId != null && widget.userId != currentUserId) {
       isFriend = await _profileService.areUsersFriends(currentUserId, widget.userId!);
+      if (!isFriend) {
+        final pendingId = await _profileService.getPendingRequestId(widget.userId!);
+        pendingRequestSent = pendingId != null;
+      }
     }
 
     if (data != null) {
@@ -113,6 +131,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _reviews = reviews;
         _skillEndorsements = endorsements;
         _isFriend = isFriend;
+        _friendCount = friendCount;
+        _pendingRequestSent = pendingRequestSent;
         _isLoading = false;
       });
     } else {
@@ -120,6 +140,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _reviews = reviews;
         _skillEndorsements = endorsements;
         _isFriend = isFriend;
+        _friendCount = friendCount;
+        _pendingRequestSent = pendingRequestSent;
         _isLoading = false;
       });
     }
@@ -206,6 +228,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           SliverToBoxAdapter(child: _buildHeader(context)),
           SliverToBoxAdapter(child: _buildContactInfo()),
           SliverToBoxAdapter(child: _buildOpenToWorkBanner()),
+          if (!_isMyProfile)
+            SliverToBoxAdapter(child: _buildFriendActionBanner()),
           SliverToBoxAdapter(child: _buildStatsSection()),
           SliverToBoxAdapter(child: _buildBadgesSection()),
           SliverToBoxAdapter(child: _buildProfileSection()),
@@ -624,6 +648,228 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // ──────────────────────── FRIEND ACTION BANNER ────────────────────────
+  Widget _buildFriendActionBanner() {
+    if (_isFriend) {
+      // Arkadaşız → yeşil banner
+      return Container(
+        margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.onlineGreen.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppColors.onlineGreen.withValues(alpha: 0.35),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.onlineGreen.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.people_alt_rounded,
+                color: AppColors.onlineGreen,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  final targetId = widget.userId;
+                  if (targetId != null) {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => FriendsScreen(
+                          userId: targetId,
+                          userName: _fullName,
+                        ),
+                      ),
+                    );
+                  }
+                },
+                child: Text(
+                  'Arkadaşsınız',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.onlineGreen,
+                  ),
+                ),
+              ),
+            ),
+            PopupMenuButton<String>(
+              icon: const Icon(
+                Icons.more_horiz_rounded,
+                color: AppColors.onlineGreen,
+                size: 22,
+              ),
+              onSelected: (value) async {
+                if (value == 'remove') {
+                  final targetId = widget.userId;
+                  if (targetId == null) return;
+                  
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: Text('friends.remove_confirm_title'.tr()),
+                      content: Text('friends.remove_confirm_desc'.tr(args: [_fullName])),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: Text('friends.cancel'.tr()),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          style: TextButton.styleFrom(foregroundColor: Colors.red),
+                          child: Text('friends.yes_remove'.tr()),
+                        ),
+                      ],
+                    ),
+                  );
+                  
+                  if (confirm == true) {
+                    try {
+                      await _profileService.removeFriend(targetId);
+                      if (mounted) {
+                        setState(() {
+                          _isFriend = false;
+                          _friendCount = _friendCount > 0 ? _friendCount - 1 : 0;
+                        });
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Arkadaşlıktan çıkarıldı'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Hata: $e'),
+                            backgroundColor: Colors.redAccent,
+                          ),
+                        );
+                      }
+                    }
+                  }
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'remove',
+                  child: Text('friends.remove_friend'.tr(), style: const TextStyle(color: Colors.red)),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Arkadaş değiliz → istek gönder / gönderildi butonu
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: (_pendingRequestSent || _isSendingRequest)
+                  ? null
+                  : () async {
+                      final targetId = widget.userId;
+                      if (targetId == null) return;
+                      setState(() => _isSendingRequest = true);
+                      try {
+                        await _profileService.sendFriendRequest(targetId);
+                        if (mounted) {
+                          setState(() => _pendingRequestSent = true);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Text('Arkadaşlık isteği gönderildi!'),
+                              behavior: SnackBarBehavior.floating,
+                              backgroundColor: AppColors.primaryAccent,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('İstek gönderilemedi: $e'),
+                              backgroundColor: Colors.redAccent,
+                            ),
+                          );
+                        }
+                      } finally {
+                        if (mounted) setState(() => _isSendingRequest = false);
+                      }
+                    },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                padding: const EdgeInsets.symmetric(vertical: 13),
+                decoration: BoxDecoration(
+                  color: _pendingRequestSent
+                      ? AppColors.chipBg
+                      : AppColors.primaryAccent,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _pendingRequestSent
+                        ? AppColors.inputBorder
+                        : AppColors.primaryAccent,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (_isSendingRequest)
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    else
+                      Icon(
+                        _pendingRequestSent
+                            ? Icons.access_time_rounded
+                            : Icons.person_add_alt_1_rounded,
+                        size: 18,
+                        color: _pendingRequestSent
+                            ? AppColors.mutedText
+                            : Colors.white,
+                      ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _pendingRequestSent
+                          ? 'İstek Gönderildi'
+                          : 'Arkadaşlık İsteği Gönder',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: _pendingRequestSent
+                            ? AppColors.mutedText
+                            : Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ──────────────────────── 11. STATS ────────────────────────
   Widget _buildStatsSection() {
     return Container(
@@ -658,6 +904,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ],
           ),
+          // Arkadaş sayısı satırı – kendi profilinde ve arkadaş profillerde
+          if (_isMyProfile || _isFriend) ...[
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: () {
+                if (_isMyProfile) {
+                  Navigator.of(context).pop();
+                } else {
+                  final targetId = widget.userId;
+                  if (targetId != null) {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => FriendsScreen(
+                          userId: targetId,
+                          userName: _fullName,
+                        ),
+                      ),
+                    );
+                  }
+                }
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryAccent.withValues(alpha: 0.07),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.people_alt_rounded,
+                      size: 18,
+                      color: AppColors.primaryAccent,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '$_friendCount Arkadaş',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primaryAccent,
+                      ),
+                    ),
+                    const Spacer(),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      size: 18,
+                      color: AppColors.primaryAccent,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

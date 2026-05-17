@@ -200,32 +200,17 @@ class ProfileService {
     return ids.toList();
   }
 
-  /// Arkadaşlık kaydını kaldırır (önce sil, RLS engellerse status=rejected).
+  /// Arkadaşlık kaydını kaldırır (RLS bypass için RPC kullanır).
   Future<bool> removeFriend(String friendUserId) async {
     final myId = _userId;
     if (myId == null) return false;
 
     try {
-      final rowIds = await _findAcceptedFriendshipIds(myId, friendUserId);
-      if (rowIds.isEmpty) {
-        print('removeFriend: accepted kayıt bulunamadı ($myId <-> $friendUserId)');
-        return false;
-      }
-
-      // 1) Silmeyi dene (select dönüşüne güvenme — RLS RETURNING'i gizleyebilir)
-      await _client.from('friend_requests').delete().inFilter('id', rowIds);
-
-      var remaining = await _findAcceptedFriendshipIds(myId, friendUserId);
-      if (remaining.isEmpty) return true;
-
-      // 2) DELETE yetkisi yoksa status güncelle (arkadaş listesi accepted filtreli)
-      await _client
-          .from('friend_requests')
-          .update({'status': 'rejected'})
-          .inFilter('id', remaining);
-
-      remaining = await _findAcceptedFriendshipIds(myId, friendUserId);
-      return remaining.isEmpty;
+      await _client.rpc('remove_friend', params: {
+        'my_user_id': myId,
+        'friend_user_id': friendUserId,
+      });
+      return true;
     } on PostgrestException catch (e) {
       print('Arkadaşlıktan çıkarma (Postgrest): ${e.message}');
       rethrow;
@@ -560,6 +545,106 @@ class ProfileService {
       return (data[column] as bool?) ?? true;
     } catch (_) {
       return true; // hata varsa bildirimi gönder
+    }
+  }
+
+  // ──────────────────────── Arkadaş Sayısı ────────────────────────
+
+  /// Belirtilen kullanıcının toplam arkadaş sayısını döner.
+  /// RLS'yi bypass etmek için Supabase RPC fonksiyonu kullanır.
+  Future<int> fetchFriendCount(String targetUserId) async {
+    try {
+      final result = await _client.rpc(
+        'get_friend_count',
+        params: {'target_user_id': targetUserId},
+      );
+      return (result as int?) ?? 0;
+    } catch (e) {
+      print('Arkadaş sayısı çekilirken hata: $e');
+      return 0;
+    }
+  }
+
+  // ──────────────────────── Arkadaşlık İsteği Gönder ────────────────────────
+
+  /// Mevcut kullanıcıdan [addresseeId]'ye arkadaşlık isteği gönderir.
+  /// Eski rejected/cancelled kayıt varsa onu günceller, yoksa yeni ekler.
+  Future<void> sendFriendRequest(String addresseeId) async {
+    final myId = _userId;
+    if (myId == null) throw Exception('Oturum bulunamadı.');
+    if (myId == addresseeId) throw Exception('Kendinize istek gönderemezsiniz.');
+
+    // Türkçe yorum: Her iki yönde de mevcut kayıt var mı kontrol et.
+    // (Daha önce arkadaş olup çıkarılmışsa rejected/cancelled satır kalıyor.)
+    final existing = await _client
+        .from('friend_requests')
+        .select('id, requester_id, addressee_id, status')
+        .eq('request_type', 'friend')
+        .or('and(requester_id.eq.$myId,addressee_id.eq.$addresseeId),and(requester_id.eq.$addresseeId,addressee_id.eq.$myId)')
+        .maybeSingle();
+
+    if (existing != null) {
+      final status = (existing['status'] ?? '').toString();
+      if (status == 'accepted') {
+        throw Exception('Zaten arkadaşsınız.');
+      }
+      if (status == 'pending') {
+        throw Exception('Zaten bekleyen bir istek var.');
+      }
+      // rejected / cancelled / herhangi başka durum → güncelle
+      await _client
+          .from('friend_requests')
+          .update({
+            'requester_id': myId,
+            'addressee_id': addresseeId,
+            'status': 'pending',
+            'is_read': false,
+          })
+          .eq('id', existing['id']);
+      return;
+    }
+
+    // Hiç kayıt yok → yeni ekle
+    await _client.from('friend_requests').insert({
+      'requester_id': myId,
+      'addressee_id': addresseeId,
+      'status': 'pending',
+      'request_type': 'friend',
+      'is_read': false,
+    });
+  }
+
+  /// Mevcut kullanıcı ile [targetUserId] arasında bekleyen (pending) bir
+  /// arkadaşlık isteği var mı kontrol eder. Gönderen taraf döner.
+  Future<String?> getPendingRequestId(String targetUserId) async {
+    final myId = _userId;
+    if (myId == null) return null;
+    try {
+      // Ben gönderdim mi?
+      final outgoing = await _client
+          .from('friend_requests')
+          .select('id')
+          .eq('requester_id', myId)
+          .eq('addressee_id', targetUserId)
+          .eq('status', 'pending')
+          .eq('request_type', 'friend')
+          .maybeSingle();
+      if (outgoing != null) return outgoing['id'].toString();
+
+      // O gönderdi mi?
+      final incoming = await _client
+          .from('friend_requests')
+          .select('id')
+          .eq('requester_id', targetUserId)
+          .eq('addressee_id', myId)
+          .eq('status', 'pending')
+          .eq('request_type', 'friend')
+          .maybeSingle();
+      if (incoming != null) return incoming['id'].toString();
+
+      return null;
+    } catch (e) {
+      return null;
     }
   }
 }

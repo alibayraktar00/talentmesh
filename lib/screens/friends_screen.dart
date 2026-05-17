@@ -12,7 +12,10 @@ import 'chat_screen.dart';
 import 'inbox_screen.dart';
 
 class FriendsScreen extends StatefulWidget {
-  const FriendsScreen({super.key});
+  final String? userId;
+  final String? userName;
+
+  const FriendsScreen({super.key, this.userId, this.userName});
 
   @override
   State<FriendsScreen> createState() => _FriendsScreenState();
@@ -39,6 +42,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
   bool _isUpdatingDelivered = false;
 
   String? get _myUserId => _client.auth.currentUser?.id;
+  
+  bool get _isMyFriends => widget.userId == null || widget.userId == _myUserId;
+  String? get _targetUserId => widget.userId ?? _myUserId;
 
   @override
   void initState() {
@@ -56,8 +62,12 @@ class _FriendsScreenState extends State<FriendsScreen> {
   }
 
   Future<void> _bootstrap() async {
-    await Future.wait([_loadIncomingRequests(), _loadFriends()]);
-    _setupRealtime();
+    if (_isMyFriends) {
+      await Future.wait([_loadIncomingRequests(), _loadFriends()]);
+      _setupRealtime();
+    } else {
+      await _loadFriends();
+    }
     _setupUnreadMessagesStream();
   }
 
@@ -188,34 +198,23 @@ class _FriendsScreenState extends State<FriendsScreen> {
   }
 
   Future<void> _loadFriends() async {
-    final myId = _myUserId;
+    final myId = _targetUserId;
     if (myId == null) return;
 
     setState(() => _isFriendsLoading = true);
     try {
-      // Türkçe yorum: Sadece accepted + request_type=friend kayıtlarını çekiyoruz.
-      final outgoing = await _client
-          .from('friend_requests')
-          .select('requester_id, addressee_id')
-          .eq('requester_id', myId)
-          .eq('status', 'accepted')
-          .eq('request_type', 'friend');
-
-      final incoming = await _client
-          .from('friend_requests')
-          .select('requester_id, addressee_id')
-          .eq('addressee_id', myId)
-          .eq('status', 'accepted')
-          .eq('request_type', 'friend');
+      // Türkçe yorum: RLS'yi bypass edip arkadaş ID'lerini çekmek için RPC fonksiyonu kullanıyoruz.
+      final result = await _client.rpc(
+        'get_user_friends',
+        params: {'target_user_id': myId},
+      );
 
       final friendIds = <String>{};
-      for (final row in List<Map<String, dynamic>>.from(outgoing)) {
-        final otherId = (row['addressee_id'] ?? '').toString();
-        if (otherId.isNotEmpty && otherId != myId) friendIds.add(otherId);
-      }
-      for (final row in List<Map<String, dynamic>>.from(incoming)) {
-        final otherId = (row['requester_id'] ?? '').toString();
-        if (otherId.isNotEmpty && otherId != myId) friendIds.add(otherId);
+      if (result != null) {
+        for (final row in List<Map<String, dynamic>>.from(result)) {
+          final friendId = (row['friend_id'] ?? '').toString();
+          if (friendId.isNotEmpty) friendIds.add(friendId);
+        }
       }
 
       List<Map<String, dynamic>> friends = [];
@@ -453,26 +452,47 @@ class _FriendsScreenState extends State<FriendsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return RefreshIndicator(
-      onRefresh: _bootstrap,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
-        children: [
-          _buildIncomingHeader(),
-          const SizedBox(height: 10),
-          _buildIncomingSection(),
-          const SizedBox(height: 20),
-          Text(
-            'friends.my_friends'.tr(),
-            style: GoogleFonts.inter(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: theme.colorScheme.onSurface,
+    return Scaffold(
+      appBar: _isMyFriends
+          ? null // kendi ekranımızda AppBar yok (HomeScreen'deki navigation var)
+          : AppBar(
+              title: Text(
+                widget.userName != null
+                    ? '${widget.userName} – Arkadaşlar'
+                    : 'Arkadaşlar',
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 17,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              backgroundColor: theme.colorScheme.surface,
+              elevation: 0,
+              surfaceTintColor: Colors.transparent,
             ),
-          ),
-          const SizedBox(height: 10),
-          _buildFriendsSection(),
-        ],
+      body: RefreshIndicator(
+        onRefresh: _bootstrap,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
+          children: [
+            if (_isMyFriends) ...[
+              _buildIncomingHeader(),
+              const SizedBox(height: 10),
+              _buildIncomingSection(),
+              const SizedBox(height: 20),
+            ],
+            Text(
+              _isMyFriends ? 'friends.my_friends'.tr() : 'Arkadaşlar',
+              style: GoogleFonts.inter(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 10),
+            _buildFriendsSection(),
+          ],
+        ),
       ),
     );
   }
@@ -688,174 +708,163 @@ class _FriendsScreenState extends State<FriendsScreen> {
         final friendId = (friend['id'] ?? '').toString();
         final username = (friend['username'] ?? '').toString();
         final fullName = (friend['full_name'] ?? '').toString();
-        final id = (friend['id'] ?? '').toString();
         final displayName = fullName.isNotEmpty ? fullName : '@$username';
         final unreadCount = _unreadCountByFriendId[friendId] ?? 0;
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: theme.colorScheme.surfaceVariant,
-                child: Text(
-                  username.isNotEmpty ? username[0].toUpperCase() : '?',
-                  style: GoogleFonts.inter(
-                    color: AppColors.primaryAccent,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '@$username',
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: theme.colorScheme.onSurface,
-                      ),
+        return GestureDetector(
+          onTap: friendId.isEmpty
+              ? null
+              : () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => ProfileScreen(userId: friendId),
                     ),
-                    Text(
-                      fullName.isEmpty ? 'friends.no_name_info'.tr() : fullName,
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: theme.textTheme.bodySmall?.color,
-                      ),
+                  );
+                },
+          onLongPress: (friendId.isEmpty || !_isMyFriends)
+              ? null
+              : () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: Text('friends.remove_confirm_title'.tr()),
+                      content: Text('friends.remove_confirm_desc'.tr(args: [username])),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: Text('friends.cancel'.tr()),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          style: TextButton.styleFrom(foregroundColor: Colors.red),
+                          child: Text('friends.yes_remove'.tr()),
+                        ),
+                      ],
                     ),
-                  ],
+                  );
+                  if (confirm == true) {
+                    await _removeFriend(friendId);
+                  }
+                },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
-              ),
-              if (unreadCount > 0)
-                Container(
-                  margin: const EdgeInsets.only(right: 6),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                  ),
+              ],
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: theme.colorScheme.surfaceVariant,
                   child: Text(
-                    unreadCount > 99 ? '99+' : '$unreadCount',
+                    username.isNotEmpty ? username[0].toUpperCase() : '?',
                     style: GoogleFonts.inter(
-                      color: Colors.white,
-                      fontSize: 10,
+                      color: AppColors.primaryAccent,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
-              TextButton(
-                onPressed: friendId.isEmpty
-                    ? null
-                    : () async {
-                        final myId = _myUserId;
-                        // Türkçe yorum: Kullanıcı sohbeti açtığında badge anında kaybolsun (optimistic).
-                        // DB update gecikse bile UX düzgün olur; stream kısa süre içinde doğru state'i getirir.
-                        if (mounted) {
-                          setState(() {
-                            _unreadCountByFriendId.remove(friendId);
-                            _sortFriendsByPriority();
-                          });
-                        }
-                        if (myId != null) {
-                          // Türkçe yorum: Sohbete girerken bu arkadaştan gelen read olmayan mesajları read yap.
-                          await _client
-                              .from('messages')
-                              .update({'status': 'read'})
-                              .eq('sender_id', friendId)
-                              .eq('receiver_id', myId)
-                              .neq('status', 'read');
-                        }
-                        if (!mounted) return;
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => ChatScreen(
-                              receiverId: friendId,
-                              receiverName: displayName,
-                            ),
-                          ),
-                        );
-                      },
-                style: TextButton.styleFrom(
-                  minimumSize: const Size(0, 36),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                ),
-                child: Text('friends.send_message'.tr()),
-              ),
-              if (_actionLoadingIds.contains(friendId))
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 10),
-                  child: SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                )
-              else
-                PopupMenuButton<String>(
-                  icon: Icon(Icons.more_vert, color: theme.textTheme.bodySmall?.color),
-                  onSelected: (value) async {
-                    if (value == 'profile') {
-                      if (id.isNotEmpty) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ProfileScreen(userId: id),
-                          ),
-                        );
-                      }
-                    } else if (value == 'remove') {
-                      final confirm = await showDialog<bool>(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: Text('friends.remove_confirm_title'.tr()),
-                          content: Text('friends.remove_confirm_desc'.tr(args: [username])),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx, false),
-                              child: Text('friends.cancel'.tr()),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx, true),
-                              style: TextButton.styleFrom(foregroundColor: Colors.red),
-                              child: Text('friends.yes_remove'.tr()),
-                            ),
-                          ],
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '@$username',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: theme.colorScheme.onSurface,
                         ),
-                      );
-                      if (confirm == true) {
-                        await _removeFriend(friendId);
-                      }
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      value: 'profile',
-                      child: Text('friends.view_profile'.tr()),
-                    ),
-                    PopupMenuItem(
-                      value: 'remove',
-                      child: Text('friends.remove_friend'.tr(), style: const TextStyle(color: Colors.red)),
-                    ),
-                  ],
+                      ),
+                      Text(
+                        fullName.isEmpty ? 'friends.no_name_info'.tr() : fullName,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: theme.textTheme.bodySmall?.color,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-            ],
+                if (_isMyFriends) ...[
+                  if (unreadCount > 0)
+                    Container(
+                      margin: const EdgeInsets.only(right: 6),
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        unreadCount > 99 ? '99+' : '$unreadCount',
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  if (_actionLoadingIds.contains(friendId))
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 10),
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  else
+                    TextButton(
+                      onPressed: friendId.isEmpty
+                          ? null
+                          : () async {
+                              final myId = _myUserId;
+                              // Türkçe yorum: Kullanıcı sohbeti açtığında badge anında kaybolsun (optimistic).
+                              if (mounted) {
+                                setState(() {
+                                  _unreadCountByFriendId.remove(friendId);
+                                  _sortFriendsByPriority();
+                                });
+                              }
+                              if (myId != null) {
+                                // Türkçe yorum: Sohbete girerken bu arkadaştan gelen read olmayan mesajları read yap.
+                                await _client
+                                    .from('messages')
+                                    .update({'status': 'read'})
+                                    .eq('sender_id', friendId)
+                                    .eq('receiver_id', myId)
+                                    .neq('status', 'read');
+                              }
+                              if (!mounted) return;
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => ChatScreen(
+                                    receiverId: friendId,
+                                    receiverName: displayName,
+                                  ),
+                                ),
+                              );
+                            },
+                      style: TextButton.styleFrom(
+                        minimumSize: const Size(0, 36),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                      ),
+                      child: Text('friends.send_message'.tr()),
+                    ),
+                ],
+              ],
+            ),
           ),
         );
       }).toList(),
